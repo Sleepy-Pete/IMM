@@ -1,7 +1,24 @@
 
-# About this fork
+# About this fork (Sleepy-Pete/IMM)
 
-This fork is a version of the IMM code base with the dependencies vendored in and committed. This is to have a reference snapshot of a reproducible build for the Windows IMM player, as some of the dependencies may become hard to find in the future. 
+This fork is based on the excellent work from [icosa-mirror/IMM](https://github.com/icosa-mirror/IMM) by Joan Charmant and Andy Baker, which added:
+- Complete Unity integration with OpenXR VR support
+- Oculus PC VR SDK and Platform SDK integration
+- Facebook Audio360 SDK for spatial audio
+- Enhanced runtime API for layer control
+- All dependencies vendored and ready to build
+
+**Upstream repositories:**
+- Original: [Immersive-Foundation/IMM](https://github.com/Immersive-Foundation/IMM) (now [alegna901/IMM](https://github.com/alegna901/IMM))
+- Icosa-mirror fork: [icosa-mirror/IMM](https://github.com/icosa-mirror/IMM)
+
+All commit history and authorship is preserved. See git log for full attribution.
+
+---
+
+## About the icosa-mirror fork
+
+This fork is a version of the IMM code base with the dependencies vendored in and committed. This is to have a reference snapshot of a reproducible build for the Windows IMM player, as some of the dependencies may become hard to find in the future.
 
 The dependencies are under the `thirdparty` directory. The table below details where each dependency was sourced from and which version is committed. I moved all the dependencies of libImmCore into a single .props file. For the 3 SDK a full copy of the original .zip will be included in a github "release".
 
