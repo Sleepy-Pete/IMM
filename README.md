@@ -8,9 +8,10 @@ This fork is based on the excellent work from [icosa-mirror/IMM](https://github.
 - Enhanced runtime API for layer control
 - All dependencies vendored and ready to build
 
-**Upstream repositories:**
-- Original: [Immersive-Foundation/IMM](https://github.com/Immersive-Foundation/IMM) (now [alegna901/IMM](https://github.com/alegna901/IMM))
-- Icosa-mirror fork: [icosa-mirror/IMM](https://github.com/icosa-mirror/IMM)
+**Upstream repositories and contributors:**
+- **Original IMM project:** [Immersive-Foundation/IMM](https://github.com/Immersive-Foundation/IMM) by Inigo Quilez and the Immersive Foundation team
+- **Current upstream:** [alegna901/IMM](https://github.com/alegna901/IMM) maintained by Angela Luo
+- **Icosa-mirror fork:** [icosa-mirror/IMM](https://github.com/icosa-mirror/IMM) by Joan Charmant and Andy Baker
 
 All commit history and authorship is preserved. See git log for full attribution.
 
