@@ -10,7 +10,7 @@
   },
 
   "File": {
-    "Load": [ "../../../exampleImmFiles/sample1.imm" ],
+    "Load": [ "../../../exampleImmFiles/TheArtofChange_v76.imm" ],
     "Load2": [ "" ]
   },
 

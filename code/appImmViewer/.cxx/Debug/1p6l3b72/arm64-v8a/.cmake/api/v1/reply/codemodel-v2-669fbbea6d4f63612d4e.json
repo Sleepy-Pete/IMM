@@ -1,0 +1,183 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						2,
+						3
+					],
+					"jsonFile" : "directory-.-Debug-d0094a50bb2071803777.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.6.0"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						3,
+						4
+					]
+				},
+				{
+					"build" : "libImmCore",
+					"jsonFile" : "directory-libImmCore-Debug-16f66d138c2660f08243.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.22.1"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 1,
+					"source" : "A:/Github/IMM2/IMM/code/libImmCore",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"build" : "libImmImporter",
+					"jsonFile" : "directory-libImmImporter-Debug-02204d4e428ba81f914d.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.22.1"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 2,
+					"source" : "A:/Github/IMM2/IMM/code/libImmImporter",
+					"targetIndexes" : 
+					[
+						1
+					]
+				},
+				{
+					"build" : "libImmPlayer",
+					"jsonFile" : "directory-libImmPlayer-Debug-0428f712aa33087f664e.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.22.1"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 3,
+					"source" : "A:/Github/IMM2/IMM/code/libImmPlayer",
+					"targetIndexes" : 
+					[
+						2
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"childIndexes" : 
+					[
+						1,
+						2,
+						3
+					],
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "ImmViewerAndroid",
+					"targetIndexes" : 
+					[
+						3,
+						4
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						1
+					],
+					"name" : "ImmCore",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						2
+					],
+					"name" : "ImmImporter",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						1
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						3
+					],
+					"name" : "ImmPlayer",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						2
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 1,
+					"id" : "ImmCore::@9f416e07076036996525",
+					"jsonFile" : "target-ImmCore-Debug-7595ba59335b023dd92f.json",
+					"name" : "ImmCore",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "ImmImporter::@e19e83e7e5c6630a1929",
+					"jsonFile" : "target-ImmImporter-Debug-c9c989949504a1a7f0bd.json",
+					"name" : "ImmImporter",
+					"projectIndex" : 2
+				},
+				{
+					"directoryIndex" : 3,
+					"id" : "ImmPlayer::@2a619d84bb42a04d1a66",
+					"jsonFile" : "target-ImmPlayer-Debug-f89bed6b28e37fc21cb8.json",
+					"name" : "ImmPlayer",
+					"projectIndex" : 3
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "appImmPlayer::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-appImmPlayer-Debug-b8a794646e1fe8d77b4b.json",
+					"name" : "appImmPlayer",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "native_app_glue::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-native_app_glue-Debug-4f846ea21b87fdd62bf0.json",
+					"name" : "native_app_glue",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "A:/Github/IMM2/IMM/code/appImmViewer/.cxx/Debug/1p6l3b72/arm64-v8a",
+		"source" : "A:/Github/IMM2/IMM/code/appImmViewer"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}

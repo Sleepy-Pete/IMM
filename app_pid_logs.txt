@@ -1,0 +1,2361 @@
+﻿
+01-07 01:18:12.195 27057 27057 I ActivityLifecycleListener: 
+onActivityPaused
+01-07 01:18:12.195 27057 27057 I OpenXR  : nativeOnActivityPaused: 
+com.DefaultCompany.IMMUnityTest/com.unity3d.player.UnityPlayerActivity
+01-07 01:18:12.197 27057 27083 I OpenXR  : 
+PostSessionStateChange:[pid: 27057] XR_SESSION_STATE_FOCUSED -> 
+XR_SESSION_STATE_VISIBLE
+01-07 01:18:12.197 27057 27083 I JVMHandler: JVMHandler: 
+callStaticMethodWithVariableArguments. [functionName:getLaunchId] is 
+valid: [1]
+01-07 01:18:12.198 27057 27083 W VrRuntimeClient: Failed to call 
+getLaunchId
+01-07 01:18:12.198 27057 27083 W VrRuntimeClient: 
+useHzInterstitialCBGKEnabled not enabled
+01-07 01:18:12.200 27057 27083 I OpenXR  : 
+PostSessionStateChange:[pid: 27057] XR_SESSION_STATE_VISIBLE -> 
+XR_SESSION_STATE_SYNCHRONIZED
+01-07 01:18:12.200 27057 27083 I JVMHandler: JVMHandler: 
+callStaticMethodWithVariableArguments. [functionName:getLaunchId] is 
+valid: [1]
+01-07 01:18:12.201 27057 27083 W VrRuntimeClient: Failed to call 
+getLaunchId
+01-07 01:18:12.201 27057 27083 W VrRuntimeClient: 
+useHzInterstitialCBGKEnabled not enabled
+01-07 01:18:12.202 27057 27083 I OpenXR  : 
+PostSessionStateChange:[pid: 27057] XR_SESSION_STATE_SYNCHRONIZED -> 
+XR_SESSION_STATE_STOPPING
+01-07 01:18:12.202 27057 27083 I JVMHandler: JVMHandler: 
+callStaticMethodWithVariableArguments. [functionName:getLaunchId] is 
+valid: [1]
+01-07 01:18:12.203 27057 27083 W VrRuntimeClient: Failed to call 
+getLaunchId
+01-07 01:18:12.203 27057 27083 W VrRuntimeClient: 
+useHzInterstitialCBGKEnabled not enabled
+01-07 01:18:12.205 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.205][Info   ] 
+OpenXRSession::HandleSessionStateChangedEvent: state 
+XR_SESSION_STATE_FOCUSED->XR_SESSION_STATE_VISIBLE session=3 
+time=143106067426150
+01-07 01:18:12.205 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.205][Info   ] 
+OpenXRSession::HandleSessionStateChangedEvent: state 
+XR_SESSION_STATE_VISIBLE->XR_SESSION_STATE_SYNCHRONIZED session=3 
+time=143106070359015
+01-07 01:18:12.205 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.205][Info   ] 
+OpenXRSession::HandleSessionStateChangedEvent: state 
+XR_SESSION_STATE_SYNCHRONIZED->XR_SESSION_STATE_STOPPING session=3 
+time=143106071754640
+01-07 01:18:12.205 27057 27083 I OpenXR  : ------------ xrEndSession 
+[start] -----------
+01-07 01:18:12.206 27057 27083 I Sensor  : OSSDKTRACKING Shutdown 
+tracking
+01-07 01:18:12.207 27057 27083 I LogTimer: CPUTIME: 
+VrRuntimeClient_EndSession took 1.7310 ms
+01-07 01:18:12.208 27057 27083 I InputDeviceManager: 
+ovrInputDeviceManager::~ovrInputDeviceManager
+01-07 01:18:12.209 27057 27083 I OSHandDataQuerier: OSSDKTRACKING 
+shutting down handsTracker_
+01-07 01:18:12.226 27057 27617 I FenceChecker: FenceChecker::MainLoop 
+- ended
+01-07 01:18:12.226 27057 27083 I VrRuntimeClient: PhaseSync Instance 
+deleted
+01-07 01:18:12.226 27057 27083 I OpenXR  : 
+PostSessionStateChange:[pid: 27057] XR_SESSION_STATE_STOPPING -> 
+XR_SESSION_STATE_IDLE
+01-07 01:18:12.226 27057 27083 I JVMHandler: JVMHandler: 
+callStaticMethodWithVariableArguments. [functionName:getLaunchId] is 
+valid: [1]
+01-07 01:18:12.228 27057 27083 W VrRuntimeClient: Failed to call 
+getLaunchId
+01-07 01:18:12.228 27057 27083 W VrRuntimeClient: 
+useHzInterstitialCBGKEnabled not enabled
+01-07 01:18:12.228 27057 27083 I OpenXR  : ------------ xrEndSession 
+[end] -----------
+01-07 01:18:12.228 27057 27083 I VrRuntimeClient: Client has gained 
+focus.
+01-07 01:18:12.228 27057 27083 I AppLoadTimeTelemetryCommon: App load 
+time recorded [packageName=com.DefaultCompany.IMMUnityTest, 
+time=42.659089, method="Unknown", launchType="Resume", launchId=""]
+01-07 01:18:12.228 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.228][Info   ] 
+OpenXRSession::HandleSessionStateChangedEvent: state 
+XR_SESSION_STATE_STOPPING->XR_SESSION_STATE_IDLE session=3 
+time=143106096388080
+01-07 01:18:12.229 27057 27166 I OpenXR_GPUMemTrace: Swapchain 
+deletion destroy id=1121, idx=0
+01-07 01:18:12.229 27057 27166 I OpenXR_GPUMemTrace: Swapchain 
+deletion destroy id=1121, idx=1
+01-07 01:18:12.229 27057 27166 I OpenXR_GPUMemTrace: Swapchain 
+deletion destroy id=1121, idx=2
+01-07 01:18:12.229 27057 27166 I JniUtils-inl: Creating temporary 
+JNIEnv. This is a heavy operation and should be infrequent. To 
+optimize, use JNI AttachCurrentThread on calling thread
+01-07 01:18:12.230 27057 27166 I SwapChain_Vulkan_Memory_Export: 
+DestroyImportedTextureResourcesVulkan: Destroy imported foveation 
+resources: 0xb400007b171bd1e8
+01-07 01:18:12.231 27057 27083 D ny.IMMUnityTest: PlayerBase::stop() 
+from IPlayer
+01-07 01:18:12.231 27057 27083 D AudioTrack: stop(320): called with 
+2062272 frames delivered
+01-07 01:18:12.228     0     0 F kgsl-3d0: GPU PAGE FAULT: addr = 
+400D234D80 pid= 27057 name=ny.IMMUnityTest drawctxt=405504 context 
+pid = 0
+01-07 01:18:12.228     0     0 F kgsl-3d0: GPU PAGE FAULT: addr = 
+400C3DF800 pid= 27057 name=ny.IMMUnityTest drawctxt=405504 context 
+pid = 0
+01-07 01:18:12.228     0     0 F kgsl-3d0: GPU PAGE FAULT: addr = 
+400CEB7B00 pid= 27057 name=ny.IMMUnityTest drawctxt=405504 context 
+pid = 0
+01-07 01:18:12.228     0     0 F kgsl-3d0: GPU PAGE FAULT: addr = 
+400D340500 pid= 27057 name=ny.IMMUnityTest drawctxt=405504 context 
+pid = 0
+01-07 01:18:12.228     0     0 F kgsl-3d0: GPU PAGE FAULT: addr = 
+400CFC6400 pid= 27057 name=ny.IMMUnityTest drawctxt=405504 context 
+pid = 0
+01-07 01:18:12.228     0     0 F kgsl-3d0: GPU PAGE FAULT: addr = 
+400C431400 pid= 27057 name=ny.IMMUnityTest drawctxt=405504 context 
+pid = 0
+01-07 01:18:12.228     0     0 F kgsl-3d0: GPU PAGE FAULT: addr = 
+400C390700 pid= 27057 name=ny.IMMUnityTest drawctxt=405504 context 
+pid = 0
+01-07 01:18:12.228     0     0 F kgsl-3d0: GPU PAGE FAULT: addr = 
+400C3C7F00 pid= 27057 name=ny.IMMUnityTest drawctxt=405504 context 
+pid = 0
+01-07 01:18:12.228     0     0 F kgsl-3d0: GPU PAGE FAULT: addr = 
+400D33FC00 pid= 27057 name=ny.IMMUnityTest drawctxt=405504 context 
+pid = 0
+01-07 01:18:12.228     0     0 F kgsl-3d0: GPU PAGE FAULT: addr = 
+400D194280 pid= 27057 name=ny.IMMUnityTest drawctxt=405504 context 
+pid = 0
+01-07 01:18:12.242 27057 27057 I ActivityLifecycleListener: 
+onActivityResumed
+01-07 01:18:12.242 27057 27207 I OpenXR  : nativeOnActivityReady: 
+com.DefaultCompany.IMMUnityTest/com.unity3d.player.UnityPlayerActivity
+01-07 01:18:12.244 27057 27083 I AudioTrack: 
+registerVolumetricWindowToken_l session=1873 token=0x0 force=false
+01-07 01:18:12.246 27057 27083 I OpenXR  : 
+PostSessionStateChange:[pid: 27057] XR_SESSION_STATE_IDLE -> 
+XR_SESSION_STATE_READY
+01-07 01:18:12.246 27057 27083 I JVMHandler: JVMHandler: 
+callStaticMethodWithVariableArguments. [functionName:getLaunchId] is 
+valid: [1]
+01-07 01:18:12.248 27057 27083 W VrRuntimeClient: Failed to call 
+getLaunchId
+01-07 01:18:12.248 27057 27083 W VrRuntimeClient: 
+useHzInterstitialCBGKEnabled not enabled
+01-07 01:18:12.248 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.248][Info   ] 
+OpenXRSession::HandleSessionStateChangedEvent: state 
+XR_SESSION_STATE_IDLE->XR_SESSION_STATE_READY session=3 
+time=143106116372405
+01-07 01:18:12.248 27057 27083 I OpenXR  : 
+xrEnumerateEnvironmentBlendModes: 
+XR_ENVIRONMENT_BLEND_MODE_ALPHA_BLEND is unavailable since the app 
+doesn't declare the com.oculus.feature.PASSTHROUGH feature flag in 
+its Android manifest. Refer to the developer documentation on 
+passthrough for more information.
+01-07 01:18:12.248 27057 27083 I OpenXR  : 
+xrEnumerateEnvironmentBlendModes: 
+XR_ENVIRONMENT_BLEND_MODE_ALPHA_BLEND is unavailable since the app 
+doesn't declare the com.oculus.feature.PASSTHROUGH feature flag in 
+its Android manifest. Refer to the developer documentation on 
+passthrough for more information.
+01-07 01:18:12.248 27057 27083 I OpenXR  : ------------ 
+xrBeginSession [start] -----------
+01-07 01:18:12.249 27057 27083 I DRR     : DRR is supported: 1
+01-07 01:18:12.249 27057 27083 I DRR     : DRR is enabled: 0
+01-07 01:18:12.250 27057 27083 I Sensor  : Using IAD sensor direct 
+channel
+01-07 01:18:12.250 27057 27083 I Sensor  : OSSDKTRACKING Initializing 
+controller tracking
+01-07 01:18:12.250 27057 27083 I Sensor  : OSSDKTRACKING Controller 
+tracker != nullpointer 0xb400007b2c870040, 1
+01-07 01:18:12.256 27057 27083 I DeviceStatus: nativeHeadsetEvent(0)
+01-07 01:18:12.258 27057 27083 W MemoryBrokerClient: Face: failed to 
+remap FACE_TRACKER: getSharedMemoryFileDescriptor (Status(-1, 
+EX_SECURITY): 'missing app permission(s)')
+01-07 01:18:12.258 27057 27083 I VrRuntimeClient: Mounted state at 
+BeginSession: True
+01-07 01:18:12.258 27057 27083 I LogTimer: CPUTIME: 
+VrRuntimeClient_BeginSession took 9.7994 ms
+01-07 01:18:12.258 27057 27083 I SystemActivitiesEvents: 
+SystemActivitiesEvents_Init: client 16777227 already registered
+01-07 01:18:12.259  1131 26531 E VrDeviceManagerService: Permission 
+denied: process 27057 (uid 10151) doesn't have the required 
+permission: horizonos.permission.SET_VR_DEVICE_PARAMS
+01-07 01:18:12.259  1131 26531 E VrDeviceManagerService: Permission 
+denied: process 27057 (uid 10151) doesn't have the required 
+permission: horizonos.permission.READ_VR_DEVICE_PARAMS
+01-07 01:18:12.259 27057 27083 I ClientInputSettings: HANDTRACKING: 
+enabled input settings, setting hand mode control settings to 
+ControllersOnly
+01-07 01:18:12.259 27057 27083 I ClientInputSettings: HANDTRACKING 
+package name is com.DefaultCompany.IMMUnityTest
+01-07 01:18:12.259 27057 27083 I ClientInputSettings: HANDTRACKING: 
+feature flag set to 0
+01-07 01:18:12.259 27057 27083 I ClientInputInterface: HANDTRACKING 
+sethandmanifest 0
+01-07 01:18:12.259 27057 27083 I InputDeviceManager: 
+ovrInputDeviceManager::Initialize
+01-07 01:18:12.260 27057 27057 D MediaRouter: onRestoreRoute() : 
+route=RouteInfo{ name=Phone, description=null, status=null, 
+category=RouteCategory{ name=System types=ROUTE_TYPE_LIVE_AUDIO 
+ROUTE_TYPE_LIVE_VIDEO  groupable=false }, 
+supportedTypes=ROUTE_TYPE_LIVE_AUDIO ROUTE_TYPE_LIVE_VIDEO , 
+presentationDisplay=null }
+01-07 01:18:12.260 27057 27057 V MediaRouter: Selecting route: 
+RouteInfo{ name=Phone, description=null, status=null, 
+category=RouteCategory{ name=System types=ROUTE_TYPE_LIVE_AUDIO 
+ROUTE_TYPE_LIVE_VIDEO  groupable=false }, 
+supportedTypes=ROUTE_TYPE_LIVE_AUDIO ROUTE_TYPE_LIVE_VIDEO , 
+presentationDisplay=null }
+01-07 01:18:12.260 27057 27083 I OSHandDataQuerier: OSSDKTRACKING 
+shutting down handsTracker_
+01-07 01:18:12.261 27057 27083 I InputDevice_Hand_Legacy: 
+BodyPoweredHands checkSysPropForBodyAPIOverride 0
+01-07 01:18:12.261 27057 27083 I InputDevice_Hand_Legacy: 
+BodyPoweredHands checkSysPropForBodyAPIOverride 0
+01-07 01:18:12.261 27057 27083 I TREX    : Interface 
+'WristbandClientInterface', version 10 was not found. Check debug 
+build for more information.
+01-07 01:18:12.261 27057 27083 I InputDevice_TrackedRemote: REMOTE: 
+Hand=1 IndexAnalog=0.00 GripAnalog=0.00 Buttons=0x00000000
+01-07 01:18:12.261 27057 27083 I InputDevice_TrackedRemote: REMOTE: 
+Hand=2 IndexAnalog=0.00 GripAnalog=0.00 Buttons=0x00000000
+01-07 01:18:12.261 27057 27083 I InputDeviceManager: HANDTRACKING 
+Root pose filter profile changed for freq to 14 from 0  inf: 1
+01-07 01:18:12.261 27057 27083 I InputDevice_Hand_Legacy: Legacy - 
+Resetting hand Root pose filter enum to HandsVR30hzUpsamplingV80
+01-07 01:18:12.261 27057 27083 I InputDevice_Hand_Legacy: Legacy - 
+Resetting hand Root pose filter enum to HandsVR30hzUpsamplingV80
+01-07 01:18:12.261 27057 27083 I GkHelper: Checking gk 
+'horizon_phasesync_auto_disabled', default = false
+01-07 01:18:12.261 27057 27083 W GkCacheQuerierClient: getGkValue: 
+Query result for 'oculus_xrruntime:horizon_phasesync_auto_disabled' 
+not successful: 4
+01-07 01:18:12.261 27057 27083 W GkHelper: GkHelper: query failed for 
+horizon_phasesync_auto_disabled, result code: 4
+01-07 01:18:12.261 27057 27083 I PhaseSync: PhaseSync::PhaseSync 
+PaddingLowerLimit 0.350000 StandardDeviations 2.000000 
+PaddingUpperLimit 0.750000 on instance 4
+01-07 01:18:12.261 27057 27083 I FrameSync: FrameSync Initialized 
+Instance 5
+01-07 01:18:12.261 27057 27083 I VrRuntimeClient: PhaseSync Instance 
+created
+01-07 01:18:12.262 27057 27083 I JVMHandler: JVMHandler: 
+callStaticMethodWithVariableArguments. [functionName:getClientWindow] 
+is valid: [1]
+01-07 01:18:12.262 27057 27083 I JVMHandler: JVMHandler: 
+callStaticMethodWithVariableArguments. [functionName:getActivityID] 
+is valid: [1]
+01-07 01:18:12.262 27057 27083 I JVMHandler: JVMHandler: 
+callStaticMethodWithVariableArguments. [functionName:getLaunchId] is 
+valid: [1]
+01-07 01:18:12.263 27057 27083 W VrRuntimeClient: Failed to call 
+getLaunchId
+01-07 01:18:12.309 27057 27083 I JVMHandler: JVMHandler: 
+callStaticMethodWithVariableArguments. 
+[functionName:advertiseStreamablePackage] is valid: [1]
+01-07 01:18:12.309 27057 27083 I ScreenCaptureHelper: Advertising 
+com.DefaultCompany.IMMUnityTest as streamable
+01-07 01:18:12.309 27057 27083 I VrRuntimeClientTrexContext: 
+BeginSession
+01-07 01:18:12.309 27057 27083 I OpenXR  : usesManifestForCpuBoost:0
+01-07 01:18:12.309 27057 27083 I OpenXR  : ------------ 
+xrBeginSession [end] -----------
+01-07 01:18:12.310 27057 27083 I Unity   : [XR] 
+XR_META_performance_metrics: Active providers:
+01-07 01:18:12.310 27057 27083 I Unity   : [XR] 
+XR_META_performance_metrics: /perfmetrics_meta/app/gpu_frametime
+01-07 01:18:12.310 27057 27083 I Unity   : [XR] 
+XR_META_performance_metrics: /perfmetrics_meta/app/gpu_frametime
+01-07 01:18:12.310 27057 27083 I Unity   : [XR] 
+XR_META_performance_metrics: 
+/perfmetrics_meta/compositor/gpu_frametime
+01-07 01:18:12.310 27057 27083 I Unity   : [XR] 
+XR_META_performance_metrics: 
+/perfmetrics_meta/compositor/gpu_frametime
+01-07 01:18:12.310 27057 27083 I Unity   : [XR] 
+XR_META_performance_metrics: /perfmetrics_meta/device/gpu_utilization
+01-07 01:18:12.310 27057 27083 I Unity   : [XR] 
+XR_META_performance_metrics: 
+/perfmetrics_meta/device/cpu_utilization_average
+01-07 01:18:12.310 27057 27083 I Unity   : [XR] 
+XR_META_performance_metrics: 
+/perfmetrics_meta/device/cpu_utilization_worst
+01-07 01:18:12.310 27057 27083 I Unity   : [XR] 
+XR_META_performance_metrics: 
+/perfmetrics_meta/compositor/dropped_frame_count
+01-07 01:18:12.310 27057 27083 I Unity   : [XR] 
+XR_META_performance_metrics: 
+/perfmetrics_meta/compositor/dropped_frame_count
+01-07 01:18:12.310 27057 27083 I Unity   : [XR] 
+XR_META_performance_metrics: 
+/perfmetrics_meta/app/motion_to_photon_latency
+01-07 01:18:12.310 27057 27083 I OpenXR_PerformanceMetrics: ----- 
+xrSetPerformanceMetricsStateMETA : Enabled --------
+01-07 01:18:12.312 27057 27862 I JniUtils: 
+ovr_GetCurrentPackageSignature 
+01-07 01:18:12.313 27057 27862 I Metrics : device model = Quest 3
+01-07 01:18:12.313 27057 27862 I RuntimeTelemetryThread: Aligning 
+telemetry thread time, will wait for: 687 ms...
+01-07 01:18:12.315 27057 27166 I SwapChain_Vulkan_Memory_Export: 
+Imported texture has requirements 3, ends up index 0
+01-07 01:18:12.315 27057 27166 I SwapChain_Vulkan_Memory_Export: 
+Imported texture has requirements 3, ends up index 0
+01-07 01:18:12.316 27057 27166 I SwapChain_Vulkan_Memory_Export: 
+Imported texture has requirements 3, ends up index 0
+01-07 01:18:12.316 27057 27166 I OpenXR_GPUMemTrace: Swapchain 
+creation, id=1162, idx=0, width: 1680, height: 1760, array size: 2, 
+MemoryAllocationSize: 23877 KB
+01-07 01:18:12.316 27057 27166 I OpenXR_GPUMemTrace: Swapchain 
+creation, id=1162, idx=1, width: 1680, height: 1760, array size: 2, 
+MemoryAllocationSize: 23877 KB
+01-07 01:18:12.316 27057 27166 I OpenXR_GPUMemTrace: Swapchain 
+creation, id=1162, idx=2, width: 1680, height: 1760, array size: 2, 
+MemoryAllocationSize: 23877 KB
+01-07 01:18:12.324 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.325 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.326 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.326 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.327 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.327 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.327 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.328 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.328 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.328 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.330 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.330 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.331 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.331 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.331 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.332 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.333 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.333 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.334 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.334 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.334 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.335 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.336 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.336 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.337 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.337 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.337 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.338 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.339 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.339 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.340 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.340 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.340 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.341 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.342 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.343 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.348 27057 27869 I FenceChecker: FenceChecker::MainLoop 
+- started
+01-07 01:18:12.362 27057 27166 I AppLoadTimeTelemetryCommon: App load 
+time recorded [packageName=com.DefaultCompany.IMMUnityTest, 
+time=42.792769, method="BeginFrame (1)", launchType="Resume", 
+launchId=""]
+01-07 01:18:12.362 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.363 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.363 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.363 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.364 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.364 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.364 27057 27859 I InputDevice_TrackedRemote: REMOTE: 
+Hand=1 IndexAnalog=0.00 GripAnalog=0.00 Buttons=0x00000000
+01-07 01:18:12.364 27057 27859 I InputDevice_TrackedRemote: REMOTE: 
+Hand=2 IndexAnalog=0.00 GripAnalog=0.00 Buttons=0x00000000
+01-07 01:18:12.364 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.365 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.365 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.365 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.366 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.366 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.366 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.367 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.367 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.367 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.368 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.368 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.368 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.368 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.368 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.369 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.370 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.370 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.370 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.371 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.371 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.371 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.372 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.372 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.373 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.373 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.373 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.374 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.375 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.375 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.379 27057 27083 I OpenXR  : 
+PostSessionStateChange:[pid: 27057] XR_SESSION_STATE_READY -> 
+XR_SESSION_STATE_SYNCHRONIZED
+01-07 01:18:12.379 27057 27083 I JVMHandler: JVMHandler: 
+callStaticMethodWithVariableArguments. [functionName:getLaunchId] is 
+valid: [1]
+01-07 01:18:12.381 27057 27083 W VrRuntimeClient: Failed to call 
+getLaunchId
+01-07 01:18:12.381 27057 27083 W VrRuntimeClient: 
+useHzInterstitialCBGKEnabled not enabled
+01-07 01:18:12.381 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.381][Info   ] 
+OpenXRSession::HandleSessionStateChangedEvent: state 
+XR_SESSION_STATE_READY->XR_SESSION_STATE_SYNCHRONIZED session=3 
+time=143106249093460
+01-07 01:18:12.381 27057 27083 I OpenXR  : 
+PostSessionStateChange:[pid: 27057] XR_SESSION_STATE_SYNCHRONIZED -> 
+XR_SESSION_STATE_VISIBLE
+01-07 01:18:12.381 27057 27083 I JVMHandler: JVMHandler: 
+callStaticMethodWithVariableArguments. [functionName:getLaunchId] is 
+valid: [1]
+01-07 01:18:12.382 27057 27083 W VrRuntimeClient: Failed to call 
+getLaunchId
+01-07 01:18:12.382 27057 27083 W VrRuntimeClient: 
+useHzInterstitialCBGKEnabled not enabled
+01-07 01:18:12.383  1760  2636 I ClientMgr: OnForegroundVrAppClient: 
+uid 10151 pid 27057 hasImmersiveApp 1 isTopActivity 1 --> 
+com.DefaultCompany.IMMUnityTest, show splash = 1
+01-07 01:18:12.383 27057 27083 I OpenXR  : 
+PostSessionStateChange:[pid: 27057] XR_SESSION_STATE_VISIBLE -> 
+XR_SESSION_STATE_FOCUSED
+01-07 01:18:12.383 27057 27083 I JVMHandler: JVMHandler: 
+callStaticMethodWithVariableArguments. [functionName:getLaunchId] is 
+valid: [1]
+01-07 01:18:12.384 27057 27083 W VrRuntimeClient: Failed to call 
+getLaunchId
+01-07 01:18:12.384 27057 27083 W VrRuntimeClient: 
+useHzInterstitialCBGKEnabled not enabled
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] 
+OpenXRSession::HandleSessionStateChangedEvent: state 
+XR_SESSION_STATE_SYNCHRONIZED->XR_SESSION_STATE_VISIBLE session=3 
+time=143106251168252
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] 
+OpenXRSession::HandleSessionStateChangedEvent: state 
+XR_SESSION_STATE_VISIBLE->XR_SESSION_STATE_FOCUSED session=3 
+time=143106253382627
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] 
+01-07 01:18:12.385 27057 27083 I Unity   : 
+01-07 01:18:12.385 27057 27083 I Unity   : ==== Start Unity OpenXR 
+Diagnostic Report ====
+01-07 01:18:12.385 27057 27083 I Unity   : 
+01-07 01:18:12.385 27057 27083 I Unity   : 
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] ==== Report Reason: System Startup Completed 
+====
+01-07 01:18:12.385 27057 27083 I Unity   : 
+01-07 01:18:12.385 27057 27083 I Unity   : 
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] ==== Vulkan ====
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] 
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] Depth Support Available: Yes
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] 
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] Enable: XR_KHR_vulkan_enable2
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] 
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] ==== OpenXR Runtime Info ====
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] 
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] Available Runtime Extensions: (66)
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_android_create_instance: Version=3
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_android_surface_swapchain: Version=4
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_android_thread_settings: Version=6
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_android_surface_swapchain_create: 
+Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_opengl_es_enable: Version=9
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_vulkan_enable: Version=9
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_vulkan_enable2: Version=3
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_composition_layer_cube: Version=8
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_composition_layer_cylinder: Version=4
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_composition_layer_equirect2: 
+Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_composition_layer_color_scale_bias: 
+Version=5
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_composition_layer_depth: Version=6
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_color_space: Version=3
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_EXT_performance_settings: Version=4
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_EXT_hand_tracking: Version=4
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_EXT_debug_utils: Version=5
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_display_refresh_rate: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_swapchain_update_state: Version=3
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_swapchain_update_state_opengl_es: 
+Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_swapchain_update_state_vulkan: 
+Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   
+XR_FB_swapchain_update_state_android_surface: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_OCULUS_common_reference_spaces: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_composition_layer_image_layout: 
+Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_composition_layer_alpha_blend: 
+Version=3
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_EXT_composition_layer_inverted_alpha: 
+Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_common_events: Version=2
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_hand_tracking_mesh: Version=3
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_hand_tracking_aim: Version=2
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_hand_tracking_capsules: Version=3
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_META_hand_tracking_microgestures: 
+Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_foveation: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_foveation_configuration: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_foveation_vulkan: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_composition_layer_secure_content: 
+Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_convert_timespec_time: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_META_passthrough_preferences: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_touch_controller_proximity: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_touch_controller_pro: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_META_touch_controller_plus: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_haptic_amplitude_envelope: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_haptic_pcm: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_spatial_entity_user: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_space_warp: Version=2
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_META_vulkan_swapchain_create_info: 
+Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_composition_layer_settings: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_META_feature_fidelity: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_FB_composition_layer_depth_test: 
+Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_EXT_hand_joints_motion_range: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_EXT_hand_tracking_data_source: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_META_performance_metrics: Version=2
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_META_virtual_keyboard: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_META_detached_controllers: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_MSFT_hand_interaction: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_META_headset_id: Version=2
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_META_recommended_layer_resolution: 
+Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_EXT_active_action_set_priority: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_META_automatic_layer_filter: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_META_simultaneous_hands_and_controllers: 
+Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_EXT_local_floor: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_EXT_hand_interaction: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_EXT_user_presence: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_visibility_mask: Version=2
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_LOGITECH_mx_ink_stylus_interaction: 
+Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_EXT_future: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_EXT_frame_synthesis: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_META_tile_properties_hint: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] 
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] Available Layers: (0)
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] 
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] Runtime Name: Oculus
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] Runtime Version: 83.305.0
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] 
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] Form factor: 
+XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] 
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] Runtime extensions enabled: (7)
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_EXT_user_presence: Version=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_android_create_instance: Version=3
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_composition_layer_depth: Version=6
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_visibility_mask: Version=2
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_vulkan_enable2: Version=3
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_META_performance_metrics: Version=2
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_KHR_android_thread_settings: Version=6
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] 
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] Available Reference Spaces: (4)
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_REFERENCE_SPACE_TYPE_LOCAL
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_REFERENCE_SPACE_TYPE_VIEW
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_REFERENCE_SPACE_TYPE_STAGE
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] 
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] Instance Id  : 0x2
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] System Id    : 0xcccc0001
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] Session Id   : 0x3
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] 
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] Available View Configuration Types: (1)
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]   XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO 
+(Selected): FovMutable=True
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]     [0]: Recommended: Width=1680, 
+Height=1760, SampleCount=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]     [0]:     Maximum: Width=8192, 
+Height=8192, SampleCount=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]     [1]: Recommended: Width=1680, 
+Height=1760, SampleCount=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ]     [1]:     Maximum: Width=8192, 
+Height=8192, SampleCount=1
+01-07 01:18:12.385 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.385][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Skip Present To Main Screen: Yes
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Available Environment Blend Modes: (1)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]   XR_ENVIRONMENT_BLEND_MODE_OPAQUE (Selected)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Features requested to be enabled: (0)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]   Meta Quest Support: Version=1.0.0, 
+Company="Unity", Extensions="XR_OCULUS_android_initialize_loader"
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Requested feature extensions not supported by 
+runtime: (1)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]   XR_OCULUS_android_initialize_loader: 
+Feature="Meta Quest Support": Version=1.0.0, Company="Unity"
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] System Properties: Name="Meta Quest 3", 
+VendorId=10291
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] System Graphics Properties: MaxWidth=8192, 
+MaxHeight=8192, MaxLayers=32
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] System Tracking Properties: 
+OrientationTracking=True, PositionTracking=True
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Available View Configuration Types: (1)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]   XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO 
+(Selected): FovMutable=True
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]     [0]: Recommended: Width=1680, 
+Height=1760, SampleCount=1
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]     [0]:     Maximum: Width=8192, 
+Height=8192, SampleCount=1
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]     [1]: Recommended: Width=1680, 
+Height=1760, SampleCount=1
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]     [1]:     Maximum: Width=8192, 
+Height=8192, SampleCount=1
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Skip Present To Main Screen: Yes
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Available Environment Blend Modes: (1)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]   XR_ENVIRONMENT_BLEND_MODE_OPAQUE (Selected)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Features requested to be enabled: (0)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]   Meta Quest Support: Version=1.0.0, 
+Company="Unity", Extensions="XR_OCULUS_android_initialize_loader"
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Requested feature extensions not supported by 
+runtime: (1)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]   XR_OCULUS_android_initialize_loader: 
+Feature="Meta Quest Support": Version=1.0.0, Company="Unity"
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] System Properties: Name="Meta Quest 3", 
+VendorId=10291
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] System Graphics Properties: MaxWidth=8192, 
+MaxHeight=8192, MaxLayers=32
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] System Tracking Properties: 
+OrientationTracking=True, PositionTracking=True
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Available View Configuration Types: (1)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]   XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO 
+(Selected): FovMutable=True
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]     [0]: Recommended: Width=1680, 
+Height=1760, SampleCount=1
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]     [0]:     Maximum: Width=8192, 
+Height=8192, SampleCount=1
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]     [1]: Recommended: Width=1680, 
+Height=1760, SampleCount=1
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]     [1]:     Maximum: Width=8192, 
+Height=8192, SampleCount=1
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Skip Present To Main Screen: Yes
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Available Environment Blend Modes: (1)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]   XR_ENVIRONMENT_BLEND_MODE_OPAQUE (Selected)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Features requested to be enabled: (0)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]   Meta Quest Support: Version=1.0.0, 
+Company="Unity", Extensions="XR_OCULUS_android_initialize_loader"
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Requested feature extensions not supported by 
+runtime: (1)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]   XR_OCULUS_android_initialize_loader: 
+Feature="Meta Quest Support": Version=1.0.0, Company="Unity"
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] System Properties: Name="Meta Quest 3", 
+VendorId=10291
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] System Graphics Properties: MaxWidth=8192, 
+MaxHeight=8192, MaxLayers=32
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] System Tracking Properties: 
+OrientationTracking=True, PositionTracking=True
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] ==== OpenXR Provider Info ====
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Spec Version: 1.1.45
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Provider Version: 1.14.3
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] App: IMM Unity Test #3159629941
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Engine: 2022.3.8f1 #53511169
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] ==== OpenXR Input ====
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Action Sets: No action sets registered
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] ==== OpenXR Swapchain Details ====
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Render Mode: Single Pass Instanced
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Color Submission Mode: RGBA, 8 bits per 
+channel (LDR)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Depth Submission Mode: None
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Swapchain Format Preferences: 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    kRenderTextureFormatGroup8888
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Swapchain Formats: 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R8G8_SRGB
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] [c:VK_FORMAT_R8G8B8A8_SRGB]
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R8_UNORM
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R8G8_UNORM
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R8G8B8A8_UNORM
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R8_SNORM
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R8G8_SNORM
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R8G8B8A8_SNORM
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R8_SRGB
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R16_UNORM
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R16G16_UNORM
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R16G16B16A16_UNORM
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R16_SNORM
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R16G16_SNORM
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R16G16B16A16_SNORM
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R16_UINT
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R16G16_UINT
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R16G16B16A16_UINT
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R16_SINT
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R16G16_SINT
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R16G16B16A16_SINT
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R16_SFLOAT
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R16G16_SFLOAT
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R16G16B16A16_SFLOAT
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R32_SFLOAT
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R4G4B4A4_UNORM_PACK16
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_A1R5G5B5_UNORM_PACK16
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_EAC_R11_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_EAC_R11G11_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_EAC_R11_SNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_EAC_R11G11_SNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_4x4_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_5x4_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_5x5_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_6x5_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_6x6_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_8x5_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_8x6_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_8x8_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_10x5_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_10x6_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_10x8_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_10x10_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_12x10_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_12x12_UNORM_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_4x4_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_5x4_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_5x5_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_6x5_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_6x6_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_8x5_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_8x6_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_8x8_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_10x5_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_10x6_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_10x8_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_10x10_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_12x10_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_ASTC_12x12_SRGB_BLOCK
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_D16_UNORM
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_X8_D24_UNORM_PACK32
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_D32_SFLOAT
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_D24_UNORM_S8_UINT
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Swapchain Views: (2)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]   [0]: Width=1680, Height=1760, SampleCount=1
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Render Mode: Single Pass Instanced
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Color Submission Mode: RGBA, 8 bits per 
+channel (LDR)
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Depth Submission Mode: None
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Swapchain Format Preferences: 
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    kRenderTextureFormatGroup8888
+01-07 01:18:12.386 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ] Swapchain Formats: 
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.386][Info   ]    VK_FORMAT_R8G8_SRGB
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] [c:VK_FORMAT_R8G8B8A8_SRGB]
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R8_UNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R8G8_UNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R8G8B8A8_UNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R8_SNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R8G8_SNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R8G8B8A8_SNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R8_SRGB
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16_UNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16_UNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16B16A16_UNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16_SNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16_SNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16B16A16_SNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16_UINT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16_UINT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16B16A16_UINT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16_SINT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16_SINT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16B16A16_SINT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16_SFLOAT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16_SFLOAT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16B16A16_SFLOAT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R32_SFLOAT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R4G4B4A4_UNORM_PACK16
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_A1R5G5B5_UNORM_PACK16
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_EAC_R11_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_EAC_R11G11_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_EAC_R11_SNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_EAC_R11G11_SNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_4x4_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_5x4_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_5x5_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_6x5_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_6x6_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_8x5_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_8x6_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_8x8_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x5_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x6_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x8_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x10_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_12x10_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_12x12_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_4x4_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_5x4_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_5x5_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_6x5_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_6x6_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_8x5_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_8x6_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_8x8_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x5_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x6_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x8_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x10_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_12x10_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_12x12_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_D16_UNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_X8_D24_UNORM_PACK32
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_D32_SFLOAT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_D24_UNORM_S8_UINT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] Swapchain Views: (2)
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]   [0]: Width=1680, Height=1760, SampleCount=1
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] 
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] Render Mode: Single Pass Instanced
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] Color Submission Mode: RGBA, 8 bits per 
+channel (LDR)
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] Depth Submission Mode: None
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] 
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] Swapchain Format Preferences: 
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    kRenderTextureFormatGroup8888
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] Swapchain Formats: 
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R8G8_SRGB
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] [c:VK_FORMAT_R8G8B8A8_SRGB]
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R8_UNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R8G8_UNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R8G8B8A8_UNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R8_SNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R8G8_SNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R8G8B8A8_SNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R8_SRGB
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16_UNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16_UNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16B16A16_UNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16_SNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16_SNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16B16A16_SNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16_UINT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16_UINT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16B16A16_UINT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16_SINT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16_SINT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16B16A16_SINT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16_SFLOAT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16_SFLOAT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R16G16B16A16_SFLOAT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R32_SFLOAT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_R4G4B4A4_UNORM_PACK16
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_A1R5G5B5_UNORM_PACK16
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_EAC_R11_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_EAC_R11G11_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_EAC_R11_SNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_EAC_R11G11_SNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_4x4_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_5x4_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_5x5_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_6x5_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_6x6_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_8x5_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_8x6_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_8x8_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x5_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x6_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x8_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x10_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_12x10_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_12x12_UNORM_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_4x4_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_5x4_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_5x5_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_6x5_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_6x6_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_8x5_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_8x6_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_8x8_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x5_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x6_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x8_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_10x10_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_12x10_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_ASTC_12x12_SRGB_BLOCK
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_D16_UNORM
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_X8_D24_UNORM_PACK32
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_D32_SFLOAT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]    VK_FORMAT_D24_UNORM_S8_UINT
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] Swapchain Views: (2)
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ]   [0]: Width=1680, Height=1760, SampleCount=1
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] 
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] ==== Last 20 Events ====
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_IDLE->XR_SESSION_STATE_READY
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_READY->XR_SESSION_STATE_SYNCHRONIZED
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_SYNCHRONIZED->XR_SESSION_STATE_VISIBLE
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_VISIBLE->XR_SESSION_STATE_FOCUSED
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_FOCUSED->XR_SESSION_STATE_VISIBLE
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_VISIBLE->XR_SESSION_STATE_SYNCHRONIZED
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_SYNCHRONIZED->XR_SESSION_STATE_STOPPING
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_STOPPING->XR_SESSION_STATE_IDLE
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_IDLE->XR_SESSION_STATE_READY
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_READY->XR_SESSION_STATE_SYNCHRONIZED
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_SYNCHRONIZED->XR_SESSION_STATE_VISIBLE
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_VISIBLE->XR_SESSION_STATE_FOCUSED
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_FOCUSED->XR_SESSION_STATE_VISIBLE
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_VISIBLE->XR_SESSION_STATE_SYNCHRONIZED
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_SYNCHRONIZED->XR_SESSION_STATE_STOPPING
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_STOPPING->XR_SESSION_STATE_IDLE
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_IDLE->XR_SESSION_STATE_READY
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_READY->XR_SESSION_STATE_SYNCHRONIZED
+01-07 01:18:12.387 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_SYNCHRONIZED->XR_SESSION_STATE_VISIBLE
+01-07 01:18:12.388 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.387][Info   ] XrEventDataSessionStateChanged: 
+XR_SESSION_STATE_VISIBLE->XR_SESSION_STATE_FOCUSED
+01-07 01:18:12.388 27057 27083 I Unity   : [XR] [529035110896] 
+[01:18:12.388][Info   ] 
+01-07 01:18:12.388 27057 27083 I Unity   : 
+01-07 01:18:12.388 27057 27083 I Unity   : ==== End Unity OpenXR 
+Diagnostic Report ====
+01-07 01:18:12.388 27057 27083 I Unity   : 
+01-07 01:18:12.388 27057 27083 I Unity   : 
+01-07 01:18:12.390 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.390 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.390 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.391 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.391 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.391 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.391 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.392 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.392 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.392 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.393 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.393 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.393 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.394 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.394 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.394 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.395 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.395 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.395 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.396 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.396 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.396 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.397 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.397 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.397 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.398 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.398 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.399 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.400 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.400 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.400 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.401 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.401 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:12.402 27057 27166 I Distortion: Initializing Mesh 
+Decenter Correction
+01-07 01:18:12.403 27057 27166 I Distortion: Decenter tester version 
+= 200
+01-07 01:18:12.403 27057 27166 I Distortion: SetLensPositions - 
+iad=0.0635, left offset=-0.00308526,0.000120534, right 
+offset=0.00320214,4.0635e-05
+01-07 01:18:13.000 27057 27862 I RuntimeTelemetryThread: Time 
+aligned, interrupted: 0
+01-07 01:18:14.012 27057 27862 I ClientSharedTelemetryStats: App 
+memory usage: PSS=308 MiB, PrivateDirty=251 MiB, PrivateClean=0 MiB, 
+GPU=234.7/234.7 MiB (100% allocated)
+01-07 01:18:14.013 27057 27862 I VrApi   : FPS=60/72,Prd=38ms,Tear=0,E
+arly=6,Stale=13,Stale2/5/10/max=0/0/1/203,VSnc=1,Lat=-1,Fov=0,CPU4/GPU
+=4/3,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3652MB,PLS
+=0,Temp=33.0C/0.0C,TW=1.30ms,App=0.46ms,GD=0.00ms,CPU&GPU=2.04ms,LCnt=
+2(DR61,LM2),GPU%=0.15,CPU%=0.24(W0.26),CFL=12.50/18.85,ICFLp95=18.22,L
+D=0,SF=1.00,LP=0,DVFS=0
+01-07 01:18:15.000 27057 27862 I VrApi   : FPS=72/72,Prd=40ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=3/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.34ms,App=0.77ms,GD=0.00ms,CPU&GPU=1.75ms,LCnt=2(D
+R72,LM2),GPU%=0.16,CPU%=0.22(W0.30),CFL=13.69/18.05,ICFLp95=17.30,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:16.000 27057 27862 I VrApi   : FPS=72/72,Prd=39ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.38ms,App=0.74ms,GD=0.00ms,CPU&GPU=1.81ms,LCnt=2(D
+R72,LM2),GPU%=0.17,CPU%=0.26(W0.30),CFL=13.25/17.31,ICFLp95=16.51,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:17.000 27057 27862 I VrApi   : FPS=72/72,Prd=38ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.34ms,App=0.77ms,GD=0.00ms,CPU&GPU=1.59ms,LCnt=2(D
+R72,LM2),GPU%=0.17,CPU%=0.26(W0.34),CFL=13.17/16.88,ICFLp95=16.17,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:17.299 27057 27057 D MediaRouter: onRestoreRoute() : 
+route=RouteInfo{ name=Phone, description=null, status=null, 
+category=RouteCategory{ name=System types=ROUTE_TYPE_LIVE_AUDIO 
+ROUTE_TYPE_LIVE_VIDEO  groupable=false }, 
+supportedTypes=ROUTE_TYPE_LIVE_AUDIO ROUTE_TYPE_LIVE_VIDEO , 
+presentationDisplay=null }
+01-07 01:18:17.299 27057 27057 V MediaRouter: Selecting route: 
+RouteInfo{ name=Phone, description=null, status=null, 
+category=RouteCategory{ name=System types=ROUTE_TYPE_LIVE_AUDIO 
+ROUTE_TYPE_LIVE_VIDEO  groupable=false }, 
+supportedTypes=ROUTE_TYPE_LIVE_AUDIO ROUTE_TYPE_LIVE_VIDEO , 
+presentationDisplay=null }
+01-07 01:18:18.000 27057 27862 I VrApi   : FPS=72/72,Prd=37ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.44ms,App=0.80ms,GD=0.00ms,CPU&GPU=1.82ms,LCnt=2(D
+R72,LM2),GPU%=0.17,CPU%=0.23(W0.31),CFL=12.94/16.68,ICFLp95=15.99,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:19.000 27057 27862 I VrApi   : FPS=72/72,Prd=37ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.00ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(D
+R72,LM0),GPU%=0.15,CPU%=0.17(W0.22),CFL=12.59/16.52,ICFLp95=15.77,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:19.332 27057 27166 I AppLoadTimeTelemetryCommon: App load 
+time recorded [packageName=com.DefaultCompany.IMMUnityTest, 
+time=49.763134, method="BeginFrame (500)", launchType="Resume", 
+launchId=""]
+01-07 01:18:20.000 27057 27862 I VrApi   : FPS=72/72,Prd=37ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.55ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.08(W0.10),CFL=12.46/16.65,ICFLp95=15.69,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:21.001 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.10ms,App=0.65ms,GD=0.00ms,CPU&GPU=1.95ms,LCnt=1(D
+R72,LM0),GPU%=0.14,CPU%=0.10(W0.11),CFL=12.68/16.44,ICFLp95=15.72,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:22.001 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=2736MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.55ms,GD=0.00ms,CPU&GPU=1.89ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.13(W0.14),CFL=12.74/16.63,ICFLp95=15.84,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:23.001 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=2736MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.58ms,GD=0.00ms,CPU&GPU=1.93ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.11(W0.15),CFL=12.60/16.83,ICFLp95=15.72,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:24.001 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=2736MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.95ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.91ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.11(W0.13),CFL=12.48/16.61,ICFLp95=15.71,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:25.001 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=2736MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.00ms,App=0.58ms,GD=0.00ms,CPU&GPU=2.00ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.11(W0.11),CFL=12.53/16.57,ICFLp95=15.72,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:26.001 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=2736MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.61ms,GD=0.00ms,CPU&GPU=2.00ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.42/16.62,ICFLp95=15.65,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:26.277 27057 27166 I AppLoadTimeTelemetryCommon: App load 
+time recorded [packageName=com.DefaultCompany.IMMUnityTest, 
+time=56.708107, method="BeginFrame (1000)", launchType="Resume", 
+launchId=""]
+01-07 01:18:27.001 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=2736MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.00ms,App=0.57ms,GD=0.00ms,CPU&GPU=2.01ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.10(W0.10),CFL=12.43/16.43,ICFLp95=15.71,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:28.001 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=2736MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.01ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.86ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.62/16.59,ICFLp95=15.70,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:29.001 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=2736MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.08(W0.09),CFL=12.50/16.63,ICFLp95=15.72,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:29.152 27057 27166 I TREX    : Interface 
+'SpatialPersistence', version 35 was not found. Check debug build for 
+more information.
+01-07 01:18:30.001 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=2736MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.99ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.09(W0.12),CFL=12.47/16.59,ICFLp95=15.72,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:31.001 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=2736MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.91ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.09(W0.12),CFL=12.40/16.62,ICFLp95=15.70,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:32.001 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.51ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.26/16.63,ICFLp95=15.76,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:33.001 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3652MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.11(W0.12),CFL=12.63/16.60,ICFLp95=15.74,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:34.018 27057 27862 I ClientSharedTelemetryStats: App 
+memory usage: PSS=308 MiB, PrivateDirty=251 MiB, PrivateClean=0 MiB, 
+GPU=234.7/234.7 MiB (100% allocated)
+01-07 01:18:34.018 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.10(W0.11),CFL=12.65/16.69,ICFLp95=15.69,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:35.002 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.54ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.10(W0.11),CFL=12.58/16.53,ICFLp95=15.66,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:36.002 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.98ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.10(W0.13),CFL=12.59/16.68,ICFLp95=15.72,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:37.002 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.58ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.08(W0.09),CFL=12.46/16.65,ICFLp95=15.74,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:38.002 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.96ms,App=0.52ms,GD=0.00ms,CPU&GPU=1.90ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.48/16.69,ICFLp95=15.71,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:39.002 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.95ms,App=0.52ms,GD=0.00ms,CPU&GPU=1.90ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.11(W0.12),CFL=12.60/16.52,ICFLp95=15.73,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:40.002 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.98ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.97ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.09(W0.09),CFL=12.55/16.66,ICFLp95=15.72,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:40.166 27057 27166 I AppLoadTimeTelemetryCommon: App load 
+time recorded [packageName=com.DefaultCompany.IMMUnityTest, 
+time=70.597081, method="BeginFrame (2000)", launchType="Resume", 
+launchId=""]
+01-07 01:18:41.002 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.44/16.70,ICFLp95=15.74,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:42.002 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.08ms,App=0.63ms,GD=0.00ms,CPU&GPU=1.98ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.08(W0.10),CFL=12.45/16.67,ICFLp95=15.76,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:43.002 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.82ms,App=0.48ms,GD=0.00ms,CPU&GPU=1.63ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.63/16.60,ICFLp95=15.81,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:44.002 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.00ms,App=0.59ms,GD=0.00ms,CPU&GPU=2.00ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.54/16.71,ICFLp95=15.78,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:45.002 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.93ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.08(W0.10),CFL=12.55/16.67,ICFLp95=15.69,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:46.002 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.98ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.62/16.71,ICFLp95=15.77,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:47.002 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.59ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.10(W0.14),CFL=12.54/16.60,ICFLp95=15.77,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:48.002 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.98ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.10(W0.13),CFL=12.49/16.68,ICFLp95=15.73,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:49.002 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.53ms,GD=0.00ms,CPU&GPU=1.95ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.12(W0.15),CFL=12.63/16.80,ICFLp95=15.83,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:50.003 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.95ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.08(W0.10),CFL=12.51/16.68,ICFLp95=15.69,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:51.003 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.08(W0.09),CFL=12.48/16.57,ICFLp95=15.72,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:52.003 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.55ms,GD=0.00ms,CPU&GPU=1.97ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.09(W0.09),CFL=12.53/16.81,ICFLp95=15.81,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:53.003 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3662MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.09(W0.11),CFL=12.51/16.85,ICFLp95=15.72,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:54.021 27057 27862 I ClientSharedTelemetryStats: App 
+memory usage: PSS=308 MiB, PrivateDirty=251 MiB, PrivateClean=0 MiB, 
+GPU=234.7/234.7 MiB (100% allocated)
+01-07 01:18:54.021 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.79ms,App=0.43ms,GD=0.00ms,CPU&GPU=1.74ms,LCnt=1(D
+R73,LM0),GPU%=0.12,CPU%=0.09(W0.10),CFL=12.48/16.73,ICFLp95=15.77,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:55.003 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.95ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.59/16.81,ICFLp95=15.70,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:56.003 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.96ms,App=0.59ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.12(W0.14),CFL=12.56/16.70,ICFLp95=15.67,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:57.003 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.93ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.11(W0.12),CFL=12.55/16.82,ICFLp95=15.79,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:58.003 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.52/16.70,ICFLp95=15.72,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:59.003 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.54ms,GD=0.00ms,CPU&GPU=1.95ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.10(W0.10),CFL=12.72/16.86,ICFLp95=15.85,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:18:59.153 27057 27166 I TREX    : Interface 
+'SpatialPersistence', version 35 was not found. Check debug build for 
+more information.
+01-07 01:19:00.003 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.98ms,App=0.54ms,GD=0.00ms,CPU&GPU=1.93ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.07(W0.08),CFL=12.56/16.82,ICFLp95=15.71,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:01.003 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.01ms,App=0.59ms,GD=0.00ms,CPU&GPU=2.00ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.10(W0.12),CFL=12.66/16.86,ICFLp95=15.78,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:02.003 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.00ms,App=0.56ms,GD=0.00ms,CPU&GPU=2.02ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.07(W0.08),CFL=12.54/16.82,ICFLp95=15.76,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:03.003 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.11ms,App=0.68ms,GD=0.00ms,CPU&GPU=2.02ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.49/16.66,ICFLp95=15.76,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:04.004 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.86ms,App=0.59ms,GD=0.00ms,CPU&GPU=1.92ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.11(W0.12),CFL=12.62/16.89,ICFLp95=15.87,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:05.004 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.98ms,App=0.54ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.11(W0.12),CFL=12.70/16.74,ICFLp95=15.83,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:06.004 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.01ms,App=0.54ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.10(W0.11),CFL=12.51/16.71,ICFLp95=15.74,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:07.004 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.55ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.10(W0.13),CFL=12.63/16.87,ICFLp95=15.75,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:08.004 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.02ms,App=0.59ms,GD=0.00ms,CPU&GPU=2.01ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.61/16.90,ICFLp95=15.82,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:09.004 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.98ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.52/16.87,ICFLp95=15.81,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:10.004 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.98ms,App=0.55ms,GD=0.00ms,CPU&GPU=1.98ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.42/16.83,ICFLp95=15.72,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:11.004 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.54ms,GD=0.00ms,CPU&GPU=1.95ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.10(W0.13),CFL=12.66/16.91,ICFLp95=15.67,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:12.004 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.02ms,App=0.54ms,GD=0.00ms,CPU&GPU=1.97ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.10(W0.13),CFL=12.59/16.87,ICFLp95=15.67,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:13.004 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3632MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.55ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.10(W0.13),CFL=12.65/16.83,ICFLp95=15.84,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:14.022 27057 27862 I ClientSharedTelemetryStats: App 
+memory usage: PSS=308 MiB, PrivateDirty=251 MiB, PrivateClean=0 MiB, 
+GPU=234.7/234.7 MiB (100% allocated)
+01-07 01:19:14.022 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3807MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.00ms,App=0.59ms,GD=0.00ms,CPU&GPU=1.97ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.10(W0.12),CFL=12.55/16.87,ICFLp95=15.78,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:15.004 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3807MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.56ms,GD=0.00ms,CPU&GPU=2.00ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.11(W0.15),CFL=12.51/16.68,ICFLp95=15.75,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:16.004 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3807MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.55ms,GD=0.00ms,CPU&GPU=1.93ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.11(W0.12),CFL=12.51/16.68,ICFLp95=15.75,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:17.004 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3807MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.00ms,App=0.53ms,GD=0.00ms,CPU&GPU=1.95ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.13(W0.16),CFL=12.57/16.92,ICFLp95=15.79,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:18.004 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3807MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.02ms,App=0.58ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.55/16.87,ICFLp95=15.82,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:19.005 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3807MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.00ms,App=0.59ms,GD=0.00ms,CPU&GPU=1.98ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.10(W0.11),CFL=12.52/16.83,ICFLp95=15.75,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:20.005 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3807MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.01ms,App=0.58ms,GD=0.00ms,CPU&GPU=1.98ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.09(W0.12),CFL=12.55/16.91,ICFLp95=15.72,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:21.005 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3807MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.01ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.93ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.51/16.87,ICFLp95=15.73,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:22.005 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=768MHz,Free=3807MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.98ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.92ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.12(W0.15),CFL=12.49/16.84,ICFLp95=15.72,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:23.005 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=768MHz,Free=3807MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.99ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.95ms,LCnt=1(DR
+72,LM0),GPU%=0.13,CPU%=0.13(W0.20),CFL=12.47/16.72,ICFLp95=15.68,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:24.005 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=768MHz,Free=3807MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.98ms,App=0.55ms,GD=0.00ms,CPU&GPU=1.91ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.12(W0.16),CFL=12.46/16.76,ICFLp95=15.68,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:25.005 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=768MHz,Free=3807MB,PLS=0,T
+emp=33.0C/0.0C,TW=1.08ms,App=0.59ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(DR
+72,LM0),GPU%=0.13,CPU%=0.11(W0.13),CFL=12.57/16.41,ICFLp95=15.66,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:26.005 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=768MHz,Free=3807MB,PLS=0,T
+emp=33.0C/0.0C,TW=1.00ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.95ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.09(W0.11),CFL=12.55/16.72,ICFLp95=15.80,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:27.005 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=768MHz,Free=3807MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.98ms,App=0.55ms,GD=0.00ms,CPU&GPU=1.91ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.08(W0.10),CFL=12.82/16.91,ICFLp95=15.79,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:28.005 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=768MHz,Free=3807MB,PLS=0,T
+emp=33.0C/0.0C,TW=1.03ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.91ms,LCnt=1(DR
+72,LM0),GPU%=0.13,CPU%=0.09(W0.10),CFL=12.59/16.99,ICFLp95=15.86,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:29.005 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=768MHz,Free=3807MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.98ms,App=0.55ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.11(W0.12),CFL=12.56/16.60,ICFLp95=15.73,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:29.153 27057 27166 I TREX    : Interface 
+'SpatialPersistence', version 35 was not found. Check debug build for 
+more information.
+01-07 01:19:30.005 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=768MHz,Free=3807MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.97ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(DR
+72,LM0),GPU%=0.13,CPU%=0.11(W0.13),CFL=12.57/16.39,ICFLp95=15.72,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:31.005 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=768MHz,Free=3807MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.99ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.89ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.12(W0.13),CFL=12.32/16.56,ICFLp95=15.62,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:32.005 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3807MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.98ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.13(W0.14),CFL=12.62/16.52,ICFLp95=15.68,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:33.006 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3807MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.54ms,GD=0.00ms,CPU&GPU=1.87ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.14(W0.14),CFL=12.56/16.83,ICFLp95=15.72,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:34.023 27057 27862 I ClientSharedTelemetryStats: App 
+memory usage: PSS=308 MiB, PrivateDirty=251 MiB, PrivateClean=0 MiB, 
+GPU=234.7/234.7 MiB (100% allocated)
+01-07 01:19:34.023 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3813MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.96ms,App=0.53ms,GD=0.00ms,CPU&GPU=1.92ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.11(W0.12),CFL=12.51/16.71,ICFLp95=15.67,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:35.006 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3813MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.84ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.10(W0.11),CFL=12.55/16.23,ICFLp95=15.57,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:36.006 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3813MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.83ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.12(W0.14),CFL=12.63/16.51,ICFLp95=15.63,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:37.006 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3813MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.98ms,App=0.58ms,GD=0.00ms,CPU&GPU=1.95ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.11(W0.13),CFL=12.59/16.42,ICFLp95=15.66,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:38.006 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3813MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.54ms,GD=0.00ms,CPU&GPU=1.95ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.11(W0.15),CFL=12.55/16.89,ICFLp95=15.82,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:39.006 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3813MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.96ms,App=0.55ms,GD=0.00ms,CPU&GPU=1.92ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.11(W0.12),CFL=12.50/16.84,ICFLp95=15.68,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:40.006 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3813MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.53ms,GD=0.00ms,CPU&GPU=1.88ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.12(W0.15),CFL=12.51/16.57,ICFLp95=15.69,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:41.006 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3813MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.98ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.12(W0.14),CFL=12.62/16.52,ICFLp95=15.64,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:19:42.006 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3813MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.98ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.12(W0.14),CFL=12.53/16.40,ICFLp95=15.65,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:43.006 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3813MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.98ms,App=0.55ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(DR
+72,LM0),GPU%=0.13,CPU%=0.11(W0.12),CFL=12.63/16.71,ICFLp95=15.69,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:44.006 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3813MB,PLS=0,T
+emp=33.0C/0.0C,TW=1.03ms,App=0.63ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(DR
+72,LM0),GPU%=0.13,CPU%=0.12(W0.15),CFL=12.50/16.67,ICFLp95=15.70,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:45.006 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3813MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.97ms,App=0.56ms,GD=0.00ms,CPU&GPU=2.02ms,LCnt=1(DR
+72,LM0),GPU%=0.13,CPU%=0.10(W0.11),CFL=12.59/16.55,ICFLp95=15.71,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:46.006 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3813MB,PLS=0,T
+emp=33.0C/0.0C,TW=1.03ms,App=0.62ms,GD=0.00ms,CPU&GPU=1.98ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.16(W0.20),CFL=12.61/16.62,ICFLp95=15.59,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:47.007 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3813MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.79ms,App=0.58ms,GD=0.00ms,CPU&GPU=1.92ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.11(W0.11),CFL=12.60/16.81,ICFLp95=15.79,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:48.007 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3813MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.99ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.92ms,LCnt=1(DR
+72,LM0),GPU%=0.13,CPU%=0.10(W0.12),CFL=12.67/17.11,ICFLp95=15.82,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:49.007 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3813MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.98ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(DR
+72,LM0),GPU%=0.13,CPU%=0.13(W0.15),CFL=12.57/17.07,ICFLp95=15.75,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:50.007 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3813MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.98ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.10(W0.11),CFL=12.53/16.95,ICFLp95=15.74,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:51.007 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3813MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.99ms,App=0.55ms,GD=0.00ms,CPU&GPU=1.86ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.11(W0.12),CFL=12.43/16.31,ICFLp95=15.58,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:52.007 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3813MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.99ms,App=0.53ms,GD=0.00ms,CPU&GPU=1.86ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.12(W0.13),CFL=12.64/22.26,ICFLp95=16.22,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:53.007 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3813MB,PLS=0,T
+emp=33.0C/0.0C,TW=1.02ms,App=0.58ms,GD=0.00ms,CPU&GPU=1.86ms,LCnt=1(DR
+72,LM0),GPU%=0.13,CPU%=0.13(W0.16),CFL=12.60/16.50,ICFLp95=15.59,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:54.025 27057 27862 I ClientSharedTelemetryStats: App 
+memory usage: PSS=308 MiB, PrivateDirty=251 MiB, PrivateClean=0 MiB, 
+GPU=234.7/234.7 MiB (100% allocated)
+01-07 01:19:54.025 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3789MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.79ms,App=0.45ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(DR
+72,LM0),GPU%=0.12,CPU%=0.11(W0.13),CFL=12.51/16.89,ICFLp95=15.71,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:55.007 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3789MB,PLS=0,T
+emp=33.0C/0.0C,TW=1.02ms,App=0.54ms,GD=0.00ms,CPU&GPU=1.99ms,LCnt=1(DR
+72,LM0),GPU%=0.13,CPU%=0.13(W0.16),CFL=12.42/16.76,ICFLp95=15.67,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:56.007 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3789MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.99ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.87ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.11(W0.12),CFL=12.47/17.07,ICFLp95=15.78,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:57.007 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3789MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.98ms,App=0.55ms,GD=0.00ms,CPU&GPU=1.93ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.13(W0.14),CFL=12.45/16.79,ICFLp95=15.70,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:58.007 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3789MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.97ms,App=0.53ms,GD=0.00ms,CPU&GPU=1.89ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.14(W0.16),CFL=12.52/16.75,ICFLp95=15.64,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:59.007 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3789MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.95ms,App=0.53ms,GD=0.00ms,CPU&GPU=1.87ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.14(W0.15),CFL=12.42/16.47,ICFLp95=15.64,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:19:59.154 27057 27083 I TREX    : Interface 
+'SpatialPersistence', version 35 was not found. Check debug build for 
+more information.
+01-07 01:20:00.008 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3789MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.98ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.96ms,LCnt=1(DR
+72,LM0),GPU%=0.13,CPU%=0.11(W0.13),CFL=12.59/16.42,ICFLp95=15.56,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:20:01.008 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=681MHz,Free=3789MB,PLS=0,T
+emp=33.0C/0.0C,TW=0.96ms,App=0.58ms,GD=0.00ms,CPU&GPU=1.94ms,LCnt=1(DR
+73,LM0),GPU%=0.13,CPU%=0.16(W0.19),CFL=12.65/16.37,ICFLp95=15.57,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:20:02.008 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3789MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.98ms,App=0.54ms,GD=0.00ms,CPU&GPU=1.83ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.12(W0.13),CFL=12.53/16.39,ICFLp95=15.58,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:20:03.008 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3789MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.03ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.98ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.10(W0.13),CFL=12.47/16.55,ICFLp95=15.64,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:20:04.008 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3789MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.97ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.90ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.13(W0.15),CFL=12.40/16.50,ICFLp95=15.71,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:20:05.008 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3789MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.54ms,GD=0.00ms,CPU&GPU=1.83ms,LCnt=1(D
+R73,LM0),GPU%=0.13,CPU%=0.13(W0.15),CFL=12.55/16.37,ICFLp95=15.57,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:20:05.959 27057 27166 I VrRuntimeClient: UpdateEvents: HMT 
+was UNmounted
+01-07 01:20:06.008 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3789MB,PLS=0,
+Temp=33.0C/0.0C,TW=0.99ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.92ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.14(W0.16),CFL=12.62/16.32,ICFLp95=15.58,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:20:07.008 27057 27862 I VrApi   : FPS=73/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3789MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.08ms,App=0.64ms,GD=0.00ms,CPU&GPU=1.90ms,LCnt=1(D
+R72,LM0),GPU%=0.13,CPU%=0.12(W0.14),CFL=12.47/16.49,ICFLp95=15.58,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:20:08.008 27057 27862 I VrApi   : FPS=72/72,Prd=36ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3789MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.63ms,App=0.51ms,GD=0.00ms,CPU&GPU=1.74ms,LCnt=2(D
+R69,LM0),GPU%=0.15,CPU%=0.14(W0.16),CFL=12.57/17.21,ICFLp95=15.92,LD=0
+,SF=1.00,LP=0,DVFS=0
+01-07 01:20:09.008 27057 27862 I VrApi   : FPS=73/72,Prd=37ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3789MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.66ms,App=0.57ms,GD=0.00ms,CPU&GPU=1.95ms,LCnt=2(D
+R0,LM0),GPU%=0.16,CPU%=0.17(W0.18),CFL=13.69/18.18,ICFLp95=17.10,LD=0,
+SF=1.00,LP=0,DVFS=0
+01-07 01:20:10.008 27057 27862 I VrApi   : FPS=72/72,Prd=37ms,Tear=0,E
+arly=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/
+2,1382/456MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=1555MHz,Free=3789MB,PLS=0,
+Temp=33.0C/0.0C,TW=1.67ms,App=0.56ms,GD=0.00ms,CPU&GPU=1.95ms,LCnt=2(D
+R0,LM0),GPU%=0.17,CPU%=0.16(W0.17),CFL=13.48/17.27,ICFLp95=16.49,LD=0,
+SF=1.00,LP=0,DVFS=0
+
+

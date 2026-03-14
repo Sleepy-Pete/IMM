@@ -35,6 +35,7 @@
             android:launchMode="singleTask"
             android:screenOrientation="landscape"
             android:excludeFromRecents="false"
+            android:exported="true"
             android:configChanges="screenSize|screenLayout|orientation|keyboardHidden|keyboard|navigation|uiMode">
             <!-- Tell NativeActivity the name of the .so -->
             <meta-data android:name="android.app.lib_name" android:value="appImmPlayer" />

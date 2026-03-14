@@ -1,0 +1,27 @@
+// IMM Viewer Android Project Settings
+// This file defines the project structure for building the IMM Viewer APK for Meta Quest
+
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "ImmViewer"
+
+// Include the main application module
+include ':app'
+
+// Set the project directory for the app module
+project(':app').projectDir = file('../../appImmViewer')
+

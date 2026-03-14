@@ -1,0 +1,17 @@
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/png_genfiles.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/png_shared.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/png_static.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/pngtest.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/pngvalid.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/pngstest.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/pngunknown.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/pngimage.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/pngfix.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/png-fix-itxt.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/test.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/edit_cache.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/rebuild_cache.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/list_install_components.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/install.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/install/local.dir
+A:/Github/IMM2/IMM/thirdparty-src/libpng-1.6.40/build-android/CMakeFiles/install/strip.dir

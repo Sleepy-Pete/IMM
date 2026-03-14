@@ -1,0 +1,102 @@
+ninja: Entering directory `A:\Github\IMM2\IMM\code\appImmViewer\.cxx\Debug\1p6l3b72\arm64-v8a'
+[1/1] Linking CXX shared library ..\..\..\..\build\intermediates\cxx\Debug\1p6l3b72\obj\arm64-v8a\libappImmPlayer.so
+FAILED: ../../../../build/intermediates/cxx/Debug/1p6l3b72/obj/arm64-v8a/libappImmPlayer.so 
+cmd.exe /C "cd . && C:\Users\pjpar\AppData\Local\Android\Sdk\ndk\24.0.8215888\toolchains\llvm\prebuilt\windows-x86_64\bin\clang++.exe --target=aarch64-none-linux-android26 --sysroot=C:/Users/pjpar/AppData/Local/Android/Sdk/ndk/24.0.8215888/toolchains/llvm/prebuilt/windows-x86_64/sysroot -fPIC -std=c++17 -fexceptions -frtti -Wall -g  -fno-limit-debug-info  -Wl,--build-id=sha1 -Wl,--no-rosegment -Wl,--fatal-warnings -Qunused-arguments -Wl,--no-undefined -shared -Wl,-soname,libappImmPlayer.so -o ..\..\..\..\build\intermediates\cxx\Debug\1p6l3b72\obj\arm64-v8a\libappImmPlayer.so CMakeFiles/appImmPlayer.dir/src/android/cpp/GlHelpers.cpp.o CMakeFiles/appImmPlayer.dir/src/android/cpp/Haptics.cpp.o CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o CMakeFiles/appImmPlayer.dir/src/resolve.cpp.o CMakeFiles/appImmPlayer.dir/src/settings.cpp.o CMakeFiles/appImmPlayer.dir/src/simpleJSON/JSON.cpp.o CMakeFiles/appImmPlayer.dir/src/simpleJSON/JSONValue.cpp.o CMakeFiles/appImmPlayer.dir/src/viewer/piCameraD.cpp.o CMakeFiles/appImmPlayer.dir/src/viewer/viewer.cpp.o  libImmCore/libImmCore.a  libImmImporter/libImmImporter.a  libImmPlayer/libImmPlayer.a  -landroid  -llog  -lEGL  -lGLESv3  libnative_app_glue.a  -lc++_shared  libImmImporter/libImmImporter.a  libImmCore/libImmCore.a  -landroid  -llog  -lEGL  -lGLESv3   -latomic -lm && cd ."
+ld: error: undefined symbol: vrapi_CreateTextureSwapChain
+>>> referenced by GlHelpers.cpp:595 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\GlHelpers.cpp:595)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/GlHelpers.cpp.o:(ExePlayer::ovrFramebuffer_Create(ExePlayer::ovrFramebuffer*, bool, ovrTextureFormat_, int, int, int))
+>>> referenced by OvrApp.cpp:1057 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1057)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(ovrRenderer_RenderTimewarpLoadingIcon(long long))
+
+ld: error: undefined symbol: vrapi_GetTextureSwapChainLength
+>>> referenced by GlHelpers.cpp:596 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\GlHelpers.cpp:596)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/GlHelpers.cpp.o:(ExePlayer::ovrFramebuffer_Create(ExePlayer::ovrFramebuffer*, bool, ovrTextureFormat_, int, int, int))
+>>> referenced by OvrApp.cpp:1065 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1065)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(ovrRenderer_RenderTimewarpLoadingIcon(long long))
+
+ld: error: undefined symbol: vrapi_GetTextureSwapChainHandle
+>>> referenced by GlHelpers.cpp:605 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\GlHelpers.cpp:605)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/GlHelpers.cpp.o:(ExePlayer::ovrFramebuffer_Create(ExePlayer::ovrFramebuffer*, bool, ovrTextureFormat_, int, int, int))
+
+ld: error: undefined symbol: vrapi_DestroyTextureSwapChain
+>>> referenced by GlHelpers.cpp:723 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\GlHelpers.cpp:723)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/GlHelpers.cpp.o:(ExePlayer::ovrFramebuffer_Destroy(ExePlayer::ovrFramebuffer*))
+>>> referenced by OvrApp.cpp:244 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:244)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(resetQuillPlayerState())
+
+ld: error: undefined symbol: vrapi_GetInputDeviceCapabilities
+>>> referenced by Haptics.cpp:41 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\Haptics.cpp:41)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/Haptics.cpp.o:(HapticEffect(ImmCore::piLog*, ovrMobile*, unsigned int, char const*, int, int))
+>>> referenced by OvrApp.cpp:1521 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1521)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(ovrApp_HandleInput(ovrApp*, ANativeActivity*))
+
+ld: error: undefined symbol: vrapi_GetTimeInSeconds
+>>> referenced by Haptics.cpp:65 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\Haptics.cpp:65)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/Haptics.cpp.o:(HapticEffect(ImmCore::piLog*, ovrMobile*, unsigned int, char const*, int, int))
+
+ld: error: undefined symbol: vrapi_SetHapticVibrationBuffer
+>>> referenced by Haptics.cpp:66 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\Haptics.cpp:66)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/Haptics.cpp.o:(HapticEffect(ImmCore::piLog*, ovrMobile*, unsigned int, char const*, int, int))
+
+ld: error: undefined symbol: ImmCore::piSoundEngineAudioSDKBackend::Create(ImmCore::piLog*)
+>>> referenced by OvrApp.cpp:586 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:586)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(initQuillPlayer(wchar_t const*, ExePlayer::Settings::Rendering::Technique, ovrJava_*))
+
+ld: error: undefined symbol: ImmCore::piSoundEngineAudioSDKBackend::Destroy(ImmCore::piSoundEngineBackend*)
+>>> referenced by OvrApp.cpp:663 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:663)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(destroyQuillPlayer())
+
+ld: error: undefined symbol: ovr_PopMessage
+>>> referenced by OvrApp.cpp:1791 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1791)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(processOVRMessages(android_app const*, ovrJava_*))
+
+ld: error: undefined symbol: ovr_Message_GetType
+>>> referenced by OvrApp.cpp:1793 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1793)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(processOVRMessages(android_app const*, ovrJava_*))
+
+ld: error: undefined symbol: ovr_Message_IsError
+>>> referenced by OvrApp.cpp:1796 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1796)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(processOVRMessages(android_app const*, ovrJava_*))
+>>> referenced by OvrApp.cpp:1818 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1818)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(processOVRMessages(android_app const*, ovrJava_*))
+
+ld: error: undefined symbol: ovr_FreeMessage
+>>> referenced by OvrApp.cpp:1800 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1800)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(processOVRMessages(android_app const*, ovrJava_*))
+>>> referenced by OvrApp.cpp:1807 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1807)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(processOVRMessages(android_app const*, ovrJava_*))
+>>> referenced by OvrApp.cpp:1822 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1822)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(processOVRMessages(android_app const*, ovrJava_*))
+>>> referenced 1 more times
+
+ld: error: undefined symbol: ovr_Message_GetError
+>>> referenced by OvrApp.cpp:1804 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1804)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(processOVRMessages(android_app const*, ovrJava_*))
+
+ld: error: undefined symbol: ovr_Error_GetMessage
+>>> referenced by OvrApp.cpp:1805 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1805)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(processOVRMessages(android_app const*, ovrJava_*))
+
+ld: error: undefined symbol: ovr_Message_GetString
+>>> referenced by OvrApp.cpp:1827 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1827)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(processOVRMessages(android_app const*, ovrJava_*))
+
+ld: error: undefined symbol: vrapi_Initialize
+>>> referenced by OvrApp.cpp:1863 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1863)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(android_main)
+
+ld: error: undefined symbol: ovr_InitConfigOption_CreateBool
+>>> referenced by OvrApp.cpp:1885 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1885)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(android_main)
+
+ld: error: undefined symbol: ovr_PlatformInitializeAndroidWithOptions
+>>> referenced by OvrApp.cpp:1888 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1888)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(android_main)
+
+ld: error: undefined symbol: ovr_User_GetAccessToken
+>>> referenced by OvrApp.cpp:1889 (A:/Github/IMM2/IMM/code/appImmViewer/src/android/cpp\OvrApp.cpp:1889)
+>>>               CMakeFiles/appImmPlayer.dir/src/android/cpp/OvrApp.cpp.o:(android_main)
+
+ld: error: too many errors emitted, stopping now (use -error-limit=0 to see all errors)
+clang++: error: linker command failed with exit code 1 (use -v to see invocation)
+ninja: build stopped: subcommand failed.

@@ -6,6 +6,11 @@
 #include <stdarg.h>
 #include "piTypes.h"
 
+// Define _TRUNCATE for non-Windows platforms (used by wcsncpy_s)
+#if !defined(WINDOWS) && !defined(_TRUNCATE)
+#define _TRUNCATE ((size_t)-1)
+#endif
+
 namespace ImmCore
 {
 

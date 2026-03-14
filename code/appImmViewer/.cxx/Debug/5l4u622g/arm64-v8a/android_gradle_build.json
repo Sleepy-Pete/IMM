@@ -1,0 +1,67 @@
+{
+  "buildFiles": [
+    "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\CMakeLists.txt",
+    "A:\\Github\\IMM2\\IMM\\code\\libImmCore\\CMakeLists.txt",
+    "A:\\Github\\IMM2\\IMM\\code\\libImmImporter\\CMakeLists.txt",
+    "A:\\Github\\IMM2\\IMM\\code\\libImmPlayer\\CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "C:\\Users\\pjpar\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+      "-C",
+      "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\.cxx\\Debug\\5l4u622g\\arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "C:\\Users\\pjpar\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+    "-C",
+    "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\.cxx\\Debug\\5l4u622g\\arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "ImmCore::@9f416e07076036996525": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "ImmCore",
+      "output": "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\.cxx\\Debug\\5l4u622g\\arm64-v8a\\libImmCore\\libImmCore.a"
+    },
+    "ImmImporter::@e19e83e7e5c6630a1929": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "ImmImporter",
+      "output": "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\.cxx\\Debug\\5l4u622g\\arm64-v8a\\libImmImporter\\libImmImporter.a"
+    },
+    "ImmPlayer::@2a619d84bb42a04d1a66": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "ImmPlayer",
+      "output": "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\.cxx\\Debug\\5l4u622g\\arm64-v8a\\libImmPlayer\\libImmPlayer.a"
+    },
+    "appImmPlayer::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "appImmPlayer",
+      "output": "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\build\\intermediates\\cxx\\Debug\\5l4u622g\\obj\\arm64-v8a\\libappImmPlayer.so",
+      "runtimeFiles": []
+    },
+    "native_app_glue::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "native_app_glue",
+      "output": "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\.cxx\\Debug\\5l4u622g\\arm64-v8a\\libnative_app_glue.a"
+    }
+  },
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "C:\\Users\\pjpar\\AppData\\Local\\Android\\Sdk\\ndk\\24.0.8215888\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang.exe",
+      "cppCompilerExecutable": "C:\\Users\\pjpar\\AppData\\Local\\Android\\Sdk\\ndk\\24.0.8215888\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe"
+    }
+  },
+  "cFileExtensions": [
+    "c"
+  ],
+  "cppFileExtensions": [
+    "cpp"
+  ]
+}

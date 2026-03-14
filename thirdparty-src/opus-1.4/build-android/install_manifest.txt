@@ -1,0 +1,11 @@
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/lib/libopus.a
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/include/opus/opus.h
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/include/opus/opus_defines.h
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/include/opus/opus_multistream.h
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/include/opus/opus_projection.h
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/include/opus/opus_types.h
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/lib/pkgconfig/opus.pc
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/lib/cmake/Opus/OpusTargets.cmake
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/lib/cmake/Opus/OpusTargets-release.cmake
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/lib/cmake/Opus/OpusConfig.cmake
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/lib/cmake/Opus/OpusConfigVersion.cmake

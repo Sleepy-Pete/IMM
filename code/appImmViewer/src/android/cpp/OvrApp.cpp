@@ -39,7 +39,6 @@
 #include <OVR_Requests_Entitlement.h>
 #include <OVR_Message.h>
 #include <OVR_Platform.h>
-#include <OVR_Platform_Internal.h>
 
 #include "VrApi.h"
 #include "VrApi_Helpers.h"
@@ -1879,11 +1878,11 @@ void android_main( struct android_app * app )
 
     if (immPlayerState.buildFlavorHeadless)
     {
-        // Not sure if we actually need to do this but VrShell and Venues is...
-        // Disable FBNS. We don't use it and it's a huge battery drain
-        // If the API isn't found in Horizon, it gracefully falls back to no ConfigOptions
+        // Initialize Oculus Platform SDK
+        // Note: FBNS disabling is not available in public SDK, using standard initialization
+        // Disable P2P networking since we don't use Voip or Net functions
         ovrKeyValuePair options[1];
-        options[0] = ovr_ConfigOption_CreateInternal(ovrConfigOption_DisableFbns, true);
+        options[0] = ovr_InitConfigOption_CreateBool(ovrInitConfigOption_DisableP2pNetworking, true);
 
         // Initialization call
         ovr_PlatformInitializeAndroidWithOptions(APP_ID, java.ActivityObject, java.Env, options, 1);

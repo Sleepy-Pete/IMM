@@ -1,0 +1,35 @@
+﻿Archive:  /data/app/~~LRX1DF0_0ZDd75j2gd31TQ==/com.DefaultCompany.IMMUnityTest-3sKPosmwguS_8qUjmA6f4w==/base.apk
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+     8152  1981-01-01 01:01   AndroidManifest.xml
+     3143  1981-01-01 01:01   assets/bin/Data/ScriptingAssemblies.json
+      334  1981-01-01 01:01   assets/bin/Data/UnitySubsystems/UnityOpenXR/UnitySubsystemsManifest.json
+     3636  1981-01-01 01:01   classes4.dex
+      920  1981-01-01 01:01   classes3.dex
+  1110488  1981-01-01 01:01   assets/bin/Data/unity default resources
+  1390856  1981-01-01 01:01   lib/arm64-v8a/libUnityOpenXR.so
+      448  1981-01-01 01:01   res/mipmap-anydpi-v26/app_icon.xml
+     4549  1981-01-01 01:01   res/mipmap-mdpi-v4/ic_launcher_foreground.png
+     2464  1981-01-01 01:01   resources.arsc
+      829  1981-01-01 01:01   assets/bin/Data/boot.config
+   128516  1981-01-01 01:01   classes.dex
+       71  1981-01-01 01:01   META-INF/com.android.games.engine.build_fingerprint
+     1746  1981-01-01 01:01   res/mipmap-mdpi-v4/app_icon.png
+  4243456  1981-01-01 01:01   assets/bin/Data/Managed/Metadata/global-metadata.dat
+ 27080888  1981-01-01 01:01   lib/arm64-v8a/libunity.so
+   790583  1981-01-01 01:01   assets/bin/Data/data.unity3d
+      448  1981-01-01 01:01   res/mipmap-anydpi-v26/app_icon_round.xml
+   337563  1981-01-01 01:01   assets/bin/Data/Managed/Resources/mscorlib.dll-resources.dat
+       56  1981-01-01 01:01   META-INF/com/android/build/gradle/app-metadata.properties
+      988  1981-01-01 01:01   classes5.dex
+     8704  1981-01-01 01:01   lib/arm64-v8a/libmain.so
+       36  1981-01-01 01:01   assets/bin/Data/unity_app_guid
+  2984272  1981-01-01 01:01   lib/arm64-v8a/libImmUnityPlugin.so
+  6761584  1981-01-01 01:01   lib/arm64-v8a/libc++_shared.so
+  1583992  1981-01-01 01:01   lib/arm64-v8a/libopenxr_loader.so
+     4356  1981-01-01 01:01   classes2.dex
+      318  1981-01-01 01:01   res/mipmap-mdpi-v4/ic_launcher_background.png
+ 79398760  1981-01-01 01:01   lib/arm64-v8a/libil2cpp.so
+      944  1981-01-01 01:01   assets/bin/Data/RuntimeInitializeOnLoads.json
+---------                     -------
+125853100                     30 files

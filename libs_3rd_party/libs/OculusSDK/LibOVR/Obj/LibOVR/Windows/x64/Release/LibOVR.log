@@ -1,0 +1,4 @@
+﻿  OVR_CAPIShim.c
+  OVR_CAPI_Util.cpp
+  OVR_StereoProjection.cpp
+  LibOVR.vcxproj -> C:\dev\ovr_sdk_win_32.0.0\LibOVR\Lib\Windows\x64\Release\LibOVR.lib

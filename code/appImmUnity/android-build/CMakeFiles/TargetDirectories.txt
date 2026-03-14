@@ -1,0 +1,12 @@
+A:/Github/IMM2/IMM/code/appImmUnity/android-build/CMakeFiles/ImmUnityPlugin.dir
+A:/Github/IMM2/IMM/code/appImmUnity/android-build/CMakeFiles/edit_cache.dir
+A:/Github/IMM2/IMM/code/appImmUnity/android-build/CMakeFiles/rebuild_cache.dir
+A:/Github/IMM2/IMM/code/appImmUnity/android-build/libImmCore/CMakeFiles/ImmCore.dir
+A:/Github/IMM2/IMM/code/appImmUnity/android-build/libImmCore/CMakeFiles/edit_cache.dir
+A:/Github/IMM2/IMM/code/appImmUnity/android-build/libImmCore/CMakeFiles/rebuild_cache.dir
+A:/Github/IMM2/IMM/code/appImmUnity/android-build/libImmImporter/CMakeFiles/ImmImporter.dir
+A:/Github/IMM2/IMM/code/appImmUnity/android-build/libImmImporter/CMakeFiles/edit_cache.dir
+A:/Github/IMM2/IMM/code/appImmUnity/android-build/libImmImporter/CMakeFiles/rebuild_cache.dir
+A:/Github/IMM2/IMM/code/appImmUnity/android-build/libImmPlayer/CMakeFiles/ImmPlayer.dir
+A:/Github/IMM2/IMM/code/appImmUnity/android-build/libImmPlayer/CMakeFiles/edit_cache.dir
+A:/Github/IMM2/IMM/code/appImmUnity/android-build/libImmPlayer/CMakeFiles/rebuild_cache.dir

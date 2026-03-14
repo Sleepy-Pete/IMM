@@ -19,7 +19,9 @@
 #include "libImmImporter/src/document/layerPaint/drawing.h"
 #include "libImmImporter/src/document/sequence.h"
 #include "libImmImporter/src/fromImmersive/fromImmersive.h"
+#ifndef ANDROID
 #include "layerRenderers/layerRendererPaint/pretessellated/layerRendererPaintPretessellated.h"
+#endif
 #include "layerRenderers/layerRendererPaint/static/layerRendererPaintStatic.h"
 
 #include "blue_noise.h"
@@ -41,7 +43,15 @@ namespace ImmPlayer
             dst[0] = 0;
             return;
         }
+#ifdef WINDOWS
         wcsncpy_s(dst, dstCount, src, _TRUNCATE);
+#else
+        // Use standard wcsncpy on non-Windows platforms
+        size_t srcLen = wcslen(src);
+        size_t copyLen = (srcLen < dstCount - 1) ? srcLen : (dstCount - 1);
+        wcsncpy(dst, src, copyLen);
+        dst[copyLen] = 0;  // Ensure null termination
+#endif
     }
 
     Player::Player() {}
@@ -148,7 +158,12 @@ namespace ImmPlayer
         switch (configuration->paintRenderingTechnique)
         {
             case Drawing::Pretessellated:
+#ifndef ANDROID
                 mLayerPaintRender = new LayerRendererPaintPretessellated();
+#else
+                // Pretessellated renderer not available on Android, fall back to Static
+                mLayerPaintRender = new LayerRendererPaintStatic();
+#endif
                 break;
             case Drawing::Static:
                 mLayerPaintRender = new LayerRendererPaintStatic();

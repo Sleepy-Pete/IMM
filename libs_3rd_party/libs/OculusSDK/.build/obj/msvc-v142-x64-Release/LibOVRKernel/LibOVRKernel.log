@@ -1,0 +1,11 @@
+﻿C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Current\Bin\Microsoft.Common.CurrentVersion.targets(1967,5): warning : The referenced project 'C:\dev\ovr_sdk_win_32.0.0\Logging\\Projects\Windows\\PCSDK_Logging.vcxproj' does not exist.
+  OVR_DebugHelp.cpp
+  Util_D3D11_Blitter.cpp
+  Util_Direct3D.cpp
+  Util_GL_Blitter.cpp
+  Util_ImageWindow.cpp
+  Util_LongPollThread.cpp
+  Util_SystemGUI.cpp
+  Util_SystemInfo.cpp
+  Util_Watchdog.cpp
+  LibOVRKernel.vcxproj -> C:\dev\ovr_sdk_win_32.0.0\.build\bin\msvc-v142-x64-Release\LibOVRKernel.lib

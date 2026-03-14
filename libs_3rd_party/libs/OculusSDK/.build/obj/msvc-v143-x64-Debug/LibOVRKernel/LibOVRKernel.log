@@ -1,0 +1,40 @@
+﻿C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\amd64\Microsoft.Common.CurrentVersion.targets(2175,5): warning MSB9008: The referenced project 'C:\dev\ovr_sdk_win_32.0.0\Logging\\Projects\Windows\\PCSDK_Logging.vcxproj' does not exist.
+  compilation header save succeeded; see C:\dev\ovr_sdk_win_32.0.0\.build\gen\msvc-v143-x64-Debug\LibOVRKernel\Shaders\Blt_ps.h
+  compilation header save succeeded; see C:\dev\ovr_sdk_win_32.0.0\.build\gen\msvc-v143-x64-Debug\LibOVRKernel\Shaders\Blt_ps_ms2.h
+  compilation header save succeeded; see C:\dev\ovr_sdk_win_32.0.0\.build\gen\msvc-v143-x64-Debug\LibOVRKernel\Shaders\Blt_vs.h
+  compilation header save succeeded; see C:\dev\ovr_sdk_win_32.0.0\.build\gen\msvc-v143-x64-Debug\LibOVRKernel\Shaders\GrayBlt_ps.h
+  CAPI_GLE.cpp
+  OVR_Alg.cpp
+  OVR_Allocator.cpp
+  OVR_Atomic.cpp
+  OVR_Callbacks.cpp
+  OVR_DebugHelp.cpp
+  OVR_Error.cpp
+  OVR_File.cpp
+  OVR_FileFILE.cpp
+  OVR_JSON.cpp
+  OVR_RefCount.cpp
+  OVR_SharedMemory.cpp
+  OVR_Std.cpp
+  OVR_String.cpp
+  OVR_String_FormatUtil.cpp
+  OVR_String_PathUtil.cpp
+  OVR_SysFile.cpp
+  OVR_System.cpp
+  OVR_ThreadsPthread.cpp
+  OVR_ThreadsWinAPI.cpp
+  OVR_Timer.cpp
+  OVR_UTF8Util.cpp
+  Util_D3D11_Blitter.cpp
+  Util_Direct3D.cpp
+  Util_GL_Blitter.cpp
+  Util_ImageWindow.cpp
+  Util_LongPollThread.cpp
+  Util_SystemGUI.cpp
+  Util_SystemInfo.cpp
+  Util_Watchdog.cpp
+C:\dev\ovr_sdk_win_32.0.0\LibOVRKernel\Src\Util\Util_SystemInfo.cpp(621,8): error C2039: 'replace': is not a member of 'std'
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.42.34433\include\unordered_set(23,1):
+      see declaration of 'std'
+  
+C:\dev\ovr_sdk_win_32.0.0\LibOVRKernel\Src\Util\Util_SystemInfo.cpp(621,8): error C3861: 'replace': identifier not found

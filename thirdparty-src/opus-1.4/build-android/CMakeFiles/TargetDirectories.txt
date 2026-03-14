@@ -1,0 +1,9 @@
+A:/Github/IMM2/IMM/thirdparty-src/opus-1.4/build-android/CMakeFiles/opus.dir
+A:/Github/IMM2/IMM/thirdparty-src/opus-1.4/build-android/CMakeFiles/package.dir
+A:/Github/IMM2/IMM/thirdparty-src/opus-1.4/build-android/CMakeFiles/package_source.dir
+A:/Github/IMM2/IMM/thirdparty-src/opus-1.4/build-android/CMakeFiles/edit_cache.dir
+A:/Github/IMM2/IMM/thirdparty-src/opus-1.4/build-android/CMakeFiles/rebuild_cache.dir
+A:/Github/IMM2/IMM/thirdparty-src/opus-1.4/build-android/CMakeFiles/list_install_components.dir
+A:/Github/IMM2/IMM/thirdparty-src/opus-1.4/build-android/CMakeFiles/install.dir
+A:/Github/IMM2/IMM/thirdparty-src/opus-1.4/build-android/CMakeFiles/install/local.dir
+A:/Github/IMM2/IMM/thirdparty-src/opus-1.4/build-android/CMakeFiles/install/strip.dir

@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "libImmImporter",
+		"source" : "A:/Github/IMM2/IMM/code/libImmImporter"
+	}
+}

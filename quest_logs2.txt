@@ -1,0 +1,648 @@
+﻿--------- beginning of main
+01-07 11:49:12.828  2446  2927 I Shell   : [AvaCamSystem] Background image for Codec setting to: Office
+01-07 11:49:12.828  2446  3414 I SwapChain_Vulkan_Memory_Export: Imported texture has requirements 3, ends up index 0
+01-07 11:49:12.828  2446  2927 I Shell   : [HSRVirtualCameraSystem] Setting field of view to 30.000000
+01-07 11:49:12.828  2446  2927 I Shell   : Set Lens Visibility Mask: None
+01-07 11:49:12.828  2446  2927 I Shell   : updating hpiNetworkingEnabled to 0
+01-07 11:49:12.828  2446  2927 I Shell   : SpatialUnitSystem::SetDebugDrawEanbled: 0
+01-07 11:49:12.828  2446  3414 I SwapChain_Vulkan_Memory_Export: Imported texture has requirements 3, ends up index 0
+01-07 11:49:12.828  2446  2927 I Shell   : HsrCopresenceOriginSystem::setHomeOriginEnabled set to 0
+01-07 11:49:12.829  2446  3414 I SwapChain_Vulkan_Memory_Export: Imported texture has requirements 3, ends up index 0
+01-07 11:49:12.829  2446  3414 I OpenXR_GPUMemTrace: Swapchain creation, id=2239, idx=0, width: 1024, height: 1024, array size: 2, MemoryAllocationSize: 8229 KB
+01-07 11:49:12.829  2446  3414 I OpenXR_GPUMemTrace: Swapchain creation, id=2239, idx=1, width: 1024, height: 1024, array size: 2, MemoryAllocationSize: 8229 KB
+01-07 11:49:12.829  2446  3414 I OpenXR_GPUMemTrace: Swapchain creation, id=2239, idx=2, width: 1024, height: 1024, array size: 2, MemoryAllocationSize: 8229 KB
+01-07 11:49:12.830  2446  2927 I [UNSET] ShellApplication: sendRemoteDesktopKeyboardDetection: (detected:false, trackingEnabled:false
+01-07 11:49:12.831  2446  2927 I Shell   : TrackedObjectsSystem::_setRemoteDesktopKeyboardDetectionEnabled_: false
+01-07 11:49:12.831  2446  2927 I Shell   : TrackedObjectsSystem::SetGtkTrackerEnabled: false, anchor engine: Anchora
+01-07 11:49:12.831  2446  2927 I OpenXR_DynamicObject: ------------ xrDestroyDynamicObjectTrackerMETA -----------
+01-07 11:49:12.831  2446  2927 I [CT]    : SP:AF:SceneManagerTrackerRegistry: removeEnabledTrackerTypeForAllApiExtSuites: DYNAMIC_OBJECT tracker is disabled for all APIs.
+01-07 11:49:12.831  2446  2927 I [CT]    : SP:AF:AnchorFramework: destroyDynamicObjectTracker: Scene Manager enabled
+01-07 11:49:12.831  2446  2927 I [CT]    : SP:SM:SceneManagerRuntimeIpcClient: setTrackerStatus: trackerType: SceneManagerTrackerType::DYNAMIC_OBJECT(5), trackerMode: TrackerMode::DISABLED(2), appId: com.oculus.vrshell
+01-07 11:49:12.831  8287  8287 I BackgroundService: onStartCommand, action [com.oculus.intent.action.REPORT_KEYBOARD_PRESENCE]
+01-07 11:49:12.831  2446  2927 I Shell   : OpenXRSystem - Destroyed DynamicObjectTrackers
+01-07 11:49:12.831  2446  2927 I Shell   : MrAnchorManagementSystem::TrackMrKeyboard: false
+01-07 11:49:12.831  2446  4616 I [CT]    : RuntimeIpcHelper: RuntimeIpcClient::CALL_RPC isAsync: true, func: setTrackerStatus
+01-07 11:49:12.832  3686  4653 I [CT]    : SP:AP:AnchorPersistenceRuntimeIpcServer: checkRPC start: sessionUuid:bd439d91-39ad-4ff1-7529-754ac5008f6e, clientId:2301567352, givenPackageName:com.oculus.vrshell
+01-07 11:49:12.832  3686  4653 I [CT]    : SP:AP:AnchorPersistenceRuntimeIpcServer: checkPackageAccess - detectedPackageName:com.oculus.vrshell, detectedProcessName:com.oculus.vrshell, givenPackageName:com.oculus.vrshell
+01-07 11:49:12.832  3686  4653 I [CT]    : SP:AP:AnchorPersistenceRuntimeIpcServer: checkRPC package name matches: sessionUuid:bd439d91-39ad-4ff1-7529-754ac5008f6e, clientId:2301567352, givenPackageName:com.oculus.vrshell, detectedPackageName:com.oculus.vrshell, detectedProcessName:com.oculus.vrshell
+01-07 11:49:12.832  3686  4653 I [CT]    : SP:AP:AnchorPersistenceRuntimeIpcServer: setTrackerStatusSM: clientId: 2301567352, trackerType: SceneManagerTrackerType::DYNAMIC_OBJECT(5), trackerEnabled: false, appId: com.oculus.vrshell, planeApplicationType: PlaneDetectionApplication::Invalid(-1)
+01-07 11:49:12.832  3686  4653 I [CT]    : SP:SM:SceneManager: setTrackerStatus: trackerType: SceneManagerTrackerType::DYNAMIC_OBJECT(5), trackerMode: TrackerMode::DISABLED(2), appId: com.oculus.vrshell
+01-07 11:49:12.832  3686  4653 I [CT]    : SP:SM:SceneAnchorAggregator: setTrackerStatus: appId: com.oculus.vrshell, trackerType: SceneManagerTrackerType::DYNAMIC_OBJECT(5), trackerMode: TrackerMode::DISABLED(2)
+01-07 11:49:12.832  8287  8287 I BackgroundService: HorizonOsSdkVersion.isAtOrAbove(82): true
+01-07 11:49:12.832  8287  8287 I DiscoveryService: notifyKeyboardDetected(): detected=false
+01-07 11:49:12.832  3686  4654 I [CT]    : SP:SM:SceneAnchorAggregator: disableTrackerUpdates: trackerType: SceneManagerTrackerType::DYNAMIC_OBJECT(5)
+01-07 11:49:12.832  3686  4654 I [CT]    : SP:SM:SceneAnchorAggregator: destroyTracker: trackerType: SceneManagerTrackerType::DYNAMIC_OBJECT(5)
+01-07 11:49:12.832  3686  4654 I DynamicObjectClient: Destroy Dynamic Object Tracker
+01-07 11:49:12.832  8287  8287 I WinAppStatusRepository: Listener already unregistered
+01-07 11:49:12.832  1760  4711 I DynamicObjectTrackingServer: destrying tracker at server side
+01-07 11:49:12.833  1129  1197 I Tracking: KEYBOARD: ObjectTrackingEngine::stopTrackingKeyboard(): Requesting to stop tracking keyboard id = 1000043.
+01-07 11:49:12.833  1129  1197 I Tracking: KEYBOARD: Stopped tracking keyboardId = 1000043.
+01-07 11:49:12.833  1760  4711 I DynamicObjectTrackingServer: reenabling bespoke keyboard tracking server
+01-07 11:49:12.833  3686  4654 I DynamicObjectClient: Dynamic Object Tracker destroyed
+01-07 11:49:12.833  3686  4654 W DynamicObjectClient: FIXME: failed to disable keyboard tracking
+01-07 11:49:12.833  3686  4654 W DynamicObjectClient: Failed to disable KeyboardTrackingFidelity.
+01-07 11:49:12.834  2446  3662 I [CT]    : SP:AF:InsightAnchorApi: DestroyDynamicObjectTracker (task finished)
+01-07 11:49:12.837  2446  2927 I [CT]    : SP:TREX:SpatialPersistencePlugin: Event type: 34
+01-07 11:49:12.837  2446  2927 I TREX    : Spatial Persistence event: DestroyDynamicObjectTracketResult - operation result: success!
+01-07 11:49:12.839  2446  2927 I Shell   : Unknown allocator id when attempting to remove resolve target (allocatorId:7A2AEA4218, resolveTarget: 0x79db325db0).
+01-07 11:49:12.839  2446  2927 I Shell   : Unknown allocator id when attempting to remove resolve target (allocatorId:7A2AEA4218, resolveTarget: 0x79db325800).
+01-07 11:49:12.839  2446  2927 I Shell   : Unknown allocator id when attempting to remove resolve target (allocatorId:7A2AEA4218, resolveTarget: 0x79db325d40).
+01-07 11:49:12.839  2446  2927 I Shell   : [OnDemand] Deleting system: LocalHsrAvatarSystem
+01-07 11:49:12.839  2446  2927 I Shell   : [OnDemand] Deleting system: HomeAvatarSystem
+01-07 11:49:12.839  2446  2927 I Shell   : [OnDemand] Deleting system: SharedHomeSystem
+01-07 11:49:12.839  2446  2927 I Shell   : [OnDemand] Deleting system: HsrLocomotionSystem
+--------- beginning of tracking
+01-07 11:49:12.845  1127 28984 I TrackingFidelityService: Request(s)={keyboard:0,}
+01-07 11:49:12.845  1127 28984 I TrackingFidelityService: checkMultimodalFeature: Attempt made to enable multimodal hands+controllers when not supported by app
+01-07 11:49:12.846  1127 28984 W TrackingFidelityService: Fidelity data undefined in catalog for enabling feature like controller_selftracked. 15 similar misses.
+01-07 11:49:12.846  1127 28984 I TrackingFidelityService: Request(s)={keyboard:0,hands:0,scene_reconstruction:0,constellation:5,controller_selftracked:5,}, Mux mode idx=1, name=lowLightController, score=-960
+01-07 11:49:12.846  1127 28984 I TrackingFidelityService: beginTransition[worldTracking]: lowLightController(1)->lowLightController(1)
+01-07 11:49:12.846  1127 28984 I TrackingFidelityService: _applyMuxModeLockedInternal: Applying camera mux mode lowLightController via requestFeaturesWithFidelitiesLocked
+01-07 11:49:12.846   847  1343 I SensorService: [worldTracking] Setting camera mux mode to 1
+01-07 11:49:12.846  1127  1149 I TrackingFidelityService: [worldTracking] Mux mode transition successfully finished before transition was added for sequence id 205
+01-07 11:49:12.846  1127  1149 I TrackingFidelityService: endTransition[worldTracking]: lowLightController(1)->lowLightControllerObject(3), seqId=204, succeeded=timed out
+01-07 11:49:12.846   847  1343 I SensorService: updating CameraStream mux states
+01-07 11:49:12.846  1127  1149 I TrackingFidelityService: endTransition[worldTracking]: lowLightHands(8)->lowLightController(1), seqId=203, succeeded=timed out
+01-07 11:49:12.846  1129  1200 I SensorDataTransforms: [constellation:ambient_controller] Staging mux mode updates for {worldTracking: ind-1, seqId-205},
+01-07 11:49:12.846  1129  1200 I SensorDataTransforms: [constellation:ambient_controller] Mux mode updates successfully staged
+01-07 11:49:12.846  1129  1200 D TrackingService: [constellation:ambient_controller]Queue mux mode update notification: lowLightController
+01-07 11:49:12.846  1129  1200 D SensorControl: onMuxStateUpdate started for modeIdentifier[cameraSystemName[worldTracking]-modeId[1] ]
+01-07 11:49:12.846  1129  1200 I SensorDataTransforms: [ExpCtl:exposure_control_worldTracking] Staging mux mode updates for {worldTracking: ind-1, seqId-205},
+01-07 11:49:12.846  1129  1200 I SensorDataTransforms: [ExpCtl:exposure_control_worldTracking] Mux mode updates successfully staged
+01-07 11:49:12.846  1129  1200 D SensorControl: onMuxStateUpdate ended for modeIdentifier[cameraSystemName[worldTracking]-modeId[1] ]
+01-07 11:49:12.847  1129  1200 I SensorDataTransforms: [object:object] Staging mux mode updates for {worldTracking: ind-1, seqId-205},
+01-07 11:49:12.847  1129  1200 I SensorDataTransforms: [object:object] Mux mode updates successfully staged
+01-07 11:49:12.847  1129  1198 I SensorDataTransforms: [constellation:constellation] Staging mux mode updates for {worldTracking: ind-1, seqId-205},
+01-07 11:49:12.847  1129  1198 I SensorDataTransforms: [constellation:constellation] Mux mode updates successfully staged
+01-07 11:49:12.847  1129  1198 D TrackingService: [constellation:constellation]Queue mux mode update notification: lowLightController
+01-07 11:49:12.847  1129  1461 D TrackingService: [ambient_controller]start onMuxStateUpdate. ModeId: lowLightControllerObject -> lowLightController
+01-07 11:49:12.847  1129  1461 D TrackingService: [constellation][ambient_controller]handleMuxModeNotification started for muxMode[worldTracking: lowLightController]
+01-07 11:49:12.847  1129  1461 D TrackingService: [constellation][ambient_controller]handleMuxModeNotification finished for muxMode[worldTracking: lowLightController]
+01-07 11:49:12.847  1129  1461 D TrackingService: [ambient_controller]end onMuxStateUpdate. ModeId: lowLightControllerObject -> lowLightController
+01-07 11:49:12.847  1129  1461 I TrackingService: [constellation:ambient_controller] Mux Mode Transition from sensor service: lowLightControllerObject -> lowLightController transition time: 0 ms
+01-07 11:49:12.847  1129  1461 D TrackingService: [constellation]start onMuxStateUpdate. ModeId: lowLightController -> lowLightController
+01-07 11:49:12.847  1129  1461 D TrackingService: [constellation][constellation]handleMuxModeNotification started for muxMode[worldTracking: lowLightController]
+01-07 11:49:12.847  1129  1461 E TrackingService: Resetting MuxMode lowLightController which is already set
+01-07 11:49:12.847  1129  1461 D TrackingService: [constellation]end onMuxStateUpdate. ModeId: lowLightController -> lowLightController
+01-07 11:49:12.847  1129  1461 I TrackingService: [     constellation:constellation] Mux Mode Transition from sensor service: lowLightController -> lowLightController transition time: 0 ms
+01-07 11:49:12.847  1129  1200 D TrackingService: [object:object]Queue mux mode update notification: lowLightController
+01-07 11:49:12.847  1114  1257 I SensorDataTransforms: [CameraStreamControl:mr_monochrome] Staging mux mode updates for {worldTracking: ind-1, seqId-205},
+01-07 11:49:12.847  1129  1465 D TrackingService: [object]start onMuxStateUpdate. ModeId: lowLightControllerObject -> lowLightController
+01-07 11:49:12.847  1129  1465 D TrackingService: [object][object]handleMuxModeNotification started for muxMode[worldTracking: lowLightController]
+01-07 11:49:12.847  1129  1465 D TrackingService: [object][object]handleMuxModeNotification finished for muxMode[worldTracking: lowLightController]
+01-07 11:49:12.847  1129  1465 D TrackingService: [object]end onMuxStateUpdate. ModeId: lowLightControllerObject -> lowLightController
+01-07 11:49:12.847  1129  1465 I TrackingService: [                   object:object] Mux Mode Transition from sensor service: lowLightControllerObject -> lowLightController transition time: 0 ms
+01-07 11:49:12.847  1114  1257 I SensorDataTransforms: [CameraStreamControl:mr_monochrome] Mux mode updates succesfully staged
+01-07 11:49:12.847  1114  1257 I SensorDataTransforms: [CameraStreamControl:projector_assisted_depth] Staging mux mode updates for {worldTracking: ind-1, seqId-205},
+01-07 11:49:12.847  1114  1257 I SensorDataTransforms: [CameraStreamControl:projector_assisted_depth] Mux mode updates succesfully staged
+01-07 11:49:12.847   847  1343 I SensorService: ending update to CameraStream mux states
+01-07 11:49:12.847  1129  1637 I SensorDataTransforms: [iot:iot] Staging mux mode updates for {worldTracking: ind-1, seqId-205},
+01-07 11:49:12.847  1129  1200 I SensorDataTransforms: [iobt:iobt] Staging mux mode updates for {worldTracking: ind-1, seqId-205},
+01-07 11:49:12.847   847  1343 I FrameSetCollator: [{0,2},{1,2}] Updated frame set period to 16666000, with all camera system activeSlots [[T,T,T,F,]]
+01-07 11:49:12.847  1129  1637 I SensorDataTransforms: [iot:iot] Mux mode updates successfully staged
+01-07 11:49:12.847   847  1343 I FrameSetCollator: [{0,2},{1,2},{2,2},{3,2}] Updated frame set period to 16666000, with all camera system activeSlots [[T,T,T,F,]]
+01-07 11:49:12.847  1129  1637 D TrackingService: [iot:iot]Queue mux mode update notification: lowLightController
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2}] Latest MuxModeSettings: 1
+01-07 11:49:12.847  1129  1200 I SensorDataTransforms: [iobt:iobt] Mux mode updates successfully staged
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2}] purpose: ambient_controller, slots: SLOT_0 SLOT_2 
+01-07 11:49:12.847  1129  1200 D TrackingService: [iobt:iobt]Queue mux mode update notification: lowLightController
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2}] purpose: constellation, slots: SLOT_1 
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2}] purpose: exposure_control_worldTracking, slots: SLOT_0 SLOT_1 SLOT_2 
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2}] purpose: iobt, slots: SLOT_0 SLOT_2 
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2}] purpose: mr_monochrome, slots: SLOT_0 SLOT_2 
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2}] purpose: object, slots: 
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2}] purpose: active_slots, slots: SLOT_0 SLOT_1 SLOT_2 
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2}] purpose: hand, slots: 
+01-07 11:49:12.847  1129  1458 D TrackingService: [iot]start onMuxStateUpdate. ModeId: lowLightControllerObject -> lowLightController
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2}] purpose: iot, slots: SLOT_0 SLOT_2 
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2}] purpose: projector_assisted_depth, slots: 
+01-07 11:49:12.847  1129  1458 D TrackingService: [iot][iot]handleMuxModeNotification started for muxMode[worldTracking: lowLightController]
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2},{2,2},{3,2}] Latest MuxModeSettings: 1
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2},{2,2},{3,2}] purpose: ambient_controller, slots: SLOT_0 SLOT_2 
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2},{2,2},{3,2}] purpose: constellation, slots: SLOT_1 
+01-07 11:49:12.847  1129  1458 D TrackingService: [iot][iot]handleMuxModeNotification finished for muxMode[worldTracking: lowLightController]
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2},{2,2},{3,2}] purpose: exposure_control_worldTracking, slots: SLOT_0 SLOT_1 SLOT_2 
+01-07 11:49:12.847  1129  1458 D TrackingService: [iot]end onMuxStateUpdate. ModeId: lowLightControllerObject -> lowLightController
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2},{2,2},{3,2}] purpose: iobt, slots: SLOT_0 SLOT_2 
+01-07 11:49:12.847  1129  1458 I TrackingService: [                         iot:iot] Mux Mode Transition from sensor service: lowLightControllerObject -> lowLightController transition time: 0 ms
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2},{2,2},{3,2}] purpose: mr_monochrome, slots: SLOT_0 SLOT_2 
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2},{2,2},{3,2}] purpose: object, slots: 
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2},{2,2},{3,2}] purpose: active_slots, slots: SLOT_0 SLOT_1 SLOT_2 
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2},{2,2},{3,2}] purpose: hand, slots: 
+01-07 11:49:12.847  1129  1464 D TrackingService: [iobt]start onMuxStateUpdate. ModeId: lowLightControllerObject -> lowLightController
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2},{2,2},{3,2}] purpose: iot, slots: SLOT_0 SLOT_2 
+01-07 11:49:12.847   847  1343 I FrameSetDispatcher: [{0,2},{1,2},{2,2},{3,2}] purpose: projector_assisted_depth, slots: 
+01-07 11:49:12.847  1129  1464 D TrackingService: [iobt][iobt]handleMuxModeNotification started for muxMode[worldTracking: lowLightController]
+01-07 11:49:12.847  1129  1198 I SensorDataTransforms: [hand:hand] Staging mux mode updates for {worldTracking: ind-1, seqId-205},
+01-07 11:49:12.847  1129  1198 I SensorDataTransforms: [hand:hand] Mux mode updates successfully staged
+01-07 11:49:12.847  1129  1198 D TrackingService: [hand:hand]Queue mux mode update notification: lowLightController
+01-07 11:49:12.847  1129  1464 D TrackingService: [iobt][iobt]handleMuxModeNotification finished for muxMode[worldTracking: lowLightController]
+01-07 11:49:12.847  1129  1464 D TrackingService: [iobt]end onMuxStateUpdate. ModeId: lowLightControllerObject -> lowLightController
+01-07 11:49:12.847  1129  1464 I TrackingService: [                       iobt:iobt] Mux Mode Transition from sensor service: lowLightControllerObject -> lowLightController transition time: 0 ms
+01-07 11:49:12.848  1129  1462 D TrackingService: [hand]start onMuxStateUpdate. ModeId: lowLightControllerObject -> lowLightController
+01-07 11:49:12.848  1129  1462 D TrackingService: [HANDTRACKINGGLUE] handleMuxModeNotification
+01-07 11:49:12.848  1129  1462 D TrackingService: [HANDTRACKINGGLUE] handleStateChange muxMode=lowLightController
+01-07 11:49:12.848  1129  1462 D TrackingService: [hand]end onMuxStateUpdate. ModeId: lowLightControllerObject -> lowLightController
+01-07 11:49:12.848  1129  1462 I TrackingService: [                       hand:hand] Mux Mode Transition from sensor service: lowLightControllerObject -> lowLightController transition time: 0 ms
+01-07 11:49:12.851   836   865 I SyncBossFW: 60695625 [info   ] {NICE}: nice_set_frame_rate called on same period of 16666us
+01-07 11:49:12.855   847  1343 D SensorService: Configured syncboss nice config: [{camera_set: 1, num_slots: 4, [ { tag: 16, default_exposure_us: 65535, default_gain: 65535, capabilities: 0, slot_length: 0, }, { tag: 17, default_exposure_us: 65535, default_gain: 65535, capabilities: 2, slot_length: 0, }, { tag: 18, default_exposure_us: 65535, default_gain: 65535, capabilities: 0, slot_length: 0, }, { tag: 19, default_exposure_us: 5000, default_gain: 48, capabilities: 8, slot_length: 0, }, ] shutter_period_us: 16666, }, {camera_set: 2, num_slots: 4, [ { tag: 16, default_exposure_us: 65535, default_gain: 65535, capabilities: 0, slot_length: 0, }, { tag: 17, default_exposure_us: 65535, default_gain: 65535, capabilities: 2, slot_length: 0, }, { tag: 18, default_exposure_us: 65535, default_gain: 65535, capabilities: 0, slot_length: 0, }, { tag: 19, default_exposure_us: 5000, default_gain: 48, capabilities: 8, slot_length: 0, }, ] shutter_period_us: 16666, }, ]
+01-07 11:49:12.857   836   865 I SyncBossFW: 60695625 [info   ] {NCM }: Found slot with constellation capability
+01-07 11:49:12.857   836   865 I SyncBossFW: 60695627 [info   ] {NICE}: nice_set_frame_rate called on same period of 16666us
+01-07 11:49:12.857   836   865 I SyncBossFW: 60695627 [info   ] {NCM }: No slot with projector capability found.
+01-07 11:49:12.857   836   865 I SyncBossFW: 60695627 [info   ] {NCM }: Stopping projector
+01-07 11:49:12.867  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:12.941  2446  2927 I Shell   : HsrEmbodimentSystem::embodimentCoreShutdown begin ...
+01-07 11:49:12.941  2446  2927 I ShellHsr: Embodiment: Shutdown started
+01-07 11:49:12.941  2446  2927 I Shell   : OpenXRSystem - notifyFaceTrackingRequestStop, 0
+01-07 11:49:12.941  2446  2927 I OpenXR_Face: ------------ xrDestroyFaceTracker2FB -----------
+01-07 11:49:12.941  2446  2927 I Shell   : OpenXRSystem - Destroyed face tracking
+01-07 11:49:12.941  2446  2927 I ShellHsr: Embodiment: EmbodimentResourceSystem - preparing for shutdown
+01-07 11:49:12.941  2446  2927 I ShellHsr: Embodiment: Shutting down Meta Avatar SDK
+01-07 11:49:12.945  2446  2927 I ShellHsr: Embodiment: EmbodimentResourceSystem - shutdown started
+01-07 11:49:12.945  2446  2927 I ShellHsr: Embodiment: EmbodimentResourceSystem - shutdown completed
+01-07 11:49:12.945  2446  2927 I ShellHsr: Embodiment: Shutdown complete
+01-07 11:49:12.945  2446  2927 I Shell   : HsrEmbodimentSystem::embodimentCoreShutdown completed in 4.047032 ms.
+01-07 11:49:12.967  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=224] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:13.000  2446  3648 I VrApi   : FPS=74/72,Prd=36ms,Tear=1,Early=16,Stale=20,Stale2/5/10/max=0/1/1/12,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=4/2,2361/285MHz,OC=3F,TA=0/0/0,SP=N/N/N,Mem=3196MHz,Free=3431MB,PLS=0,Temp=27.0C/0.0C,TW=2.37ms,App=2.72ms,GD=0.00ms,CPU&GPU=13.95ms,LCnt=3(DR3,LM0),GPU%=0.20,CPU%=0.66(W0.72),CFL=13.04/21.08,ICFLp95=19.66,LD=0,SF=1.00,LP=0,DVFS=0
+01-07 11:49:13.000  3474  3731 I VrApi   : FPS=67/72,Prd=43ms,Tear=1,Early=9,Stale=14,Stale2/5/10/max=0/0/1/17,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=4/2,2361/285MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=3196MHz,Free=3431MB,PLS=0,Temp=32.0C/0.0C,TW=2.37ms,App=2.47ms,GD=0.00ms,CPU&GPU=4.10ms,LCnt=3(DR3,LM0),GPU%=0.20,CPU%=0.66(W0.72),CFL=13.04/21.08,ICFLp95=19.66,LD=0,SF=1.00,LP=0,DVFS=0
+01-07 11:49:13.050  1129   578 W Tracking: CONSTELLATION_Left: [Throttled count=494] P+C Left: Could not retrieve 3dof fallback pose.
+01-07 11:49:13.080  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=239] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:13.082  1129  1432 I Tracking: BOLT:HexagonTelemetry: Global DSP utilization: 0.17% (8 / 5001 ms), Scalar Util: 34.29%, HVX Util: 0.00%, HMX Util: 0.00%, DMA Active: 0.00%, Freq: 1171.2 MHz
+01-07 11:49:13.191  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:13.217  1760  3645 I [CT]    : MIXEDREALITY: CalibrationRefresher: VrRuntime:refreshOnlineCalibration: No high-freq ocal available yet.
+--------- beginning of system
+01-07 11:49:13.235   873  1295 I crcs    : SetClockLevels: Apply pending clock request change: 3,2 -> 2,2
+01-07 11:49:13.236  1760  1997 I XrFeedbackController: XrFeedbackController: onStateChanged
+01-07 11:49:13.236  1760  1997 I XrFeedbackController: XrFeedbackController: feature://xr/feedback/cpu_level --> 2 (raw 0.187500)
+01-07 11:49:13.264  1433  2787 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
+01-07 11:49:13.276  1760  1994 I GraphicsGovernor: Dynamic Foveation Lvl 0, Min Foveation Lvl -1, DynRes Enabled 0, DynRes Scaler 1.000000
+01-07 11:49:13.302  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:13.413  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:13.483  2446  2927 W [CT]    : SlamAnchorClientRuntimeIPCV2: [Throttled count=68327] getDeviceFromAnchor: Rigid body tracking 3DOF only at requested timestamp: 180967.384997449 [sec].
+01-07 11:49:13.489  1760  3545 I Vsync   : Vsync 278:  2 x 13.89 ms (72.00 Hz, at 180967.359)
+01-07 11:49:13.516  1760  3545 I Vsync   : Vsync 280:  2 x 13.89 ms (72.00 Hz, at 180967.387)
+01-07 11:49:13.524  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:13.544  1760  3545 I Vsync   : Vsync 282:  2 x 13.89 ms (72.00 Hz, at 180967.414)
+01-07 11:49:13.572  1760  3545 I Vsync   : Vsync 284:  2 x 13.89 ms (72.00 Hz, at 180967.442)
+01-07 11:49:13.600  1760  3545 I Vsync   : Vsync 286:  2 x 13.89 ms (72.00 Hz, at 180967.470)
+01-07 11:49:13.627  1760  3545 I Vsync   : Vsync 288:  2 x 13.89 ms (72.00 Hz, at 180967.498)
+01-07 11:49:13.635  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:13.747  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:13.823  1129   578 W Tracking: CONSTELLATION_Right: [Throttled count=506] P+C Right: Could not retrieve 3dof fallback pose.
+01-07 11:49:13.858  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:13.969  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:14.000  2446  3648 I VrApi   : FPS=72/72,Prd=38ms,Tear=0,Early=2,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=3/2,2361/285MHz,OC=3F,TA=0/0/0,SP=N/N/N,Mem=3196MHz,Free=3431MB,PLS=0,Temp=27.0C/0.0C,TW=1.66ms,App=0.56ms,GD=0.00ms,CPU&GPU=13.38ms,LCnt=3(DR0,LM0),GPU%=0.29,CPU%=0.32(W0.36),CFL=14.65/18.49,ICFLp95=17.67,LD=0,SF=1.00,LP=0,DVFS=0
+01-07 11:49:14.000  3474  3731 I VrApi   : FPS=72/72,Prd=40ms,Tear=0,Early=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=3/2,2361/285MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=3196MHz,Free=3431MB,PLS=0,Temp=32.0C/0.0C,TW=1.66ms,App=0.74ms,GD=0.00ms,CPU&GPU=2.86ms,LCnt=3(DR0,LM0),GPU%=0.29,CPU%=0.32(W0.36),CFL=14.65/18.49,ICFLp95=17.67,LD=0,SF=1.00,LP=0,DVFS=0
+01-07 11:49:14.037  3266  3266 D BatteryUsageBroadcastReceiver: onReceive:android.intent.action.BATTERY_LEVEL_CHANGED
+01-07 11:49:14.038  3266  3266 D BatteryUsageBroadcastReceiver: fetch data because of event: ACTION_BATTERY_LEVEL_CHANGED
+01-07 11:49:14.039  3266  3305 D BatteryUsageDataLoader: loadUsageDataSafely() in the AsyncTask
+01-07 11:49:14.043  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.044  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.044  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.044  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.045  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.045  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.045  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.045  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.046  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.046  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.046  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.046  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.048  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.048  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.048  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.048  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.051  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.051  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.051  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.051  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.052  1129   578 W Tracking: CONSTELLATION_Left: [Throttled count=493] P+C Left: Could not retrieve 3dof fallback pose.
+01-07 11:49:14.052  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.053  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.053  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.053  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.056  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.056  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.056  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.056  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.060  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.060  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.060  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.060  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.061  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.061  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.061  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.061  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.061  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.061  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.061  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.061  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.063  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.063  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.063  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.063  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.064  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.064  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.064  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.064  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.065  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.065  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.065  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.065  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.066  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.066  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.066  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.066  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.067  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.067  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.067  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.067  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.068  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.069  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.069  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.069  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.069  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.069  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.069  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.069  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.071  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.071  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.071  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.072  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.072  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.072  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.072  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.073  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.073  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.073  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.073  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.074  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.074  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.074  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.074  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.074  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.075  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.075  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.075  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.075  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.077  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.078  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.078  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.078  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.078  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.078  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.078  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.078  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.078  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.079  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.079  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.079  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.080  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.080  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.080  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.080  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.080  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.080  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.080  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.080  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.081  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:14.081  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.081  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.081  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.081  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.082  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.082  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.082  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.082  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.082  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.082  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.082  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.082  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.083  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.083  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.083  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.083  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.083  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.083  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.083  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.084  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.084  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.084  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.084  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.084  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.085  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.086  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.086  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.086  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.086  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.086  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.086  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.086  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.086  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.086  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.086  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.086  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.086  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.086  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.086  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.087  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.087  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.087  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.087  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.087  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.087  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.087  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.087  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.087  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fg
+01-07 11:49:14.087  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=fgs
+01-07 11:49:14.087  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=bg
+01-07 11:49:14.087  3266  3305 E BatteryEntry: safeGetConsumedPower failed:java.lang.IllegalArgumentException: No data included in BatteryUsageStats for processState=cached
+01-07 11:49:14.090  3266  3305 W BatteryEntry: unknown attribute:AUDIO
+01-07 11:49:14.090  3266  3305 W BatteryEntry: unknown attribute:VIDEO
+01-07 11:49:14.091  3266  3305 W BatteryEntry: unknown attribute:SYSTEM_SERVICES
+01-07 11:49:14.091  3266  3305 W BatteryEntry: unknown attribute:SENSORS
+01-07 11:49:14.092  3266  3305 W BatteryEntry: unknown attribute:WAKELOCK
+01-07 11:49:14.092  3266  3305 W BatteryEntry: unknown attribute:MEMORY
+01-07 11:49:14.092  3266  3305 W BatteryEntry: unknown attribute:IDLE
+01-07 11:49:14.092  3266  3305 W BatteryEntry: unknown attribute:REATTRIBUTED_TO_OTHER_CONSUMERS
+01-07 11:49:14.093  3266  3305 D BatteryUsageDataLoader: getBatteryUsageStats() in 53/ms
+01-07 11:49:14.093  3266  3305 W DatabaseUtils: no consumed power but has running time for Android System time=1264|0
+01-07 11:49:14.093  3266  3305 W DatabaseUtils: no consumed power but has running time for VrUsb time=0|2
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for null time=0|4
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for com.facebook.wearable.system.location.service.vros.VrosLocationSDKApplication time=0|632
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for CaptionService time=0|632
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for Oculus Core Mobile Services time=632|0
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for Oculus System Driver time=632|0
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for com.facebook.wearable.system.location.proxy time=0|632
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for Meta Calling time=632|0
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for com.oculus.guardian time=632|0
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for MaintenanceBootService time=632|0
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for Oculus User Server time=632|0
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for com.facebook.spatial_persistence_service time=632|0
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for Oculus time=632|0
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for Meta Remote Desktop Streaming Service time=632|0
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for VR Metacam Quest time=0|632
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for Oculus OS Updater time=0|632
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for Media time=632|0
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for Android Services Library time=0|632
+01-07 11:49:14.094  3266  3305 W DatabaseUtils: no consumed power but has running time for com.meta.systemui.MetaSystemUIApplication time=632|0
+01-07 11:49:14.116  3266  3305 D DatabaseUtils: insert() battery states data into database with isFullChargeStart:true
+01-07 11:49:14.117  3266  3305 D DatabaseUtils: sendBatteryEntryData() size=26 in 24/ms
+--------- beginning of kernel
+01-07 11:49:14.163     0     0 W healthd : battery l=100 v=4290 t=32.0 h=2 st=2 c=-771625 fc=4795000 cc=15 chg=u
+01-07 11:49:14.192  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:14.217  1760  3645 I [CT]    : MIXEDREALITY: CalibrationRefresher: VrRuntime:refreshOnlineCalibration: No high-freq ocal available yet.
+01-07 11:49:14.276  1760  1994 I GraphicsGovernor: Dynamic Foveation Lvl 0, Min Foveation Lvl -1, DynRes Enabled 0, DynRes Scaler 1.000000
+01-07 11:49:14.292  1760  3545 I [CT]    : MIXEDREALITY: PassthroughApiManager: GetUpdatedLayerState: (every 2 seconds) PT is: ON numLayers: 0
+01-07 11:49:14.303  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:14.414  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:14.483  2446  2927 W [CT]    : SlamAnchorClientRuntimeIPCV2: [Throttled count=68327] getDeviceFromAnchor: Rigid body tracking 3DOF only at requested timestamp: 180968.384997634 [sec].
+01-07 11:49:14.525  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:14.637  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:14.748  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:14.782  1129   578 I Tracking: CONSTELLATION:IMU_STATUS: 0xb1c1d40c8dd0ef43 (R): [#Samples=2532] 60697.554s | [FusionTracked=0.000, OutputTracked=0.000, OutputValid=0.000] [AccelSat=0.000, GyroSat=0.000] [AccelMinMeanMax: X=5.970|6.018|6.057, Y=4.593|4.628|4.667, Z=-5.953|-5.908|-5.868] [GyroMinMeanMax: X=-0.015|-0.011|-0.006, Y=-0.011|-0.005|0.002, Z=-0.002|0.005|0.011] [AccelStuck: X=0|0.000, Y=0|0.000, Z=0|0.000] [GyroStuck: X=0|0.000, Y=0|0.000, Z=0|0.000]  [Current time=60697.554s, last log time=60692.552s]
+01-07 11:49:14.799     0     0 W healthd : battery l=100 v=4307 t=32.0 h=2 st=2 c=-548597 fc=4795000 cc=15 chg=u
+01-07 11:49:14.825  1129   578 W Tracking: CONSTELLATION_Right: [Throttled count=507] P+C Right: Could not retrieve 3dof fallback pose.
+01-07 11:49:14.859  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:14.929  1054  6752 D BufferPoolAccessor2.0: bufferpool2 0xb400007217463628 : 0(0 size) total buffers - 0(0 size) used buffers - 11/19 (recycle/alloc) - 8/30 (fetch/transfer)
+01-07 11:49:14.929  1054  6752 D BufferPoolAccessor2.0: evictor expired: 1, evicted: 1
+01-07 11:49:14.930  1097  1937 D BufferPoolAccessor2.0: bufferpool2 0xb400007784837028 : 0(0 size) total buffers - 0(0 size) used buffers - 9/13 (recycle/alloc) - 4/12 (fetch/transfer)
+01-07 11:49:14.930  1097  1937 D BufferPoolAccessor2.0: evictor expired: 2, evicted: 1
+01-07 11:49:14.970  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:15.000  2446  3648 I VrApi   : FPS=72/72,Prd=35ms,Tear=0,Early=2,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/2,2361/285MHz,OC=3F,TA=0/0/0,SP=N/N/N,Mem=3196MHz,Free=3431MB,PLS=0,Temp=27.0C/0.0C,TW=1.66ms,App=0.59ms,GD=0.00ms,CPU&GPU=8.64ms,LCnt=2(DR0,LM0),GPU%=0.22,CPU%=0.28(W0.31),CFL=14.44/18.28,ICFLp95=17.42,LD=0,SF=0.60,LP=0,DVFS=0
+01-07 11:49:15.000  3474  3731 I VrApi   : FPS=72/72,Prd=39ms,Tear=0,Early=0,Stale=0,Stale2/5/10/max=0/0/0/0,VSnc=1,Lat=-1,Fov=0,CPU4/GPU=2/2,2361/285MHz,OC=3F,TA=0/38/38,SP=N/N/N,Mem=3196MHz,Free=3431MB,PLS=0,Temp=32.0C/0.0C,TW=1.66ms,App=0.61ms,GD=0.00ms,CPU&GPU=2.02ms,LCnt=2(DR0,LM0),GPU%=0.22,CPU%=0.28(W0.31),CFL=14.44/18.28,ICFLp95=17.42,LD=0,SF=1.00,LP=0,DVFS=0
+01-07 11:49:15.054  1129   578 W Tracking: CONSTELLATION_Left: [Throttled count=494] P+C Left: Could not retrieve 3dof fallback pose.
+01-07 11:49:15.082  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:15.105  3474  3513 D Unity   : UnloadTime: 0.915208 ms
+01-07 11:49:15.108  3474  3513 I Unity   : [IMM] === ImmPlayerManager.Awake() called ===
+01-07 11:49:15.108  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.108  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.108  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.108  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Log(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:18)
+01-07 11:49:15.108  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Awake() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:67)
+01-07 11:49:15.108  3474  3513 I Unity   : 
+01-07 11:49:15.109  3474  3513 I Unity   : [IMM] Platform: Android
+01-07 11:49:15.109  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.109  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.109  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.109  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Log(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:18)
+01-07 11:49:15.109  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Awake() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:68)
+01-07 11:49:15.109  3474  3513 I Unity   : 
+01-07 11:49:15.110  3474  3513 I Unity   : [IMM] Unity Version: 2022.3.8f1
+01-07 11:49:15.110  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.110  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.110  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.110  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Log(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:18)
+01-07 11:49:15.110  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Awake() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:69)
+01-07 11:49:15.110  3474  3513 I Unity   : 
+01-07 11:49:15.110  3474  3513 I Unity   : [IMM] Device Model: Oculus Quest
+01-07 11:49:15.110  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.110  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.110  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.110  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Log(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:18)
+01-07 11:49:15.110  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Awake() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:70)
+01-07 11:49:15.110  3474  3513 I Unity   : 
+01-07 11:49:15.110  3474  3513 I Unity   : [IMM] Operating System: Android OS 14 / API-34 (UP1A.231005.007.A1/51563850146500520)
+01-07 11:49:15.110  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.110  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.110  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.110  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Log(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:18)
+01-07 11:49:15.110  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Awake() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:71)
+01-07 11:49:15.110  3474  3513 I Unity   : 
+01-07 11:49:15.110  3474  3513 I Unity   : [IMM] Graphics Device: OpenGLES3
+01-07 11:49:15.110  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.110  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.110  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.110  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Log(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:18)
+01-07 11:49:15.110  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Awake() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:72)
+01-07 11:49:15.110  3474  3513 I Unity   : 
+01-07 11:49:15.110  3474  3513 I Unity   : [IMM] ImmPlayerManager instance created and set to DontDestroyOnLoad
+01-07 11:49:15.110  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.110  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.110  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.110  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Log(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:18)
+01-07 11:49:15.110  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Awake() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:82)
+01-07 11:49:15.110  3474  3513 I Unity   : 
+01-07 11:49:15.112  3474  3513 I Unity   : [IMM] === ImmPlayerManager.Start() called ===
+01-07 11:49:15.112  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.112  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.112  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.112  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Log(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:18)
+01-07 11:49:15.112  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Start() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:87)
+01-07 11:49:15.112  3474  3513 I Unity   : 
+01-07 11:49:15.113  3474  3513 I Unity   : [IMM] === IMM Player Initialization Started ===
+01-07 11:49:15.113  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.113  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.113  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.113  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Log(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:18)
+01-07 11:49:15.113  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Initialize() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:139)
+01-07 11:49:15.113  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Start() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:88)
+01-07 11:49:15.113  3474  3513 I Unity   : 
+01-07 11:49:15.113  3474  3513 I Unity   : [IMM] Color Space: Linear
+01-07 11:49:15.113  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.113  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.113  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.113  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Log(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:18)
+01-07 11:49:15.113  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Initialize() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:140)
+01-07 11:49:15.113  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Start() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:88)
+01-07 11:49:15.113  3474  3513 I Unity   : 
+01-07 11:49:15.113  3474  3513 I Unity   : [IMM] Antialiasing Level: 8
+01-07 11:49:15.113  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.113  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.113  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.113  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Log(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:18)
+01-07 11:49:15.113  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Initialize() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:141)
+01-07 11:49:15.113  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Start() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:88)
+01-07 11:49:15.113  3474  3513 I Unity   : 
+01-07 11:49:15.113  3474  3513 I Unity   : [IMM] Log File Name: imm_player_log.txt
+01-07 11:49:15.113  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.113  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.113  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.113  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Log(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:18)
+01-07 11:49:15.113  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Initialize() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:142)
+01-07 11:49:15.113  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Start() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:88)
+01-07 11:49:15.113  3474  3513 I Unity   : 
+01-07 11:49:15.114  3474  3513 I Unity   : [IMM] Temp Folder: /storage/emulated/0/Android/data/com.DefaultCompany.IMMUnityTest/cache
+01-07 11:49:15.114  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.114  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.114  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.114  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Log(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:18)
+01-07 11:49:15.114  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Initialize() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:148)
+01-07 11:49:15.114  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Start() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:88)
+01-07 11:49:15.114  3474  3513 I Unity   : 
+01-07 11:49:15.114  3474  3513 I Unity   : [IMM] Calling ImmNativePlugin.Init()...
+01-07 11:49:15.114  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.114  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.114  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.114  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Log(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:18)
+01-07 11:49:15.114  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Initialize() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:152)
+01-07 11:49:15.114  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Start() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:88)
+01-07 11:49:15.114  3474  3513 I Unity   : 
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: === Init() called ===
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: Color Space: Linear
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: Antialiasing: 8
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: Log File: imm_player_log.txt
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: Temp Folder: /storage/emulated/0/Android/data/com.DefaultCompany.IMMUnityTest/cache
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: Platform: Android - Skipping file-based logging
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: Initializing timer...
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: Timer initialized successfully
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: Creating sound backend...
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: Android platform detected - using NULL sound backend
+01-07 11:49:15.115  3474  3513 I piLog   : SoundBackend created successfully.
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: SoundBackend created successfully
+01-07 11:49:15.115  3474  3513 I piLog   : SoundBackend initialized successfully.
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: SoundBackend initialized successfully
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: Setting up renderer...
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: Platform: Android - Using OpenGL ES
+01-07 11:49:15.115  3474  3513 I piLog   : API: GLES
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: Graphics API: GLES
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: Creating renderer...
+01-07 11:49:15.115  3474  3513 I piLog   : Renderer created successfully
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: Renderer created successfully
+01-07 11:49:15.115  3474  3513 I ImmUnityPlugin: Initializing renderer...
+01-07 11:49:15.116  3474  3513 I piLog   : Renderer initialized successfully.
+01-07 11:49:15.116  3474  3513 I ImmUnityPlugin: Renderer initialized successfully
+01-07 11:49:15.116  3474  3513 I ImmUnityPlugin: Configuring IMM Player...
+01-07 11:49:15.116  3474  3513 I ImmUnityPlugin: Android configuration: ColorSpace=Gamma, DepthBuffer=Linear01, Static rendering
+01-07 11:49:15.116  3474  3513 I ImmUnityPlugin: Initializing IMM Player...
+01-07 11:49:15.116  3474  3513 D piLog   : Player Init...
+01-07 11:49:15.116  3474  3513 E piGLES_Renderer: GL Error at A:/Github/IMM2/IMM/code/libImmCore/src/libRender/opengles/piGLES_Renderer.cpp:1137 CreateShader : VS:
+01-07 11:49:15.116  3474  3513 E piLog   : Could not create shader (0,0,0,0): VS:
+01-07 11:49:15.116  3474  3513 E piLog   : Could not Init LayerPaintRender
+01-07 11:49:15.116  3474  3513 E piLog   : Failed to initialize ImmPlayer.
+01-07 11:49:15.116  3474  3513 E ImmUnityPlugin: Failed to initialize ImmPlayer
+01-07 11:49:15.116  3474  3513 I Unity   : [IMM] ImmNativePlugin.Init() returned: -2
+01-07 11:49:15.116  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.116  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.116  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.116  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Log(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:18)
+01-07 11:49:15.116  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Initialize() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:154)
+01-07 11:49:15.116  3474  3513 I Unity   : ImmPlayer.ImmPlayerManager:Start() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:88)
+01-07 11:49:15.116  3474  3513 I Unity   : 
+01-07 11:49:15.116  3474  3513 E Unity   : [IMM] Failed to initialize IMM Player. Error code: -2
+01-07 11:49:15.116  3474  3513 E Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.116  3474  3513 E Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.116  3474  3513 E Unity   : UnityEngine.Debug:LogError(Object)
+01-07 11:49:15.116  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:LogError(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:20)
+01-07 11:49:15.116  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:Initialize() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:158)
+01-07 11:49:15.116  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:Start() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:88)
+01-07 11:49:15.116  3474  3513 E Unity   : 
+01-07 11:49:15.116  3474  3513 E Unity   : [IMM] Possible causes:
+01-07 11:49:15.116  3474  3513 E Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.116  3474  3513 E Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.116  3474  3513 E Unity   : UnityEngine.Debug:LogError(Object)
+01-07 11:49:15.116  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:LogError(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:20)
+01-07 11:49:15.116  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:Initialize() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:159)
+01-07 11:49:15.116  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:Start() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:88)
+01-07 11:49:15.116  3474  3513 E Unity   : 
+01-07 11:49:15.116  3474  3513 E Unity   : [IMM]   1. Missing native library dependencies
+01-07 11:49:15.116  3474  3513 E Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.116  3474  3513 E Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.116  3474  3513 E Unity   : UnityEngine.Debug:LogError(Object)
+01-07 11:49:15.116  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:LogError(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:20)
+01-07 11:49:15.116  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:Initialize() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:160)
+01-07 11:49:15.116  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:Start() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:88)
+01-07 11:49:15.116  3474  3513 E Unity   : 
+01-07 11:49:15.117  3474  3513 E Unity   : [IMM]   2. Plugin platform settings incorrect
+01-07 11:49:15.117  3474  3513 E Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.117  3474  3513 E Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.117  3474  3513 E Unity   : UnityEngine.Debug:LogError(Object)
+01-07 11:49:15.117  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:LogError(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:20)
+01-07 11:49:15.117  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:Initialize() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:161)
+01-07 11:49:15.117  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:Start() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:88)
+01-07 11:49:15.117  3474  3513 E Unity   : 
+01-07 11:49:15.117  3474  3513 E Unity   : [IMM]   3. Graphics API not supported (requires DirectX 11, OpenGL Core, or OpenGL ES 3)
+01-07 11:49:15.117  3474  3513 E Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.117  3474  3513 E Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.117  3474  3513 E Unity   : UnityEngine.Debug:LogError(Object)
+01-07 11:49:15.117  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:LogError(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:20)
+01-07 11:49:15.117  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:Initialize() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:162)
+01-07 11:49:15.117  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:Start() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:88)
+01-07 11:49:15.117  3474  3513 E Unity   : 
+01-07 11:49:15.117  3474  3513 E Unity   : [IMM]   4. Check native log file: imm_player_log.txt
+01-07 11:49:15.117  3474  3513 E Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.117  3474  3513 E Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.117  3474  3513 E Unity   : UnityEngine.Debug:LogError(Object)
+01-07 11:49:15.117  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:LogError(String) (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:20)
+01-07 11:49:15.117  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:Initialize() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:163)
+01-07 11:49:15.117  3474  3513 E Unity   : ImmPlayer.ImmPlayerManager:Start() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmPlayerManager.cs:88)
+01-07 11:49:15.117  3474  3513 E Unity   : 
+01-07 11:49:15.117  3474  3513 I Unity   : [IMM_DIAG] ImmFeatureExamples Start()
+01-07 11:49:15.117  3474  3513 I Unity   : UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+01-07 11:49:15.117  3474  3513 I Unity   : UnityEngine.Logger:Log(LogType, Object)
+01-07 11:49:15.117  3474  3513 I Unity   : UnityEngine.Debug:Log(Object)
+01-07 11:49:15.117  3474  3513 I Unity   : ImmPlayer.ImmFeatureExamples:Start() (at A:\Github\IMM2\IMM\code\ImmUnitySampleProject\Assets\Scripts\ImmFeatureExamples.cs:79)
+01-07 11:49:15.117  3474  3513 I Unity   : 
+01-07 11:49:15.193  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:15.196  1054  1884 I hw-BpHwBinder: onLastStrongRef automatically unlinking death recipients
+01-07 11:49:15.217  1760  3645 I [CT]    : MIXEDREALITY: CalibrationRefresher: VrRuntime:refreshOnlineCalibration: No high-freq ocal available yet.
+01-07 11:49:15.277  1760  1994 I GraphicsGovernor: Dynamic Foveation Lvl 0, Min Foveation Lvl -1, DynRes Enabled 0, DynRes Scaler 1.000000
+01-07 11:49:15.277  1760  1994 I FaceEyeTrackingServerManager_Impl: [FaceEyeTrackingManager] - orthofitManager is NULL.
+01-07 11:49:15.292  1760  3545 I [CT]    : PTApiClients: 1/1:com.oculus.vrshell,PT=1,EnvDepth=0,VrMode=1,LCnt=0/2(rec=0,proj=0,bg=0),SppMeshes=1(vs=4,ts=2),SppInst=1(vs=4,ts=2),NS=0,Sty=0
+01-07 11:49:15.304  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell
+01-07 11:49:15.415  2446  2927 E [CT]    : SP:AF:AnchorFramework: [Throttled count=247] calculateRigidScenePose: All anchors in the room entity were unable to be located for com.oculus.vrshell

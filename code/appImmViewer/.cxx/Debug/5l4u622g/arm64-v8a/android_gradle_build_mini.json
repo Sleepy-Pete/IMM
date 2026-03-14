@@ -1,0 +1,54 @@
+{
+  "buildFiles": [
+    "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\CMakeLists.txt",
+    "A:\\Github\\IMM2\\IMM\\code\\libImmCore\\CMakeLists.txt",
+    "A:\\Github\\IMM2\\IMM\\code\\libImmImporter\\CMakeLists.txt",
+    "A:\\Github\\IMM2\\IMM\\code\\libImmPlayer\\CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "C:\\Users\\pjpar\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+      "-C",
+      "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\.cxx\\Debug\\5l4u622g\\arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "C:\\Users\\pjpar\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+    "-C",
+    "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\.cxx\\Debug\\5l4u622g\\arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "ImmCore::@9f416e07076036996525": {
+      "artifactName": "ImmCore",
+      "abi": "arm64-v8a",
+      "output": "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\.cxx\\Debug\\5l4u622g\\arm64-v8a\\libImmCore\\libImmCore.a",
+      "runtimeFiles": []
+    },
+    "appImmPlayer::@6890427a1f51a3e7e1df": {
+      "artifactName": "appImmPlayer",
+      "abi": "arm64-v8a",
+      "output": "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\build\\intermediates\\cxx\\Debug\\5l4u622g\\obj\\arm64-v8a\\libappImmPlayer.so",
+      "runtimeFiles": []
+    },
+    "ImmImporter::@e19e83e7e5c6630a1929": {
+      "artifactName": "ImmImporter",
+      "abi": "arm64-v8a",
+      "output": "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\.cxx\\Debug\\5l4u622g\\arm64-v8a\\libImmImporter\\libImmImporter.a",
+      "runtimeFiles": []
+    },
+    "ImmPlayer::@2a619d84bb42a04d1a66": {
+      "artifactName": "ImmPlayer",
+      "abi": "arm64-v8a",
+      "output": "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\.cxx\\Debug\\5l4u622g\\arm64-v8a\\libImmPlayer\\libImmPlayer.a",
+      "runtimeFiles": []
+    },
+    "native_app_glue::@6890427a1f51a3e7e1df": {
+      "artifactName": "native_app_glue",
+      "abi": "arm64-v8a",
+      "output": "A:\\Github\\IMM2\\IMM\\code\\appImmViewer\\.cxx\\Debug\\5l4u622g\\arm64-v8a\\libnative_app_glue.a",
+      "runtimeFiles": []
+    }
+  }
+}

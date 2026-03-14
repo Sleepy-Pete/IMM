@@ -44,7 +44,42 @@ Summary of the dependencies
 
 Aside from fixing a couple of includes no other change was made to the code base.
 
-To build I used Visual Studio 2022 with Windows SDK 10.0.26100. Build order: libCore > libImmImporter > libImmPlayer > appImmViewer.
+## Building
+
+### Windows Build
+To build for Windows, use Visual Studio 2022 with Windows SDK 10.0.26100.
+Build order: libCore > libImmImporter > libImmPlayer > appImmViewer.
+
+Or use the automated build script:
+```batch
+build.bat
+```
+
+### Android Build (NEW - January 2026)
+To build for Meta Quest (Android), a complete Android Studio project has been created.
+
+**Quick Start:**
+```batch
+verify_android_setup.bat     # Check if setup is complete
+setup_oculus_sdk.bat         # Install Oculus Mobile SDK
+build_android.bat debug      # Build APK
+deploy_to_quest.bat debug    # Deploy to Quest
+```
+
+**Documentation:**
+- **Quick Start Guide:** [`ANDROID_QUICK_START.md`](ANDROID_QUICK_START.md) - 5-step guide for beginners
+- **Complete Guide:** [`ANDROID_BUILD_GUIDE.md`](ANDROID_BUILD_GUIDE.md) - Full build instructions (724 lines)
+- **SDK Downloads:** [`SDK_DOWNLOAD_GUIDE.md`](SDK_DOWNLOAD_GUIDE.md) - How to get required SDKs
+- **Quick Reference:** [`README_ANDROID.md`](README_ANDROID.md) - Command cheat sheet
+
+**Requirements:**
+- Android Studio with SDK Platform 33 and NDK 25.2.9519653
+- Oculus Mobile SDK (VrApi) - [Download from Meta](https://developer.oculus.com/downloads/native-android/)
+- Meta Quest device with Developer Mode enabled
+
+**Target Devices:** Meta Quest 2, Quest 3, Quest Pro
+
+---
 
 Original Readme.md below.
 

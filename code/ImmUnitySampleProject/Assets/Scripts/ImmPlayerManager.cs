@@ -64,17 +64,30 @@ namespace ImmPlayer
 
         private void Awake()
         {
+            Log("=== ImmPlayerManager.Awake() called ===");
+            Log($"Platform: {Application.platform}");
+            Log($"Unity Version: {Application.unityVersion}");
+            Log($"Device Model: {SystemInfo.deviceModel}");
+            Log($"Operating System: {SystemInfo.operatingSystem}");
+            Log($"Graphics Device: {SystemInfo.graphicsDeviceType}");
+            Log($"Graphics Device Name: {SystemInfo.graphicsDeviceName}");
+            Log($"Graphics Device Version: {SystemInfo.graphicsDeviceVersion}");
+            Log($"Graphics Shader Level: {SystemInfo.graphicsShaderLevel}");
+
             if (_instance != null && _instance != this)
             {
+                Log("ImmPlayerManager instance already exists, destroying duplicate");
                 Destroy(gameObject);
                 return;
             }
             _instance = this;
             DontDestroyOnLoad(gameObject);
+            Log("ImmPlayerManager instance created and set to DontDestroyOnLoad");
         }
 
         private void Start()
         {
+            Log("=== ImmPlayerManager.Start() called ===");
             Initialize();
         }
 
@@ -127,28 +140,36 @@ namespace ImmPlayer
             }
 
             Log("=== IMM Player Initialization Started ===");
+            Log($"Color Space: {(useLinearColorSpace ? "Linear" : "Gamma")}");
+            Log($"Antialiasing Level: {antialiasingLevel}");
+            Log($"Log File Name: {logFileName}");
 
             int colorSpace = useLinearColorSpace ? 0 : 1;
 
             // Use Unity's temporary cache path for temporary files
             string tempFolder = Application.temporaryCachePath;
+            Log($"Temp Folder: {tempFolder}");
 
             try
             {
+                Log("Calling ImmNativePlugin.Init()...");
                 int result = ImmNativePlugin.Init(colorSpace, antialiasingLevel, logFileName, tempFolder);
+                Log($"ImmNativePlugin.Init() returned: {result}");
 
                 if (result < 0)
                 {
                     LogError($"Failed to initialize IMM Player. Error code: {result}");
                     LogError("Possible causes:");
-                    LogError("  1. Missing DLL dependencies in Assets/Plugins/x86_64/");
-                    LogError("  2. DLL platform settings incorrect (must be x86_64, Standalone + Editor)");
-                    LogError("  3. Graphics API not supported (requires DirectX 11 or OpenGL Core)");
+                    LogError("  1. Missing native library dependencies");
+                    LogError("  2. Plugin platform settings incorrect");
+                    LogError("  3. Graphics API not supported (requires DirectX 11, OpenGL Core, or OpenGL ES 3)");
                     LogError($"  4. Check native log file: {logFileName}");
                     return false;
                 }
 
+                Log("Getting render event function...");
                 _renderEventFunc = ImmNativePlugin.GetRenderEventFunc();
+                Log($"Render event function pointer: {_renderEventFunc}");
                 _isInitialized = true;
 
                 Log("=== IMM Player Initialized Successfully ===");
@@ -157,7 +178,7 @@ namespace ImmPlayer
             catch (System.DllNotFoundException ex)
             {
                 LogError("=== DLL NOT FOUND ERROR ===");
-                LogError($"Could not load ImmUnityPlugin.dll or one of its dependencies: {ex.Message}");
+                LogError($"Could not load ImmUnityPlugin native library or one of its dependencies: {ex.Message}");
                 LogError("Required DLLs in Assets/Plugins/x86_64/:");
                 LogError("  - ImmUnityPlugin.dll");
                 LogError("  - Audio360.dll");

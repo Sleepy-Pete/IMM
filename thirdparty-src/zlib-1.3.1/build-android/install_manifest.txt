@@ -1,0 +1,6 @@
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/lib/libz.so
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/lib/libz.a
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/include/zconf.h
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/include/zlib.h
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/share/man/man3/zlib.3
+A:/Github/IMM2/IMM/thirdparty/android/arm64-v8a/share/pkgconfig/zlib.pc

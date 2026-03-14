@@ -1098,13 +1098,19 @@ piShader piRendererGLES::CreateShader( const piShaderOptions *options, const cha
 	const char *etext = es;
 	const char *ftext = fs;
 
-	//LOGD("CreateShader %s", vtext);
+	// Debug: Check GL context
+	const char* glVersion = (const char*)glGetString(GL_VERSION);
+	const char* glslVersion = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
+	LOGD("CreateShader - GL Version: %s, GLSL Version: %s", glVersion ? glVersion : "NULL", glslVersion ? glslVersion : "NULL");
+
 	me->mProgID = GL( glCreateProgram() );
+	LOGD("CreateShader - Program ID: %u", me->mProgID);
 
 	const int mVertShaderID = vs?glCreateShader( GL_VERTEX_SHADER ):-1;
 	const int mCtrlShaderID = cs?glCreateShader( GL_TESS_CONTROL_SHADER ):-1;
 	const int mEvalShaderID = es?glCreateShader( GL_TESS_EVALUATION_SHADER ):-1;
 	const int mFragShaderID = fs?glCreateShader( GL_FRAGMENT_SHADER ):-1;
+	LOGD("CreateShader - Shader IDs: VS=%d, CS=%d, ES=%d, FS=%d", mVertShaderID, mCtrlShaderID, mEvalShaderID, mFragShaderID);
 
 	char optionsStr[80*64] = { 0 };
 	if (options != nullptr)
@@ -1112,6 +1118,9 @@ piShader piRendererGLES::CreateShader( const piShaderOptions *options, const cha
 		if( !createOptionsString(optionsStr, 80*64, options) )
 			return nullptr;
 	}
+	LOGD("CreateShader - Options: %s", optionsStr);
+	LOGD("CreateShader - versionStr: %s", versionStr);
+	if (vs) LOGD("CreateShader - VS first 200 chars: %.200s", vs);
 
 	const GLchar *vstrings[3] = { versionStr, optionsStr, vtext };
 	const GLchar *cstrings[4] = { versionStr, optionsStr, ctext };
@@ -1131,8 +1140,12 @@ piShader piRendererGLES::CreateShader( const piShaderOptions *options, const cha
 	{
 		GL( glCompileShader( mVertShaderID ) );
 		GL( glGetShaderiv( mVertShaderID, GL_COMPILE_STATUS, &result ) );
+		LOGD("CreateShader - VS compile result: %d", result);
 		if( !result )
 		{
+			GLint infoLen = 0;
+			glGetShaderiv(mVertShaderID, GL_INFO_LOG_LENGTH, &infoLen);
+			LOGD("CreateShader - VS info log length: %d", infoLen);
 			error[0]='V'; error[1]='S'; error[2]=':'; glGetShaderInfoLog( mVertShaderID, 1024, NULL, (char *)(error+3) );
 			LOGE("GL Error at %s:%i %s : %s",  __FILE__, __LINE__, __FUNCTION__, error);
 			return nullptr;

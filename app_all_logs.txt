@@ -1,0 +1,7 @@
+﻿
+01-07 01:29:42.129 32586 32586 I ny.IMMUnityTest: Late-enabling 
+-Xcheck:jni
+01-07 01:29:42.169 32586 32586 I ny.IMMUnityTest: Using 
+CollectorTypeCC GC.
+
+

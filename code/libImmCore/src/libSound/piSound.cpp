@@ -2,8 +2,10 @@
 // Branched off piLibs (Copyright © 2015 Inigo Quilez, The MIT License), in 2015. See THIRD_PARTY_LICENSES.txt
 //
 #include "piSoundEngineNULL.h"
+#ifndef ANDROID
 #include "windows/piSoundEngineDS.h"
 #include "windows/piSoundEngineAudioSDKBackend.h"
+#endif
 
 namespace ImmCore
 {
@@ -11,8 +13,10 @@ namespace ImmCore
 	{
 		piSoundEngineBackend *me = nullptr;
 		     if (api == piSoundEngineBackend::API::Null)           me = new piSoundEngineBackendNULL();
+#ifndef ANDROID
 		else if (api == piSoundEngineBackend::API::DirectSound)    me = new piSoundEngineBackendDS();
 		else if (api == piSoundEngineBackend::API::DirectSoundOVR) me = new piSoundEngineAudioSDKBackend();
+#endif
 		else return nullptr;
 
 		if (!me->doInit(log))

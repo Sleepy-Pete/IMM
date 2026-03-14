@@ -1,0 +1,160 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="org.linuxfoundation.imm.player"
+4    android:installLocation="auto"
+5    android:versionCode="1"
+6    android:versionName="1.0.0" >
+7
+8    <uses-sdk
+9        android:minSdkVersion="26"
+10        android:targetSdkVersion="33" />
+11
+12    <!-- Allow reading of the appropriate lens distortion file for the device. -->
+13    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+13-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:8:5-80
+13-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:8:22-77
+14    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+14-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:9:5-81
+14-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:9:22-78
+15    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+15-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:10:5-80
+15-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:10:22-77
+16    <uses-permission android:name="android.permission.INTERNET" />
+16-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:11:5-67
+16-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:11:22-64
+17    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+17-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:12:5-79
+17-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:12:22-76
+18
+19    <uses-feature
+19-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:14:5-113
+20        android:name="android.hardware.vr.headtracking"
+20-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:14:19-66
+21        android:required="true"
+21-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:14:87-110
+22        android:version="1" />
+22-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:14:67-86
+23    <uses-feature android:name="android.hardware.usb.host" />
+23-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:16:5-62
+23-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:16:19-59
+24    <!-- Tell the system this app requires OpenGL ES 3.2. -->
+25    <uses-feature
+25-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:18:5-78
+26        android:glEsVersion="0x00030002"
+26-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:18:19-51
+27        android:required="true" />
+27-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:18:52-75
+28
+29    <permission
+29-->[androidx.core:core:1.10.1] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\99c55aa9eed71e782033ba8fad6ad924\transformed\core-1.10.1\AndroidManifest.xml:22:5-24:47
+30        android:name="org.linuxfoundation.imm.player.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+30-->[androidx.core:core:1.10.1] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\99c55aa9eed71e782033ba8fad6ad924\transformed\core-1.10.1\AndroidManifest.xml:23:9-81
+31        android:protectionLevel="signature" />
+31-->[androidx.core:core:1.10.1] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\99c55aa9eed71e782033ba8fad6ad924\transformed\core-1.10.1\AndroidManifest.xml:24:9-44
+32
+33    <uses-permission android:name="org.linuxfoundation.imm.player.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+33-->[androidx.core:core:1.10.1] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\99c55aa9eed71e782033ba8fad6ad924\transformed\core-1.10.1\AndroidManifest.xml:26:5-97
+33-->[androidx.core:core:1.10.1] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\99c55aa9eed71e782033ba8fad6ad924\transformed\core-1.10.1\AndroidManifest.xml:26:22-94
+34
+35    <application
+35-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:20:5-50:19
+36        android:allowBackup="false"
+36-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:20:18-45
+37        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+37-->[androidx.core:core:1.10.1] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\99c55aa9eed71e782033ba8fad6ad924\transformed\core-1.10.1\AndroidManifest.xml:28:18-86
+38        android:debuggable="true"
+39        android:extractNativeLibs="false"
+40        android:label="Imm Viewer" >
+40-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:20:46-72
+41        <meta-data
+41-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:21:9-100
+42            android:name="com.samsung.android.vr.application.mode"
+42-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:21:20-74
+43            android:value="vr_only" />
+43-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:21:75-98
+44        <meta-data
+44-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:22:9-85
+45            android:name="com.oculus.supportedDevices"
+45-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:22:20-62
+46            android:value="all" />
+46-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:22:63-82
+47        <meta-data
+47-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:23:9-25:36
+48            android:name="com.oculus.application.colorspace"
+48-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:24:13-61
+49            android:value="!Rift" />
+49-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:25:13-34
+50
+51        <!-- The activity is the built-in NativeActivity framework class. -->
+52        <!-- launchMode is set to singleTask because there should never be multiple copies of the app running. -->
+53        <!-- Theme.Black.NoTitleBar.Fullscreen gives solid black instead of a (bad stereoscopic) gradient on app transition. -->
+54        <!-- If targeting API level 24+, configChanges should additionally include 'density'. -->
+55        <!-- If targeting API level 24+, android:resizeableActivity="false" should be added. -->
+56        <activity
+56-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:32:9-49:20
+57            android:name="org.linuxfoundation.imm.player.MainActivity"
+57-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:33:13-71
+58            android:configChanges="screenSize|screenLayout|orientation|keyboardHidden|keyboard|navigation|uiMode"
+58-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:39:13-114
+59            android:excludeFromRecents="false"
+59-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:37:13-47
+60            android:exported="true"
+60-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:38:13-36
+61            android:launchMode="singleTask"
+61-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:35:13-44
+62            android:screenOrientation="landscape"
+62-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:36:13-50
+63            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" >
+63-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:34:13-77
+64
+65            <!-- Tell NativeActivity the name of the .so -->
+66            <meta-data
+66-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:41:13-91
+67                android:name="android.app.lib_name"
+67-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:41:24-59
+68                android:value="appImmPlayer" />
+68-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:41:60-88
+69            <!-- Indicate the activity is aware of VrApi focus states required for system overlays -->
+70            <meta-data
+70-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:43:13-86
+71                android:name="com.oculus.vr.focusaware"
+71-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:43:24-63
+72                android:value="true" />
+72-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:43:64-84
+73            <!-- This filter lets the apk show up as a launchable icon. -->
+74            <intent-filter>
+74-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:45:13-48:29
+75                <action android:name="android.intent.action.MAIN" />
+75-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:46:17-69
+75-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:46:25-66
+76
+77                <category android:name="android.intent.category.LAUNCHER" />
+77-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:47:17-77
+77-->A:\Github\IMM2\IMM\code\appImmViewer\src\android\AndroidManifest.xml:47:27-74
+78            </intent-filter>
+79        </activity>
+80
+81        <provider
+81-->[androidx.emoji2:emoji2:1.2.0] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\138d20e49e402fbfb352d1be1e447d25\transformed\emoji2-1.2.0\AndroidManifest.xml:24:9-32:20
+82            android:name="androidx.startup.InitializationProvider"
+82-->[androidx.emoji2:emoji2:1.2.0] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\138d20e49e402fbfb352d1be1e447d25\transformed\emoji2-1.2.0\AndroidManifest.xml:25:13-67
+83            android:authorities="org.linuxfoundation.imm.player.androidx-startup"
+83-->[androidx.emoji2:emoji2:1.2.0] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\138d20e49e402fbfb352d1be1e447d25\transformed\emoji2-1.2.0\AndroidManifest.xml:26:13-68
+84            android:exported="false" >
+84-->[androidx.emoji2:emoji2:1.2.0] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\138d20e49e402fbfb352d1be1e447d25\transformed\emoji2-1.2.0\AndroidManifest.xml:27:13-37
+85            <meta-data
+85-->[androidx.emoji2:emoji2:1.2.0] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\138d20e49e402fbfb352d1be1e447d25\transformed\emoji2-1.2.0\AndroidManifest.xml:29:13-31:52
+86                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+86-->[androidx.emoji2:emoji2:1.2.0] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\138d20e49e402fbfb352d1be1e447d25\transformed\emoji2-1.2.0\AndroidManifest.xml:30:17-75
+87                android:value="androidx.startup" />
+87-->[androidx.emoji2:emoji2:1.2.0] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\138d20e49e402fbfb352d1be1e447d25\transformed\emoji2-1.2.0\AndroidManifest.xml:31:17-49
+88            <meta-data
+88-->[androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\b5fa29ec5b9a83b3f38ec92f2d7e35a3\transformed\lifecycle-process-2.4.1\AndroidManifest.xml:31:13-33:52
+89                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+89-->[androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\b5fa29ec5b9a83b3f38ec92f2d7e35a3\transformed\lifecycle-process-2.4.1\AndroidManifest.xml:32:17-78
+90                android:value="androidx.startup" />
+90-->[androidx.lifecycle:lifecycle-process:2.4.1] C:\Users\pjpar\.gradle\caches\8.11.1\transforms\b5fa29ec5b9a83b3f38ec92f2d7e35a3\transformed\lifecycle-process-2.4.1\AndroidManifest.xml:33:17-49
+91        </provider>
+92    </application>
+93
+94</manifest>

@@ -1,0 +1,13 @@
+A:/Github/IMM2/IMM/code/appImmViewer/.cxx/Debug/5l4u622g/arm64-v8a/CMakeFiles/appImmPlayer.dir
+A:/Github/IMM2/IMM/code/appImmViewer/.cxx/Debug/5l4u622g/arm64-v8a/CMakeFiles/native_app_glue.dir
+A:/Github/IMM2/IMM/code/appImmViewer/.cxx/Debug/5l4u622g/arm64-v8a/CMakeFiles/edit_cache.dir
+A:/Github/IMM2/IMM/code/appImmViewer/.cxx/Debug/5l4u622g/arm64-v8a/CMakeFiles/rebuild_cache.dir
+A:/Github/IMM2/IMM/code/appImmViewer/.cxx/Debug/5l4u622g/arm64-v8a/libImmCore/CMakeFiles/ImmCore.dir
+A:/Github/IMM2/IMM/code/appImmViewer/.cxx/Debug/5l4u622g/arm64-v8a/libImmCore/CMakeFiles/edit_cache.dir
+A:/Github/IMM2/IMM/code/appImmViewer/.cxx/Debug/5l4u622g/arm64-v8a/libImmCore/CMakeFiles/rebuild_cache.dir
+A:/Github/IMM2/IMM/code/appImmViewer/.cxx/Debug/5l4u622g/arm64-v8a/libImmImporter/CMakeFiles/ImmImporter.dir
+A:/Github/IMM2/IMM/code/appImmViewer/.cxx/Debug/5l4u622g/arm64-v8a/libImmImporter/CMakeFiles/edit_cache.dir
+A:/Github/IMM2/IMM/code/appImmViewer/.cxx/Debug/5l4u622g/arm64-v8a/libImmImporter/CMakeFiles/rebuild_cache.dir
+A:/Github/IMM2/IMM/code/appImmViewer/.cxx/Debug/5l4u622g/arm64-v8a/libImmPlayer/CMakeFiles/ImmPlayer.dir
+A:/Github/IMM2/IMM/code/appImmViewer/.cxx/Debug/5l4u622g/arm64-v8a/libImmPlayer/CMakeFiles/edit_cache.dir
+A:/Github/IMM2/IMM/code/appImmViewer/.cxx/Debug/5l4u622g/arm64-v8a/libImmPlayer/CMakeFiles/rebuild_cache.dir

@@ -1,0 +1,52 @@
+// Top-level build file for IMM Viewer Android Project
+// This configures the build system for creating Meta Quest APKs
+
+buildscript {
+    ext {
+        // Kotlin version (compatible with AGP 8.5)
+        kotlin_version = '1.9.22'
+        
+        // Android build tools versions
+        compileSdkVersion = 33
+        minSdkVersion = 26  // Android 8.0 (Oreo) - Required for Quest
+        targetSdkVersion = 33
+        
+        // NDK and CMake versions
+        ndkVersion = '25.2.9519653'
+        cmakeVersion = '3.22.1'
+        
+        // Dependency versions
+        appCompatVersion = '1.6.1'
+        coreKtxVersion = '1.12.0'
+        coroutinesVersion = '1.7.3'
+        
+        // Build configuration
+        buildToolsVersion = '33.0.2'
+    }
+    
+    repositories {
+        google()
+        mavenCentral()
+    }
+    
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.5.2'  // Compatible with Java 17+ and Gradle 8.5+
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+// Repositories are now managed in settings.gradle (Gradle 8.x requirement)
+// allprojects block removed to comply with repositoriesMode.FAIL_ON_PROJECT_REPOS
+
+// Configure Java toolchain to use Java 17 (required for AGP 8.5.2)
+allprojects {
+    tasks.withType(JavaCompile).configureEach {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
