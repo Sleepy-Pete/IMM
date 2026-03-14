@@ -66,6 +66,8 @@ namespace ExePlayer
 		//
 
         bool mFilesLoaded;
+        bool mWasMouseDown = false;
+        bool mSpawnAreaReady = false;
 
         struct DisplayRenderState
         {
@@ -155,12 +157,17 @@ namespace ExePlayer
         const ImmCore::piImage * GetSpawnAreaScreenshot(int docID, int spawnAreaID);
         int GetInitalSpawnArea(int docID);
         int GetSpawnAreaCount(int docID) { return mPlayer.GetSpawnAreaCount(0); }
+        int GetSpawnArea(int docID) { return mPlayer.GetSpawnArea(docID); }
         void TogglePlaybackState(int docID);
 
         void EnablePerformanceMeasurement(bool enabled) { mPlayer.EnablePerformanceMeasurement(enabled); }
 
         void SetVolume(int docID, float volume);
         bool GetVolume(int docID);
+
+        // Touch control methods for non-VR Android
+        void RotateCamera(float deltaYaw, float deltaPitch);
+        void MoveCameraForward(float distance);
 
         bool HasPrev(int docID);
 

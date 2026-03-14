@@ -1,7 +1,7 @@
 //
 // Branched off piLibs (Copyright © 2015 Inigo Quilez, The MIT License), in 2015. See THIRD_PARTY_LICENSES.txt
 //
-#include <malloc.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #include "piGL4X_Renderer.h"
@@ -125,6 +125,19 @@ static uint64_t piTexture_GetMem( const piITexture *me )
 static const unsigned int wrap2gl[]   = { GL_CLAMP_TO_BORDER, GL_CLAMP_TO_EDGE, GL_REPEAT, GL_MIRROR_CLAMP_TO_EDGE, GL_MIRRORED_REPEAT };
 static const unsigned int glType[]    = { GL_UNSIGNED_BYTE, GL_FLOAT, GL_INT, GL_DOUBLE, GL_HALF_FLOAT };
 static const unsigned int glSizeof[]  = { 1, 4, 4, 8, 2};
+
+#if defined(__APPLE__)
+static GLenum iBufferTarget(piRenderer::BufferUse use)
+{
+    if ((int)use & (int)piRenderer::BufferUse::Index) return GL_ELEMENT_ARRAY_BUFFER;
+    if ((int)use & (int)piRenderer::BufferUse::Constant) return GL_UNIFORM_BUFFER;
+    if ((int)use & (int)piRenderer::BufferUse::ShaderResource) return GL_SHADER_STORAGE_BUFFER;
+    if ((int)use & (int)piRenderer::BufferUse::Atomics) return GL_ATOMIC_COUNTER_BUFFER;
+    if ((int)use & (int)piRenderer::BufferUse::DrawCommands) return GL_DRAW_INDIRECT_BUFFER;
+    if ((int)use & (int)piRenderer::BufferUse::Pixel) return GL_PIXEL_UNPACK_BUFFER;
+    return GL_ARRAY_BUFFER;
+}
+#endif
 
 //---------------------------------------------
 
@@ -377,8 +390,16 @@ bool piRendererGL4X::Initialize(int id, const void **hwnd, int num, bool disable
     // set log
     if( reporter )
     {
+#if defined(__APPLE__)
+        if (oglDebugMessageCallback && oglDebugMessageControl)
+        {
+            oglDebugMessageCallback( DebugLog, this );
+            oglDebugMessageControl( GL_DONT_CARE, GL_DONT_CARE,GL_DONT_CARE, 0, 0, GL_TRUE );
+        }
+#else
         oglDebugMessageCallback( DebugLog, this );
         oglDebugMessageControl( GL_DONT_CARE, GL_DONT_CARE,GL_DONT_CARE, 0, 0, GL_TRUE );
+#endif
         glEnable( GL_DEBUG_OUTPUT );
         glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
     }
@@ -535,7 +556,12 @@ void piRendererGL4X::SetShadingSamples( int shadingSamples )
     if( shadingSamples>1 && rt!=NULL )
     {
         glEnable( GL_SAMPLE_SHADING );
+#if defined(__APPLE__)
+        if (oglMinSampleShading)
+            oglMinSampleShading( (float)shadingSamples/(float)rt->mSamples );
+#else
         oglMinSampleShading( (float)shadingSamples/(float)rt->mSamples );
+#endif
     }
     else
     {
@@ -583,22 +609,52 @@ piRTarget piRendererGL4X::CreateRenderTarget( piTexture vtex0, piTexture vtex1, 
     if (!found) return nullptr;
 
 
-    oglCreateFramebuffers(1, (GLuint*)&me->mObjectID);
+    if (oglCreateFramebuffers)
+    {
+        oglCreateFramebuffers(1, (GLuint*)&me->mObjectID);
+    }
+#if defined(__APPLE__)
+    else
+    {
+        glGenFramebuffers(1, (GLuint*)&me->mObjectID);
+        glBindFramebuffer(GL_FRAMEBUFFER, me->mObjectID);
+    }
+#endif
 
 
     if( zbu )
     {
-        if (hasLayers )
-            oglNamedFramebufferTextureLayer(me->mObjectID, GL_DEPTH_ATTACHMENT, zbu->mObjectID, 0, 0);
+        if (oglNamedFramebufferTexture)
+        {
+            if (hasLayers )
+                oglNamedFramebufferTextureLayer(me->mObjectID, GL_DEPTH_ATTACHMENT, zbu->mObjectID, 0, 0);
+            else
+                oglNamedFramebufferTexture(me->mObjectID, GL_DEPTH_ATTACHMENT, zbu->mObjectID, 0);
+        }
+#if defined(__APPLE__)
         else
-            oglNamedFramebufferTexture(me->mObjectID, GL_DEPTH_ATTACHMENT, zbu->mObjectID, 0);
+        {
+            GLenum target = (me->mSamples > 1) ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, target, zbu->mObjectID, 0);
+        }
+#endif
     }
     else
     {
-        if (hasLayers)
-            oglNamedFramebufferTextureLayer(me->mObjectID, GL_DEPTH_ATTACHMENT, 0, 0, 0);
+        if (oglNamedFramebufferTexture)
+        {
+            if (hasLayers)
+                oglNamedFramebufferTextureLayer(me->mObjectID, GL_DEPTH_ATTACHMENT, 0, 0, 0);
+            else
+                oglNamedFramebufferTexture(me->mObjectID, GL_DEPTH_ATTACHMENT, 0, 0);
+        }
+#if defined(__APPLE__)
         else
-            oglNamedFramebufferTexture(me->mObjectID, GL_DEPTH_ATTACHMENT, 0, 0);
+        {
+            GLenum target = (me->mSamples > 1) ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, target, 0, 0);
+        }
+#endif
     }
 
     GLenum       mMRT[4];
@@ -607,29 +663,67 @@ piRTarget piRendererGL4X::CreateRenderTarget( piTexture vtex0, piTexture vtex1, 
     {
         if( tex[i] )
         {
-            if (hasLayers)
-                oglNamedFramebufferTextureLayer(me->mObjectID, GL_COLOR_ATTACHMENT0 + i, tex[i]->mObjectID, 0, 0);
+            if (oglNamedFramebufferTexture)
+            {
+                if (hasLayers)
+                    oglNamedFramebufferTextureLayer(me->mObjectID, GL_COLOR_ATTACHMENT0 + i, tex[i]->mObjectID, 0, 0);
+                else
+                    oglNamedFramebufferTexture(me->mObjectID, GL_COLOR_ATTACHMENT0 + i, tex[i]->mObjectID, 0);
+            }
+#if defined(__APPLE__)
             else
-                oglNamedFramebufferTexture(me->mObjectID, GL_COLOR_ATTACHMENT0 + i, tex[i]->mObjectID, 0);
+            {
+                GLenum target = (me->mSamples > 1) ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, target, tex[i]->mObjectID, 0);
+            }
+#endif
             mMRT[i] = GL_COLOR_ATTACHMENT0 + i;
             mNumMRT++;
         }
         else
         {
-            if (hasLayers)
-                oglNamedFramebufferTextureLayer(me->mObjectID, GL_COLOR_ATTACHMENT0 + i, 0, 0, 0);
+            if (oglNamedFramebufferTexture)
+            {
+                if (hasLayers)
+                    oglNamedFramebufferTextureLayer(me->mObjectID, GL_COLOR_ATTACHMENT0 + i, 0, 0, 0);
+                else
+                    oglNamedFramebufferTexture(me->mObjectID, GL_COLOR_ATTACHMENT0 + i, 0, 0);
+            }
+#if defined(__APPLE__)
             else
-                oglNamedFramebufferTexture(me->mObjectID, GL_COLOR_ATTACHMENT0 + i, 0, 0);
+            {
+                GLenum target = (me->mSamples > 1) ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, target, 0, 0);
+            }
+#endif
             mMRT[i] = 0;
         }
     }
 
-    oglNamedFramebufferDrawBuffers(me->mObjectID, mNumMRT, mMRT);
+    if (oglNamedFramebufferDrawBuffers)
+        oglNamedFramebufferDrawBuffers(me->mObjectID, mNumMRT, mMRT);
+#if defined(__APPLE__)
+    else
+        glDrawBuffers(mNumMRT, mMRT);
+#endif
 
 
-    GLenum st = oglCheckNamedFramebufferStatus(me->mObjectID, GL_FRAMEBUFFER);
+    GLenum st = oglCheckNamedFramebufferStatus ? oglCheckNamedFramebufferStatus(me->mObjectID, GL_FRAMEBUFFER)
+#if defined(__APPLE__)
+                                               : glCheckFramebufferStatus(GL_FRAMEBUFFER);
+#else
+                                               : GL_FRAMEBUFFER_UNSUPPORTED;
+#endif
     if (st != GL_FRAMEBUFFER_COMPLETE)
+    {
+        if (mReporter)
+        {
+            char buf[128];
+            sprintf(buf, "Framebuffer incomplete: 0x%X", st);
+            mReporter->Error(buf, 0);
+        }
         return nullptr;
+    }
 
     return (piRTarget)me;
 }
@@ -638,7 +732,12 @@ void piRendererGL4X::DestroyRenderTarget( piRTarget obj )
 {
     piIRTarget *me = (piIRTarget*)obj;
 
-    oglDeleteFramebuffers( 1, (GLuint*)&me->mObjectID );
+    if (oglDeleteFramebuffers)
+        oglDeleteFramebuffers( 1, (GLuint*)&me->mObjectID );
+#if defined(__APPLE__)
+    else
+        glDeleteFramebuffers(1, (GLuint*)&me->mObjectID);
+#endif
 }
 
 void piRendererGL4X::RenderTargetSampleLocations(piRTarget vdst, const float *locations )
@@ -820,7 +919,7 @@ piTexture piRendererGL4X::CreateTextureFromID(unsigned int id, TextureFilter fil
     else if( data[2]==GL_TEXTURE_2D_MULTISAMPLE_ARRAY) me->mInfo.mType = TextureType::T2D_ARRAY;
     else return nullptr;
 
-         if( data[3]==GL_CLAMP ) me->mWrap = TextureWrap::CLAMP;
+		 if( data[3]==GL_CLAMP_TO_EDGE ) me->mWrap = TextureWrap::CLAMP;
     else if( data[3]==GL_REPEAT) me->mWrap = TextureWrap::REPEAT;
     else if( data[3]==GL_CLAMP_TO_EDGE) me->mWrap = TextureWrap::CLAMP_TO_BORDER;
     else return nullptr;
@@ -911,6 +1010,81 @@ piTexture piRendererGL4X::CreateTexture( const wchar_t *key, const TextureInfo *
     me->mWrap = wrap1;
 
     const int wrap = wrap2gl[static_cast<int>(wrap1)];
+
+#if defined(__APPLE__)
+    if (oglCreateTextures == 0)
+    {
+        if (info->mType == piRenderer::TextureType::T2D)
+        {
+            glGenTextures(1, &me->mObjectID);
+            if (info->mMultisample > 1)
+            {
+                glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, me->mObjectID);
+                glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, info->mMultisample, moInternal, info->mXres, info->mYres, GL_FALSE);
+                glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+            }
+            else
+            {
+                glBindTexture(GL_TEXTURE_2D, me->mObjectID);
+                if (filter == piRenderer::TextureFilter::MIPMAP || filter == piRenderer::TextureFilter::NONE_MIPMAP)
+                {
+                    glTexImage2D(GL_TEXTURE_2D, 0, moInternal, info->mXres, info->mYres, 0, moFormat, moType, buffer);
+                    glGenerateMipmap(GL_TEXTURE_2D);
+                    const int numMipmaps = ilog2i(info->mXres);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, numMipmaps);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (filter == piRenderer::TextureFilter::MIPMAP) ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST_MIPMAP_LINEAR);
+                }
+                else
+                {
+                    glTexImage2D(GL_TEXTURE_2D, 0, moInternal, info->mXres, info->mYres, 0, moFormat, moType, 0);
+                    if (buffer)
+                    {
+                        const int rowsize = info->mXres*bpp;
+                        if ((rowsize & 3) == 0) glPixelStorei(GL_UNPACK_ALIGNMENT, 4); else glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+                        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, info->mXres, info->mYres, moFormat, moType, buffer);
+                    }
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (filter == piRenderer::TextureFilter::NONE) ? GL_NEAREST : GL_LINEAR);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (filter == piRenderer::TextureFilter::NONE) ? GL_NEAREST : GL_LINEAR);
+                }
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
+                if (aniso>1.0001f)
+                    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso);
+                glBindTexture(GL_TEXTURE_2D, 0);
+            }
+        }
+        else if (info->mType == piRenderer::TextureType::T2D_ARRAY)
+        {
+            glGenTextures(1, &me->mObjectID);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, me->mObjectID);
+            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, moInternal, info->mXres, info->mYres, info->mZres, 0, moFormat, moType, buffer);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BASE_LEVEL, 0);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, 0);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, (filter == piRenderer::TextureFilter::NONE) ? GL_NEAREST : GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, (filter == piRenderer::TextureFilter::NONE) ? GL_NEAREST : GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, wrap);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, wrap);
+            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_R, wrap);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+        }
+        else
+        {
+            free(me);
+            return nullptr;
+        }
+
+        me->mHandle = 0;
+        mMemCurrent += piTexture_GetMem( me );
+        mNumCurrent += 1;
+        if( mNumCurrent>mNumPeak ) mNumPeak = mNumCurrent;
+        if( mMemCurrent>mMemPeak ) mMemPeak = mMemCurrent;
+        return (piTexture)me;
+    }
+#endif
 
     if (info->mType == piRenderer::TextureType::T2D)
     {
@@ -1245,7 +1419,10 @@ piTexture piRendererGL4X::CreateTexture( const wchar_t *key, const TextureInfo *
 
     }
 
-    me->mHandle = oglGetTextureHandle(me->mObjectID);
+    if (oglGetTextureHandle)
+        me->mHandle = oglGetTextureHandle(me->mObjectID);
+    else
+        me->mHandle = 0;
 
     mMemCurrent += piTexture_GetMem( me );
     mNumCurrent += 1;
@@ -1377,15 +1554,21 @@ void piRendererGL4X::MakeResident( piTexture vme )
 {
     piITexture *me = (piITexture*)vme;
     if( me->mIsResident ) return;
-    oglMakeTextureHandleResident( me->mHandle );
-    me->mIsResident = true;
+    if (oglMakeTextureHandleResident && me->mHandle != 0)
+    {
+        oglMakeTextureHandleResident( me->mHandle );
+        me->mIsResident = true;
+    }
 }
 void piRendererGL4X::MakeNonResident( piTexture vme )
 {
     piITexture *me = (piITexture*)vme;
     if( !me->mIsResident ) return;
-    oglMakeTextureHandleNonResident( me->mHandle );
-    me->mIsResident = false;
+    if (oglMakeTextureHandleNonResident && me->mHandle != 0)
+    {
+        oglMakeTextureHandleNonResident( me->mHandle );
+        me->mIsResident = false;
+    }
 }
 uint64_t piRendererGL4X::GetTextureHandle( piTexture vme )
 {
@@ -1486,9 +1669,15 @@ void piRendererGL4X::DettachSamplers( void )
 }
 
 //===========================================================================================================================================
+#if defined(__APPLE__)
+static const char *versionStr = "#version 410 core\n";
+static const char *vsExtraStr = "";
+static const char *fsExtraStr = "";
+#else
 static const char *versionStr = "#version 450 core\n";
 static const char *vsExtraStr = "#extension GL_ARB_shader_draw_parameters : enable\n#extension GL_ARB_bindless_texture : enable\n";
 static const char *fsExtraStr =                                                    "#extension GL_ARB_bindless_texture : enable\n";
+#endif
 
 static bool createOptionsString(char *buffer, const int bufferLength, const piShaderOptions *options )
 {
@@ -1931,6 +2120,14 @@ void piRendererGL4X::SetShaderConstantSampler(const unsigned int pos, int unit)
     oglUniform1i(pos,unit);
 }
 
+int piRendererGL4X::GetShaderUniformLocation(piShader shader, const char *name)
+{
+    if (!shader || !name)
+        return -1;
+    piIShader *me = (piIShader*)shader;
+    return oglGetUniformLocation(me->mProgID, name);
+}
+
 static const int r2gl_blendMode[] = {
     GL_ONE,
     GL_SRC_ALPHA,
@@ -2184,31 +2381,25 @@ piBuffer piRendererGL4X::CreateBuffer(const void *data, unsigned int amount, Buf
     if (!me)
         return nullptr;
 
+#if defined(__APPLE__)
+    glGenBuffers(1, &me->mObjectID);
+    GLenum target = iBufferTarget(use);
+    glBindBuffer(target, me->mObjectID);
+    GLenum usage = (mode == BufferType::Dynamic) ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
+    glBufferData(target, amount, data, usage);
+    glBindBuffer(target, 0);
+#else
     oglCreateBuffers(1, &me->mObjectID);
 
     if (mode == BufferType::Dynamic)
     {
         oglNamedBufferStorage(me->mObjectID, amount, data, GL_DYNAMIC_STORAGE_BIT);
-
-
-        //GL_MAP_UNSYNCHRONIZED_BIT|GL_MAP_WRITE_BIT
-
-
-        //GL_DYNAMIC_STORAGE_BIT   // can call glBufferSubData to copy data after initialzation, from the client. Without it, only the GPU can update the buffer wutg glCopyBufferSubData, glClearBufferSubData or shaders
-        //GL_MAP_READ_BIT          // the CPU can query a pointer for reading
-        //GL_MAP_WRITE_BIT         // the CPU can query a pointer for writing
-
-        //GL_MAP_PERSISTENT_BIT|GL_MAP_READ_BIT						// to request CPU and GPU cna operate simultaenously on the buffer
-        //GL_MAP_PERSISTENT_BIT|GL_MAP_WRITE_BIT					// to request CPU and GPU cna operate simultaenously on the buffer
-        //GL_MAP_PERSISTENT_BIT|GL_MAP_READ_BIT|GL_MAP_WRITE_BIT    // to request CPU and GPU cna operate simultaenously on the buffer
-
-        // add GL_MAP_COHERENT_BIT to those to make the DMA move data from CPU to GPU automatically while the buffers are mapped in the CPU
-
     }
     else
     {
         oglNamedBufferStorage(me->mObjectID, amount, data, 0);
     }
+#endif
     me->mSize = amount;
     me->mUse = use;
     me->mPtr = nullptr;
@@ -2228,6 +2419,17 @@ piBuffer piRendererGL4X::CreateBufferMapped_Start(void **ptr, unsigned int amoun
     if (!me)
         return nullptr;
 
+#if defined(__APPLE__)
+    glGenBuffers(1, &me->mObjectID);
+    GLenum target = iBufferTarget(use);
+    glBindBuffer(target, me->mObjectID);
+    glBufferData(target, amount, 0, GL_DYNAMIC_DRAW);
+    me->mPtr = glMapBufferRange(target, 0, amount, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+    if (me->mPtr == nullptr)
+        return 0;
+    glBindBuffer(target, 0);
+    me->mSync = 0;
+#else
     oglCreateBuffers(1, &me->mObjectID);
 
     oglNamedBufferStorage(me->mObjectID, amount, 0, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
@@ -2236,6 +2438,7 @@ piBuffer piRendererGL4X::CreateBufferMapped_Start(void **ptr, unsigned int amoun
     if (me->mPtr == nullptr )
         return 0;
     me->mSync = oglFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+#endif
 
     me->mSize = amount;
     me->mUse = use;
@@ -2253,7 +2456,14 @@ piBuffer piRendererGL4X::CreateBufferMapped_Start(void **ptr, unsigned int amoun
 void piRendererGL4X::CreateBufferMapped_End(piBuffer vme)
 {
     piIBuffer *me = (piIBuffer*)vme;
+#if defined(__APPLE__)
+    GLenum target = iBufferTarget(me->mUse);
+    glBindBuffer(target, me->mObjectID);
+    glUnmapBuffer(target);
+    glBindBuffer(target, 0);
+#else
     oglUnmapNamedBuffer(me->mObjectID);
+#endif
 }
 
 void piRendererGL4X::DestroyBuffer(piBuffer vme)
@@ -2273,10 +2483,18 @@ piBuffer piRendererGL4X::CreateStructuredBuffer(const void *data, unsigned int n
 void piRendererGL4X::UpdateBuffer(piBuffer obj, const void *data, int offset, int len, bool invalidate)
 {
     piIBuffer *me = (piIBuffer *)obj;
+#if defined(__APPLE__)
+    GLenum target = iBufferTarget(me->mUse);
+    glBindBuffer(target, me->mObjectID);
+    glBufferSubData(target, offset, len, data);
+    glBindBuffer(target, 0);
+    (void)invalidate;
+#else
     oglNamedBufferSubData(me->mObjectID, offset, len, data);
 
     if( invalidate )
         oglInvalidateBufferData(me->mObjectID);
+#endif
 
     /*
     while(1)
@@ -2303,6 +2521,52 @@ piVertexArray piRendererGL4X::CreateVertexArray( int numStreams,
     if( !me )
         return nullptr;
 
+#if defined(__APPLE__)
+    glGenVertexArrays(1, &me->mObjectID);
+    if (!me->mObjectID)
+        return nullptr;
+
+    glBindVertexArray(me->mObjectID);
+
+    unsigned int aid = 0;
+    if (numStreams > 0)
+    {
+        for (int j = 0; j < numStreams; j++)
+        {
+            const piRArrayLayout * st = (j == 0) ? streamLayout0 : streamLayout1;
+            piBuffer vb = (j == 0) ? vb0 : vb1;
+
+            glBindBuffer(GL_ARRAY_BUFFER, ((piIBuffer*)vb)->mObjectID);
+
+            int offset = 0;
+            const int num = st->mNumElements;
+            for (int i = 0; i < num; i++)
+            {
+                glEnableVertexAttribArray(aid);
+                glVertexAttribPointer(aid,
+                                      st->mEntry[i].mNumComponents,
+                                      glType[st->mEntry[i].mType],
+                                      st->mEntry[i].mNormalize ? GL_TRUE : GL_FALSE,
+                                      st->mStride,
+                                      (void*)(uintptr_t)offset);
+                glVertexAttribDivisor(aid, st->mDivisor);
+                offset += st->mEntry[i].mNumComponents*glSizeof[st->mEntry[i].mType];
+                aid++;
+            }
+        }
+    }
+
+    if (eb != nullptr)
+    {
+        me->mIndexArrayType = ebFormat;
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ((piIBuffer*)eb)->mObjectID);
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    return (piVertexArray)me;
+#else
     oglCreateVertexArrays(1, &me->mObjectID);
     if (!me->mObjectID)
         return nullptr;
@@ -2314,8 +2578,6 @@ piVertexArray piRendererGL4X::CreateVertexArray( int numStreams,
         for (int j = 0; j < numStreams; j++)
         {
             unsigned int sid = j;
-
-            //me->mStreams[j] = (j == 0) *streamLayout0 : *streamLayout1;
 
             const piRArrayLayout * st = (j == 0) ? streamLayout0 : streamLayout1;
             piBuffer vb = (j == 0) ? vb0 : vb1;
@@ -2334,20 +2596,15 @@ piVertexArray piRendererGL4X::CreateVertexArray( int numStreams,
             oglVertexArrayBindingDivisor(me->mObjectID, sid, st->mDivisor);
         }
     }
-    else
-    {
-        //oglDisableVertexArrayAttrib(me->mObjectID, aid);
-        //oglVertexArrayVertexBuffer(me->mObjectID, 0, 0, 0, 0);
-    }
 
     if (eb != nullptr)
     {
-
         me->mIndexArrayType = ebFormat;
         oglVertexArrayElementBuffer(me->mObjectID, ((piIBuffer*)eb)->mObjectID);
     }
 
     return (piVertexArray)me;
+#endif
 }
 
 void piRendererGL4X::DestroyVertexArray(piVertexArray vme)

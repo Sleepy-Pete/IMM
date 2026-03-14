@@ -1,4 +1,3 @@
-
 # About this fork (Sleepy-Pete/IMM)
 
 This fork is based on the excellent work from [icosa-mirror/IMM](https://github.com/icosa-mirror/IMM) by Joan Charmant and Andy Baker, which added:
@@ -6,7 +5,11 @@ This fork is based on the excellent work from [icosa-mirror/IMM](https://github.
 - Oculus PC VR SDK and Platform SDK integration
 - Facebook Audio360 SDK for spatial audio
 - Enhanced runtime API for layer control
+- Chapter support and action keyframes
+- Android/Quest VR builds with audio
+- Non-VR standalone controls (PC + touch)
 - All dependencies vendored and ready to build
+- Automated UPM package releases
 
 **Upstream repositories and contributors:**
 - **Original IMM project:** [Immersive-Foundation/IMM](https://github.com/Immersive-Foundation/IMM) by Inigo Quilez and the Immersive Foundation team
@@ -17,7 +20,10 @@ All commit history and authorship is preserved. See git log for full attribution
 
 ---
 
-## About the icosa-mirror fork
+> **Before building:** see [`BUILDING.md`](BUILDING.md) for a concise reference.
+> Key rules: always build via the **solution file** (not individual `.vcxproj`); use **PowerShell/cmd** or `-p:` flags in bash.
+
+# About the icosa-mirror fork
 
 This fork is a version of the IMM code base with the dependencies vendored in and committed. This is to have a reference snapshot of a reproducible build for the Windows IMM player, as some of the dependencies may become hard to find in the future.
 
@@ -44,42 +50,7 @@ Summary of the dependencies
 
 Aside from fixing a couple of includes no other change was made to the code base.
 
-## Building
-
-### Windows Build
-To build for Windows, use Visual Studio 2022 with Windows SDK 10.0.26100.
-Build order: libCore > libImmImporter > libImmPlayer > appImmViewer.
-
-Or use the automated build script:
-```batch
-build.bat
-```
-
-### Android Build (NEW - January 2026)
-To build for Meta Quest (Android), a complete Android Studio project has been created.
-
-**Quick Start:**
-```batch
-verify_android_setup.bat     # Check if setup is complete
-setup_oculus_sdk.bat         # Install Oculus Mobile SDK
-build_android.bat debug      # Build APK
-deploy_to_quest.bat debug    # Deploy to Quest
-```
-
-**Documentation:**
-- **Quick Start Guide:** [`ANDROID_QUICK_START.md`](ANDROID_QUICK_START.md) - 5-step guide for beginners
-- **Complete Guide:** [`ANDROID_BUILD_GUIDE.md`](ANDROID_BUILD_GUIDE.md) - Full build instructions (724 lines)
-- **SDK Downloads:** [`SDK_DOWNLOAD_GUIDE.md`](SDK_DOWNLOAD_GUIDE.md) - How to get required SDKs
-- **Quick Reference:** [`README_ANDROID.md`](README_ANDROID.md) - Command cheat sheet
-
-**Requirements:**
-- Android Studio with SDK Platform 33 and NDK 25.2.9519653
-- Oculus Mobile SDK (VrApi) - [Download from Meta](https://developer.oculus.com/downloads/native-android/)
-- Meta Quest device with Developer Mode enabled
-
-**Target Devices:** Meta Quest 2, Quest 3, Quest Pro
-
----
+To build I used Visual Studio 2022 with Windows SDK 10.0.26100. Build order: libCore > libImmImporter > libImmPlayer > appImmViewer.
 
 Original Readme.md below.
 
@@ -97,7 +68,7 @@ This is achieved by honoring the original 3D nature of the content. 3D models, 3
 
 The current IMM repository contains the IMM exporter and importer, as well as a reference playback engine.
 
-IMM has been used to deliver a few dozen films, including the Tribeca film festival nominated "Rebels", the "Tale of Soda Island" series,  “The Remedy”, "Goodbye Mr. Octopus", "4 Stories" and many more.
+IMM has been used to deliver a few dozen films, including the Tribeca film festival nominated "Rebels", the "Tale of Soda Island" series,  "The Remedy", "Goodbye Mr. Octopus", "4 Stories" and many more.
 
 
 ## IMM Basics
@@ -155,6 +126,114 @@ The ImmViewer works both on Mono and in VR (either with Oculus RIFT or Oculus Qu
 
 4. Add a new Android App runnable in Configurations. Set the module as android.appImmViewer and click the play button on the menu bar.
 
+### Loading IMM files on Android player
 
+The Android player looks for content in this order:
 
+1. `/sdcard/Android/data/org.linuxfoundation.imm.player/files/IMM/default.imm` (if present)
+2. `/sdcard/Android/data/org.linuxfoundation.imm.player/files/IMM/default` (folder-based Quill export)
+3. The newest `.imm` file in `/sdcard/Android/data/org.linuxfoundation.imm.player/files/IMM/`
+4. `sample1.imm` bundled in the APK
 
+To play a different file, copy it to the app's external files directory:
+
+`/sdcard/Android/data/org.linuxfoundation.imm.player/files/IMM/`
+
+Note: Quest devices load from the app folder as expected. Many Android phones do not allow apps to read files copied into `Android/data` via MTP/adb; for those devices, use the intent flow below.
+
+### Opening .imm files via Android intents
+
+The Android player accepts `ACTION_VIEW` intents for `.imm` files. If a file manager provides a `content://` URI, the player will copy it into the app's internal files directory and load it from there. This is the most reliable approach on Android phones.
+# Local plugin builds (auto-copy into Unity sample project)
+
+This repo auto-copies plugin binaries into the Unity sample UPM packages during local builds.
+The destinations are:
+- ImmUnity plugin: `code/ImmUnitySampleProject/Packages/com.immersive-foundation.imm-unity/Plugins/...`
+- ImmStrokeReader plugin: `code/ImmUnitySampleProject/Packages/com.immersive-foundation.imm-stroke-reader/Plugins/...`
+
+### Windows (Visual Studio / MSBuild)
+
+**Always build via the solution file, not individual `.vcxproj` files.** The projects use
+`$(SolutionDir)` in their include paths; building a standalone `.vcxproj` leaves that variable
+undefined and causes header-not-found errors.
+
+Run from **PowerShell or cmd.exe** (not bash — bash strips leading `/` from MSBuild flags):
+
+```powershell
+msbuild code\projects\windows\imm.sln /p:Configuration=Release /p:Platform=x64 /m
+```
+
+If you are in a bash shell (Git Bash, WSL, etc.), use `-p:` instead of `/p:`:
+
+```bash
+msbuild "code/projects/windows/imm.sln" -p:Configuration=Release -p:Platform=x64 -m
+```
+
+This builds and auto-copies:
+- `ImmUnityPlugin.dll` → `code/ImmUnitySampleProject/Packages/com.immersive-foundation.imm-unity/Plugins/x86_64`
+- `ImmStrokeReader.dll` → `code/ImmUnitySampleProject/Packages/com.immersive-foundation.imm-stroke-reader/Plugins/x86_64`
+
+### macOS (CMake)
+
+```bash
+cmake -S code/projects/macos -B build/macos -DIMM_BUILD_VIEWER=OFF
+cmake --build build/macos --target ImmStrokeReader --config Release
+```
+
+This builds and auto-copies:
+- `libImmStrokeReader.dylib` → `code/ImmUnitySampleProject/Packages/com.immersive-foundation.imm-stroke-reader/Plugins/macOS`
+
+Note: the ImmUnity macOS bundle copy is also wired, but the macOS ImmUnity build is currently disabled in CI.
+
+### iOS (CMake)
+
+```bash
+cmake -S code/projects/ios -B build/ios \
+  -DCMAKE_SYSTEM_NAME=iOS \
+  -DCMAKE_OSX_SYSROOT=iphoneos \
+  -DCMAKE_OSX_ARCHITECTURES=arm64
+cmake --build build/ios --target ImmStrokeReader --config Release
+```
+
+This builds and auto-copies:
+- `libImmStrokeReader.a` → `code/ImmUnitySampleProject/Packages/com.immersive-foundation.imm-stroke-reader/Plugins/iOS`
+
+### Android (Gradle)
+
+```bash
+cd code/projects/android
+./gradlew :appImmUnity:assembleDebug
+./gradlew :appImmStrokeReader:assembleDebug
+```
+
+This builds and auto-copies:
+- `libImmUnityPlugin.so` → `code/ImmUnitySampleProject/Packages/com.immersive-foundation.imm-unity/Plugins/Android/libs/arm64-v8a`
+- `libImmStrokeReader.so` → `code/ImmUnitySampleProject/Packages/com.immersive-foundation.imm-stroke-reader/Plugins/Android/arm64-v8a`
+
+### Testing changes in a downstream project (e.g. open-brush-fast)
+
+When open-brush-fast (or any other project) references this package from GitHub, Unity caches
+it under `Library/PackageCache/com.immersive-foundation.imm-stroke-reader@<hash>/`. To test
+local C++ or C# changes in that project without publishing to GitHub:
+
+1. **Build the DLL** as above. The auto-copy puts the new DLL into
+   `code/ImmUnitySampleProject/Packages/com.immersive-foundation.imm-stroke-reader/Plugins/x86_64/ImmStrokeReader.dll`.
+
+2. **Copy the DLL** into the downstream project's package cache:
+   ```powershell
+   copy code\ImmUnitySampleProject\Packages\com.immersive-foundation.imm-stroke-reader\Plugins\x86_64\ImmStrokeReader.dll
+        <downstream-project>\Library\PackageCache\com.immersive-foundation.imm-stroke-reader@<hash>\Plugins\x86_64\ImmStrokeReader.dll
+   ```
+   Replace `<hash>` with the 10-character hash shown in the `Library/PackageCache` folder name.
+
+3. **Copy any changed C# files** (e.g. `SharpQuillCompat.cs`, `ImmStrokeReader.cs`) from
+   `code/ImmUnitySampleProject/Packages/com.immersive-foundation.imm-stroke-reader/Runtime/`
+   to the corresponding path under `Library/PackageCache/...@<hash>/Runtime/`.
+
+4. **Give Unity focus** so it recompiles the scripts. No package refresh is needed — Unity
+   watches files in `Library/PackageCache` directly.
+
+Note: `Library/PackageCache` is a Unity-managed directory. Unity may overwrite your changes
+if it re-resolves the package (e.g. after editing `manifest.json` or running
+`Assets > Reimport All`). The permanent fix is to publish the changes to the GitHub `upm`
+branch and bump the version.

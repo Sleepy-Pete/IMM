@@ -3,6 +3,7 @@
 //
 #pragma once
 
+#include <stddef.h>
 #include "../libBasics/piTypes.h"
 
 namespace ImmCore {
@@ -94,7 +95,8 @@ public:
 	enum class RendererFeature : int
 	{
 		VIEWPORT_ARRAY = 0,
-		VERTEX_VIEWPORT = 1
+		VERTEX_VIEWPORT = 1,
+		MULTIVIEW = 2
 	};
 
 	enum class IndexArrayFormat : int
@@ -429,6 +431,7 @@ public:
 	virtual void      SetShaderConstant4UI(const unsigned int pos, const unsigned int *value, int num) = 0;
 	virtual void      SetShaderConstantMat4F(const unsigned int pos, const float *value, int num, bool transpose) = 0;
 	virtual void      SetShaderConstantSampler(const unsigned int pos, int unit) = 0;
+	virtual int       GetShaderUniformLocation(piShader shader, const char *name) { (void)shader; (void)name; return -1; }
     virtual void      AttachShaderConstants(piBuffer obj, int unit) = 0;
     virtual void      AttachShaderBuffer(piBuffer obj, int unit) = 0;
     virtual void      DettachShaderBuffer(int unit) = 0;

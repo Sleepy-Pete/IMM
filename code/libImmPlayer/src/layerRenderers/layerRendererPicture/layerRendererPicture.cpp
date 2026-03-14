@@ -67,6 +67,13 @@ namespace ImmPlayer
 #include "shader_pip360Cubemap_fs.es.glsl"
 #include "shader_pip360Equirect_vs.es.glsl"
 #include "shader_pip360Equirect_fs.es.glsl"
+#else
+#include "shader_pi2D_vs.glsl"
+#include "shader_pi2D_fs.glsl"
+#include "shader_pip360Cubemap_vs.glsl"
+#include "shader_pip360Cubemap_fs.glsl"
+#include "shader_pip360Equirect_vs.glsl"
+#include "shader_pip360Equirect_fs.glsl"
 #endif
 
     // Creates a cube with 6 sides of 16x16 quads each. Note, the sides do NOT share the verties
@@ -168,14 +175,21 @@ namespace ImmPlayer
         for (int j = 0; j < 4; ++j) // debug render modes: normal, wireframe, overdraw, wireframe + overdraw
         for (int i = 0; i < 3; i++)
         {
-            if (renderer->GetAPI() == piRenderer::API::GL && static_cast<StereoMode>(i) == StereoMode::Preferred &&
-                (!renderer->SupportsFeature(piRenderer::RendererFeature::VIEWPORT_ARRAY) ||
-                    !renderer->SupportsFeature(piRenderer::RendererFeature::VERTEX_VIEWPORT)
-                    )
-                )
+            if (static_cast<StereoMode>(i) == StereoMode::Preferred)
             {
-                // skip compiling fast stereo shaders when we don't support the feature
-                continue;
+                if (renderer->GetAPI() == piRenderer::API::GL &&
+                    (!renderer->SupportsFeature(piRenderer::RendererFeature::VIEWPORT_ARRAY) ||
+                        !renderer->SupportsFeature(piRenderer::RendererFeature::VERTEX_VIEWPORT)))
+                {
+                    // skip compiling fast stereo shaders when we don't support the feature
+                    continue;
+                }
+                if (renderer->GetAPI() == piRenderer::API::GLES &&
+                    !renderer->SupportsFeature(piRenderer::RendererFeature::MULTIVIEW))
+                {
+                    // skip compiling multiview shaders when the extension isn't available
+                    continue;
+                }
             }
 
             char error[2048];
@@ -260,7 +274,7 @@ namespace ImmPlayer
             }
             else
             {
-#ifndef ANDROID
+#if defined(WINDOWS)
                 const int poff = 3 * (static_cast<int>(colorSpace));
 
                 mShaders[idx][LayerPicture::Image2D] = renderer->CreateShaderBinary(nullptr, shader_pi2D_vs_code[i], shader_pi2D_vs_size[i], nullptr, 0, nullptr, 0, nullptr, 0, shader_pi2D_fs_code[i + poff], shader_pi2D_fs_size[i + poff], error);
@@ -303,7 +317,7 @@ namespace ImmPlayer
             }
             else
             {
-#ifndef ANDROID
+#if defined(WINDOWS)
                 const void *shaders[3] = { (void*)shader_pip360Equirect_vs0, (void*)shader_pip360Equirect_vs1, (void*)shader_pip360Equirect_vs2 };
                 if (!m360SphereRenderMesh.InitFromMeshWithShader(renderer, &mesh, piRenderer::PrimitiveType::Triangle, 3, shaders, shader_pip360Equirect_vs_size, log))
                 {
@@ -337,7 +351,7 @@ namespace ImmPlayer
             }
             else
             {
-#ifndef ANDROID
+#if defined(WINDOWS)
                 const void *shaders[3] = { (void*)shader_pip360Equirect_vs0, (void*)shader_pip360Equirect_vs1, (void*)shader_pip360Equirect_vs2 };
                 if (!m360CubemapRenderMesh.InitFromMeshWithShader(renderer, &mesh, piRenderer::PrimitiveType::Triangle, 3, shaders, shader_pip360Equirect_vs_size, log))
                 {

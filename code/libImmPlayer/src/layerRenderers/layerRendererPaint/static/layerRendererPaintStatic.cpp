@@ -28,8 +28,11 @@ namespace ImmPlayer
     #include "shader_static_brush_vs.glsl"
     #include "shader_static_brush_fs.glsl"
 #elif defined(ANDROID)
-    #include "shader_static_brush_vs.es.glsl"
+#include "shader_static_brush_vs.es.glsl"
     #include "shader_static_brush_fs.es.glsl"
+#else
+    #include "shader_static_brush_vs.glsl"
+    #include "shader_static_brush_fs.glsl"
 #endif
 
 
@@ -147,9 +150,9 @@ namespace ImmPlayer
                     return false;
                 }
 
+#if defined(WINDOWS)
                 if (renderer->GetAPI() == piRenderer::API::DX)
                 {
-                    #if !defined(ANDROID)
                     for (int j = 0; j < 3; j++)
                     {
                         dst->mVertexArray[j] = renderer->CreateVertexArray2(0, nullptr, nullptr, nullptr, nullptr, shader_static_brush_vs_code[chunkType], shader_static_brush_vs_size[chunkType], dst->mIBO, piRenderer::IndexArrayFormat::UINT_16);
@@ -159,9 +162,9 @@ namespace ImmPlayer
                             return false;
                         }
                     }
-                    #endif
                 }
                 else
+#endif
                 {
                     dst->mVertexArray[0] = renderer->CreateVertexArray(0, nullptr, nullptr, nullptr, nullptr, dst->mIBO, piRenderer::IndexArrayFormat::UINT_16);
                     if (!dst->mVertexArray[0])
@@ -183,13 +186,13 @@ namespace ImmPlayer
     LayerRendererPaintStatic::LayerRendererPaintStatic() : LayerRendererPaint() {}
     LayerRendererPaintStatic::~LayerRendererPaintStatic() {}
 
-    bool LayerRendererPaintStatic::Init(piRenderer* renderer, piLog* log, Drawing::ColorSpace colorSpace, bool frontIsCCW)
+bool LayerRendererPaintStatic::Init(piRenderer* renderer, piLog* log, Drawing::ColorSpace colorSpace, bool frontIsCCW)
     {
-        #if ST_VERTEX_FORMAT == 1
+#if ST_VERTEX_FORMAT == 1
         piAssert( sizeof(DrawingStatic::MyVertexFormat)==28 );
-        #else
+#else
         piAssert( sizeof(DrawingStatic::MyVertexFormat)==36 );
-        #endif
+#endif
 
         mCapLayersToRender = 1;
 
@@ -201,25 +204,37 @@ namespace ImmPlayer
             return false;
 
         int dindex = 0;
+        for (int i = 0; i < kNumShaders; i++)
+        {
+            mShader[i] = nullptr;
+        }
         for (int l = 0; l < 5; l++) // brush
         for (int k = 0; k < 2; k++) // wiggle
         for (int j = 0; j < 2; j++) // drawin
         for (int i = 0; i < 3; i++) // stereo
         {
-            if (renderer->GetAPI() == piRenderer::API::GL && static_cast<StereoMode>(i) == StereoMode::Preferred &&
-                (!renderer->SupportsFeature(piRenderer::RendererFeature::VIEWPORT_ARRAY) ||
-                    !renderer->SupportsFeature(piRenderer::RendererFeature::VERTEX_VIEWPORT)
-                    )
-                )
-            {
-                // skip compiling fast stereo shaders when we don't support the feature
-                dindex++;
-                continue;
-            }
-                
 #if defined(ANDROID)
             if (j == 1) continue; // skip the drawin shaders on Android
 #endif
+            if (static_cast<StereoMode>(i) == StereoMode::Preferred)
+            {
+                if (renderer->GetAPI() == piRenderer::API::GL &&
+                    (!renderer->SupportsFeature(piRenderer::RendererFeature::VIEWPORT_ARRAY) ||
+                        !renderer->SupportsFeature(piRenderer::RendererFeature::VERTEX_VIEWPORT)))
+                {
+                    // skip compiling fast stereo shaders when we don't support the feature
+                    dindex++;
+                    continue;
+                }
+                if (renderer->GetAPI() == piRenderer::API::GLES &&
+                    !renderer->SupportsFeature(piRenderer::RendererFeature::MULTIVIEW))
+                {
+                    // skip compiling multiview shaders when the extension isn't available
+                    dindex++;
+                    continue;
+                }
+            }
+
             const piShaderOptions ops = { 6,{ { "COLOR_COMPRESSED", static_cast<int>(colorSpace) },
                                               { "BRUSHTYPE", l },
                                               { "WIGGLE", k },
@@ -234,13 +249,13 @@ namespace ImmPlayer
             char error[1024] = { 0 };
 
 
-            if (renderer->GetAPI() == piRenderer::API::GL || renderer->GetAPI() == piRenderer::API::GLES)
+if (renderer->GetAPI() == piRenderer::API::GL || renderer->GetAPI() == piRenderer::API::GLES)
             {
                 mShader[dindex] = renderer->CreateShader(&ops, shader_static_brush_vs, nullptr, nullptr, nullptr, shader_static_brush_fs, error);
             }
             else
             {
-#ifndef ANDROID
+#if defined(WINDOWS)
                 int vs_index = i +
                     j * 3 +
                     k * 3 * 2 +
@@ -649,7 +664,11 @@ namespace ImmPlayer
 #if !defined(ANDROID)
             tmpShaderId += (me->mDrawin == true) ? 3 : 0;
 #endif
+#if defined(ANDROID)
+            tmpShaderId += (me->mWiggle == true) ? 3 : 0;
+#else
             tmpShaderId += (me->mWiggle == true) ? 6 : 0;
+#endif
 
             renderer->AttachTextures(1, &mBlueNoise, 7);
             
@@ -667,9 +686,18 @@ namespace ImmPlayer
 #if !defined(ANDROID)
                 int shaderID = tmpShaderId + 2 * 2 * 3 * chunkType;
 #else
-                int shaderID = tmpShaderId + 2 * 3 * chunkType;
+                int shaderID = tmpShaderId + 3 * 2 * chunkType;
 #endif
-                if (shaderID != lastShaderID) { lastShaderID = shaderID; renderer->AttachShader(mShader[shaderID]); }
+                if (shaderID != lastShaderID)
+                {
+                    lastShaderID = shaderID;
+                    if (shaderID < 0 || shaderID >= kNumShaders || mShader[shaderID] == nullptr)
+                    {
+                        log->Printf(LT_ERROR, L"Missing shader id %d (chunk=%d stereo=%d wiggle=%d)", shaderID, chunkType, stereoModeInt, me->mWiggle ? 1 : 0);
+                        continue;
+                    }
+                    renderer->AttachShader(mShader[shaderID]);
+                }
 
 
                 // attach vertex and index data

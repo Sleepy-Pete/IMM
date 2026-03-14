@@ -393,7 +393,207 @@ namespace ImmImporter
 
     }
 
-    bool ImportFromDisk(Sequence* sq, piLog* log, const wchar_t* filename, const Drawing::ColorSpace colorSpace, Drawing::PaintRenderingTechnique renderingTechnique)
+    // Synchronous import with stroke collector - loads all strokes and calls collector callbacks
+    static bool iImportStreamWithCollector(piIStream* fp, Sequence* sq, piLog* log, const Drawing::ColorSpace colorSpace, Drawing::PaintRenderingTechnique renderingTechnique, IStrokeCollector* collector)
+    {
+        int numChunks = 0;
+
+        doLoad = true;
+        doneLoading = false;
+
+        log->Printf(LT_MESSAGE, L"Importing IMM stream with collector...");
+
+        Sequence::Type sqType = Sequence::Type::Still;
+        uint16_t sqCaps = 0;
+
+        bool done = false;
+        while (!done)
+        {
+            if (doLoad == false)
+            {
+                doneLoading = true;
+                return false;
+            }
+
+            const uint64_t chunkSignature = fp->ReadUInt64();
+            const uint64_t chunkSize = fp->ReadUInt64();
+            const uint64_t currentOffset = fp->Tell();
+            numChunks++;
+
+            if (numChunks == 1 && chunkSignature != kSig_Immersiv)
+            {
+                return false;
+            }
+
+            if (chunkSignature == kSig_Immersiv)
+            {
+                const uint32_t version = fp->ReadUInt32();
+                if (version != 0x00010001)
+                {
+                    return false;
+                }
+            }
+            else if (chunkSignature == kSig_CoordSys)
+            {
+                const uint8_t units = fp->ReadUInt8();
+                const uint8_t axes = fp->ReadUInt8();
+            }
+            else if (chunkSignature == kSig_Category)
+            {
+                const uint8_t type = fp->ReadUInt8();
+                const uint8_t caps = fp->ReadUInt8();
+                const uint16_t size = fp->ReadUInt16();
+
+                if (type >= static_cast<int>(Sequence::Type::COUNT))
+                    return false;
+
+                sqType = static_cast<Sequence::Type>(type);
+                sqCaps = static_cast<uint16_t>(caps);
+                const uint8_t axes = fp->ReadUInt8();
+            }
+            else if (chunkSignature == kSig_Sequence)
+            {
+                if (!iReadSceneGraph(fp, sq, log, sqType, sqCaps, renderingTechnique))
+                {
+                    return false;
+                }
+            }
+            else if (chunkSignature == kSig_ResTable)
+            {
+                if (!iReadAssetTable(fp, sq, log))
+                {
+                    return false;
+                }
+                done = true;
+            }
+
+            fp->Seek(currentOffset + chunkSize, piIStreamArray::SeekMode::SET);
+        }
+
+        // Synchronously load all layers and collect strokes
+        auto loadLayerWithCollector = [sq, fp, log, colorSpace, renderingTechnique, collector](Layer* layer, int level, int child, bool instance) -> bool
+        {
+            if (layer->GetType() == Layer::Type::Paint)
+            {
+                collector->OnBeginLayer(
+                    layer->GetID(),
+                    static_cast<uint32_t>(layer->GetType()),
+                    layer->GetName().GetS(),
+                    layer->GetWorldVisible(),
+                    layer->GetWorldOpacity());
+                collector->OnLayerTransform(
+                    layer->GetID(),
+                    layer->GetTransform(),
+                    layer->GetTransformToWorld(),
+                    layer->GetPivot());
+
+                // Load the asset first (sets up file offsets for drawings)
+                if (!fiLayer::LoadAsset(layer, fp, sq, log, colorSpace, renderingTechnique))
+                {
+                    log->Printf(LT_ERROR, L"Could not load asset for layer %s", layer->GetName().GetS());
+                    collector->OnEndLayer();
+                    return true; // continue to other layers
+                }
+                layer->SetLoaded(true);
+
+                LayerPaint* lp = (LayerPaint*)layer->GetImplementation();
+                const uint32_t numDrawings = lp->GetNumDrawings();
+                const uint32_t numFrames = lp->GetNumFrames();
+                const uint32_t frameRate = lp->GetFrameRate();
+                const uint32_t maxRepeatCount = lp->GetMaxRepeatCount();
+                const bool flipped = (layer->GetTransformToWorld().mFlip != flip3::N);
+
+                // Notify collector of paint layer animation info
+                collector->OnPaintLayerInfo(frameRate, numFrames, maxRepeatCount);
+
+                // Pass frame buffer to collector
+                uint32_t* frameBuffer = lp->GetFrameBuffer();
+                if (frameBuffer != nullptr && numFrames > 0)
+                {
+                    collector->OnFrameBuffer(frameBuffer, numFrames);
+                }
+
+                for (uint32_t i = 0; i < numDrawings; i++)
+                {
+                    collector->OnBeginDrawing(i);
+
+                    if (!fiLayerPaint::ReadDrawing(layer->GetImplementation(), i, fp, log, colorSpace, renderingTechnique, flipped, collector))
+                    {
+                        log->Printf(LT_ERROR, L"Could not load drawing %d for layer %s", i, layer->GetName().GetS());
+                    }
+
+                    collector->OnEndDrawing();
+                }
+
+                collector->OnEndLayer();
+            }
+            else if (layer->GetType() == Layer::Type::Picture)
+            {
+                collector->OnBeginLayer(
+                    layer->GetID(),
+                    static_cast<uint32_t>(layer->GetType()),
+                    layer->GetName().GetS(),
+                    layer->GetWorldVisible(),
+                    layer->GetWorldOpacity());
+                collector->OnLayerTransform(
+                    layer->GetID(),
+                    layer->GetTransform(),
+                    layer->GetTransformToWorld(),
+                    layer->GetPivot());
+
+                if (!fiLayer::LoadAsset(layer, fp, sq, log, colorSpace, renderingTechnique))
+                {
+                    log->Printf(LT_ERROR, L"Could not load asset for layer %s", layer->GetName().GetS());
+                    collector->OnEndLayer();
+                    return true;
+                }
+                layer->SetLoaded(true);
+
+                LayerPicture* lp = (LayerPicture*)layer->GetImplementation();
+                piImage* image = lp ? lp->GetImage() : nullptr;
+                if (image)
+                {
+                    const int width = image->GetXRes();
+                    const int height = image->GetYRes();
+                    const uint64_t dataSize = image->GetDataSize(0);
+                    const uint8_t* pixels = static_cast<const uint8_t*>(image->GetData(0));
+                    const piImage::Format fmt = image->GetFormat(0);
+                    const bool hasAlpha = (fmt == piImage::FORMAT_I_RGBA || fmt == piImage::FORMAT_F_RGBA);
+                    collector->OnPictureLayer(
+                        layer->GetID(),
+                        static_cast<uint32_t>(lp->GetType()),
+                        lp->GetIsViewerLocked(),
+                        width,
+                        height,
+                        hasAlpha,
+                        pixels,
+                        static_cast<int>(dataSize));
+                }
+
+                collector->OnEndLayer();
+            }
+            else if (layer->GetType() == Layer::Type::SpawnArea)
+            {
+                // Load spawn areas for completeness
+                if (!fiLayer::LoadAsset(layer, fp, sq, log, colorSpace, renderingTechnique))
+                {
+                    log->Printf(LT_ERROR, L"Could not load asset for layer %s", layer->GetName().GetS());
+                }
+                else
+                {
+                    layer->SetLoaded(true);
+                }
+            }
+            return true;
+        };
+
+        sq->Recurse(loadLayerWithCollector, false, false, false, false);
+
+        doneLoading = true;
+        return true;
+    }
+
+    bool ImportFromDisk(Sequence* sq, piLog* log, const wchar_t* filename, const Drawing::ColorSpace colorSpace, Drawing::PaintRenderingTechnique renderingTechnique, IStrokeCollector* collector)
     {
         if (filename == nullptr)
         {
@@ -411,17 +611,125 @@ namespace ImmImporter
         piIStreamFile fstr(&fp, piIStreamFile::kDefaultFileSize);
         if (log) log->Printf(LT_MESSAGE, L"IMM_IMPORT: ImportFromDisk created stream");
 
-        bool error = iImportStream(&fstr, filename, sq, log, colorSpace, renderingTechnique);
+        // If a collector is provided, use synchronous import to collect stroke data
+        bool result;
+        if (collector)
+        {
+            result = iImportStreamWithCollector(&fstr, sq, log, colorSpace, renderingTechnique, collector);
+        }
+        else
+        {
+            result = iImportStream(&fstr, filename, sq, log, colorSpace, renderingTechnique);
+        }
 
         fp.Close();
 
-        return error;
-	}
+        return result;
+    }
 
-    bool ImportFromMemory(piTArray<uint8_t>* data, Sequence* sq, piLog* log, const Drawing::ColorSpace colorSpace, Drawing::PaintRenderingTechnique renderingTechnique)
+    bool ImportFromMemory(piTArray<uint8_t>* data, Sequence* sq, piLog* log, const Drawing::ColorSpace colorSpace, Drawing::PaintRenderingTechnique renderingTechnique, IStrokeCollector* collector)
     {
         piIStreamArray* fstr = new piIStreamArray(data);
-        return iImportStream(fstr, nullptr, sq, log, colorSpace, renderingTechnique);
+
+        // If a collector is provided, use synchronous import to collect stroke data
+        if (collector)
+        {
+            return iImportStreamWithCollector(fstr, sq, log, colorSpace, renderingTechnique, collector);
+        }
+        else
+        {
+            return iImportStream(fstr, nullptr, sq, log, colorSpace, renderingTechnique);
+        }
+    }
+
+    bool ImportFromDisk(Sequence* sq, ImmCore::piLog* log, const wchar_t* filename, const Drawing::ColorSpace colorSpace, Drawing::PaintRenderingTechnique renderingTechnique)
+    {
+        return ImportFromDisk(sq, log, filename, colorSpace, renderingTechnique, nullptr);
+    }
+
+    bool ImportFromMemory(ImmCore::piTArray<uint8_t>* data, Sequence* sq, ImmCore::piLog* log, const Drawing::ColorSpace colorSpace, Drawing::PaintRenderingTechnique renderingTechnique)
+    {
+        return ImportFromMemory(data, sq, log, colorSpace, renderingTechnique, nullptr);
+    }
+
+    bool ImportSceneGraphOnly(Sequence* sq, piLog* log, const wchar_t* filename)
+    {
+        if (filename == nullptr)
+            return false;
+
+        piFile fp;
+        if (!fp.Open(filename, L"rb"))
+            return false;
+
+        piIStreamFile fstr(&fp, piIStreamFile::kDefaultFileSize);
+
+        Sequence::Type sqType = Sequence::Type::Still;
+        uint16_t sqCaps = 0;
+        int numChunks = 0;
+        bool done = false;
+
+        while (!done)
+        {
+            const uint64_t chunkSignature = fstr.ReadUInt64();
+            const uint64_t chunkSize = fstr.ReadUInt64();
+            const uint64_t currentOffset = fstr.Tell();
+            numChunks++;
+
+            if (numChunks == 1 && chunkSignature != kSig_Immersiv)
+            {
+                fp.Close();
+                return false;
+            }
+
+            if (chunkSignature == kSig_Immersiv)
+            {
+                const uint32_t version = fstr.ReadUInt32();
+                if (version != 0x00010001)
+                {
+                    fp.Close();
+                    return false;
+                }
+            }
+            else if (chunkSignature == kSig_CoordSys)
+            {
+                fstr.ReadUInt8(); // units
+                fstr.ReadUInt8(); // axes
+            }
+            else if (chunkSignature == kSig_Category)
+            {
+                const uint8_t type = fstr.ReadUInt8();
+                const uint8_t caps = fstr.ReadUInt8();
+                fstr.ReadUInt16(); // size
+
+                if (type >= static_cast<int>(Sequence::Type::COUNT))
+                {
+                    fp.Close();
+                    return false;
+                }
+
+                sqType = static_cast<Sequence::Type>(type);
+                sqCaps = static_cast<uint16_t>(caps);
+                fstr.ReadUInt8(); // axes
+            }
+            else if (chunkSignature == kSig_Sequence)
+            {
+                if (!iReadSceneGraph(&fstr, sq, log, sqType, sqCaps, Drawing::PaintRenderingTechnique::Static))
+                {
+                    fp.Close();
+                    return false;
+                }
+                done = true;
+            }
+            else
+            {
+                // Unknown chunk before Sequence - skip it
+            }
+
+            fstr.Seek(currentOffset + chunkSize, piIStreamArray::SeekMode::SET);
+        }
+
+        fp.Close();
+        return true;
     }
 
 }

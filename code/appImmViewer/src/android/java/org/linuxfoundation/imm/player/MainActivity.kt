@@ -10,6 +10,7 @@ package org.linuxfoundation.imm.player
 import android.Manifest
 import android.app.NativeActivity
 import android.content.Intent
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.graphics.*
 import android.os.AsyncTask
@@ -23,6 +24,8 @@ import kotlinx.coroutines.*
 
 @Keep
 class MainActivity : NativeActivity(), CoroutineScope by CoroutineScope(Dispatchers.IO) {
+  private var didFinishInit = false
+
   companion object {
     val TAG = MainActivity::class.java.simpleName
     const val EXTRA_QUILL_PATH = "QUILL_PATH"
@@ -38,6 +41,7 @@ class MainActivity : NativeActivity(), CoroutineScope by CoroutineScope(Dispatch
     const val PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 0x1
 
     @JvmStatic external fun nativeSetAssetDirectory(assetsDir: String?)
+    @JvmStatic external fun nativeSetExternalFilesDirectory(externalDir: String?)
     @JvmStatic external fun nativeSendMessage(message: String?, messageType: Int)
     @JvmStatic external fun nativeSetQuillRenderingTechnique(renderingTechnique: Int)
     @JvmStatic
@@ -81,14 +85,22 @@ class MainActivity : NativeActivity(), CoroutineScope by CoroutineScope(Dispatch
         Log.d(TAG, "onCreate intent category: " + intent.categories + " action: " + intent.action)
     else Log.d(TAG, "onCreate null intent")
 
-    if (!requestExternalStoragePermission())
-    // finishInit() will be called in onRequestPermissionsResult
-    return
+    if (!requestExternalStoragePermission()) {
+      // Continue init even if the permission dialog is pending to avoid blocking startup.
+      Log.d(TAG, "Permissions pending; continuing init")
+      finishInit()
+      return
+    }
 
     finishInit()
   }
 
   private fun finishInit() {
+    if (didFinishInit) {
+      return
+    }
+    didFinishInit = true
+
     Utils.assetsDirectory = applicationContext.filesDir.path + "/"
     Utils.cacheDirectory = filesDir.path + "/cache/"
     val cacheDir = File(Utils.cacheDirectory)
@@ -96,11 +108,87 @@ class MainActivity : NativeActivity(), CoroutineScope by CoroutineScope(Dispatch
       cacheDir.mkdir()
     }
     nativeSetAssetDirectory(Utils.assetsDirectory)
-    unpackQuillAssets()
+    val externalDir = getExternalFilesDir(null)?.path
+    nativeSetExternalFilesDirectory(externalDir)
+    
+    // Extract assets synchronously to avoid race condition
+    val shouldReload = Utils.shouldReloadAssets()
+    extractAssetSync(Utils.quillDemoPath, shouldReload)
+    extractAssetSync(Utils.quillErrorPath, shouldReload)
+    
+    // Verify the demo file exists
+    val demoFile = File(Utils.assetsDirectory, Utils.quillDemoPath)
+    if (!demoFile.exists()) {
+      Log.e(TAG, "DEMO FILE NOT FOUND: ${demoFile.absolutePath}")
+    } else {
+      Log.d(TAG, "Demo file ready: ${demoFile.absolutePath}, size: ${demoFile.length()}")
+    }
 
     if (!handleNewIntent(intent)) {
-      loadImm("${applicationContext.filesDir.path}/${Utils.quillDemoPath}")
+      val externalImmPath = findExternalImmPath()
+      if (externalImmPath != null) {
+        Log.d(TAG, "Loading IMM from external files: $externalImmPath")
+        loadImm(externalImmPath)
+      } else {
+        Log.d(TAG, "No intent or external IMM path; native loader will select content")
+      }
     }
+  }
+  
+  private fun extractAssetSync(assetName: String, forceExtract: Boolean) {
+    val assetPath = Utils.assetsDirectory + assetName
+    val file = File(assetPath)
+    
+    if (!forceExtract && file.exists()) {
+      Log.d(TAG, "$assetPath already exists, size: ${file.length()}")
+      return
+    }
+    
+    if (file.exists()) {
+      file.delete()
+    }
+    
+    Log.d(TAG, "Extracting $assetName to $assetPath")
+    try {
+      file.parentFile?.mkdirs()
+      resources.assets.open(assetName).use { input ->
+        file.outputStream().use { output ->
+          input.copyTo(output)
+        }
+      }
+      Log.d(TAG, "Successfully extracted $assetName, size: ${file.length()}")
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to extract $assetName: $e")
+    }
+  }
+
+  private fun findExternalImmPath(): String? {
+    val baseDir = getExternalFilesDir(null) ?: return null
+    val immDir = File(baseDir, "IMM")
+    if (!immDir.exists()) {
+      return null
+    }
+
+    val defaultImm = File(immDir, "default.imm")
+    if (defaultImm.exists()) {
+      return defaultImm.absolutePath
+    }
+
+    val defaultAuthoring = File(immDir, "default")
+    if (defaultAuthoring.exists()) {
+      return defaultAuthoring.absolutePath
+    }
+
+    val immFiles = immDir.listFiles { file ->
+      file.isFile && file.name.endsWith(".imm", ignoreCase = true)
+    } ?: return null
+
+    if (immFiles.isEmpty()) {
+      return null
+    }
+
+    val newest = immFiles.maxByOrNull { it.lastModified() } ?: return null
+    return newest.absolutePath
   }
 
   override fun onNewIntent(intent: Intent) {
@@ -142,7 +230,61 @@ class MainActivity : NativeActivity(), CoroutineScope by CoroutineScope(Dispatch
       return true
     }
 
+    if (handleViewIntent(intent)) {
+      return true
+    }
+
     return false
+  }
+
+  private fun handleViewIntent(intent: Intent): Boolean {
+    if (Intent.ACTION_VIEW != intent.action) {
+      return false
+    }
+
+    val data = intent.data ?: return false
+    val uriPath = when (data.scheme) {
+      "file" -> importUriToInternalFiles(data)
+      "content" -> importUriToInternalFiles(data)
+      else -> null
+    }
+
+    if (uriPath.isNullOrEmpty()) {
+      return false
+    }
+
+    loadImmPath(uriPath)
+    return true
+  }
+
+  private fun importUriToInternalFiles(uri: Uri): String? {
+    try {
+      val baseDir = filesDir
+      val immDir = File(baseDir, "IMM")
+      if (!immDir.exists()) {
+        immDir.mkdirs()
+      }
+
+      val name = uri.lastPathSegment?.substringAfterLast('/')?.ifEmpty { null }
+      val fileName = if (name != null && name.endsWith(".imm", ignoreCase = true)) {
+        name
+      } else {
+        "imported_${System.currentTimeMillis()}.imm"
+      }
+
+      val destFile = File(immDir, fileName)
+      contentResolver.openInputStream(uri)?.use { input ->
+        destFile.outputStream().use { output ->
+          input.copyTo(output)
+        }
+      } ?: return null
+
+      Log.d(TAG, "Imported IMM to internal files: ${destFile.absolutePath}")
+      return destFile.absolutePath
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to import IMM from URI: $uri", e)
+      return null
+    }
   }
 
   private fun handleIntentExtras(intent: Intent): Boolean {

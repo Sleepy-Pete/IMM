@@ -1,55 +1,91 @@
-# CMakeLists.txt for libImmPlayer - IMM playback engine for Android
+# libImmPlayer - CMakeLists.txt for Android NDK build
+cmake_minimum_required(VERSION 3.4.1)
 
-cmake_minimum_required(VERSION 3.22.1)
+set(libImmPlayer-dir ${CMAKE_CURRENT_SOURCE_DIR})
+set(shaderUtil-dir ${CMAKE_CURRENT_SOURCE_DIR})
 
-project(ImmPlayer)
+add_library(
+    libImmPlayer
+    STATIC
 
-# Set C++ standard
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# Define paths
-set(PLAYER_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-set(CORE_SRC ${CMAKE_CURRENT_SOURCE_DIR}/../libImmCore/src)
-set(IMPORTER_SRC ${CMAKE_CURRENT_SOURCE_DIR}/../libImmImporter/src)
-set(CODE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
-
-# Collect all source files
-file(GLOB_RECURSE PLAYER_SOURCES
-    ${PLAYER_SRC}/*.cpp
+    ${libImmPlayer-dir}/src/player.cpp
+    ${libImmPlayer-dir}/src/document.cpp
+    ${libImmPlayer-dir}/src/blue_noise.cpp
+    ${libImmPlayer-dir}/src/mngrPlayer.cpp
+    ${libImmPlayer-dir}/src/layerRenderers/layerRendererPaint/static/layerRendererPaintStatic.cpp
+    ${libImmPlayer-dir}/src/layerRenderers/layerRendererPaint/pretessellated/layerRendererPaintPretessellated.cpp
+    ${libImmPlayer-dir}/src/layerRenderers/layerRendererPicture/layerRendererPicture.cpp
+    ${libImmPlayer-dir}/src/layerRenderers/layerRendererSound/layerRendererSound.cpp
+    ${libImmPlayer-dir}/src/layerRenderers/layerRendererModel/layerRendererModel.cpp
 )
 
-# Exclude Windows-specific files
-list(FILTER PLAYER_SOURCES EXCLUDE REGEX ".*windows.*")
-list(FILTER PLAYER_SOURCES EXCLUDE REGEX ".*win32.*")
-list(FILTER PLAYER_SOURCES EXCLUDE REGEX ".*d3d.*")
-list(FILTER PLAYER_SOURCES EXCLUDE REGEX ".*dx.*")
+# Define ANDROID macro for conditional compilation
+target_compile_definitions(libImmPlayer PRIVATE ANDROID)
 
-# Exclude pretessellated paint renderer (requires shader compilation step)
-list(FILTER PLAYER_SOURCES EXCLUDE REGEX ".*pretessellated.*")
+# Shader transformation - convert GLES shaders to C headers
+# Model shaders are in gles subdirectory
+add_custom_target(
+    ShadersModel
+    COMMAND ${CMAKE_COMMAND}
+    -D INPUT=${libImmPlayer-dir}/src/layerRenderers/layerRendererModel/gles
+    -D OUTPUT=${libImmPlayer-dir}/src/layerRenderers/layerRendererModel/tmp/shader_model_GLES_glsl.h
+    -D NAMESPACE=INVALID
+    -P ${shaderUtil-dir}/create_shader.cmake
+)
+add_dependencies(libImmPlayer ShadersModel)
 
-# Create static library
-add_library(ImmPlayer STATIC ${PLAYER_SOURCES})
+# Pretessellated shaders are in main directory (not gles subdirectory)
+add_custom_target(
+    ShadersPretessellated
+    COMMAND ${CMAKE_COMMAND}
+    -D INPUT=${libImmPlayer-dir}/src/layerRenderers/layerRendererPaint/pretessellated
+    -D OUTPUT=${libImmPlayer-dir}/src/layerRenderers/layerRendererPaint/pretessellated/tmp/shader_pretessellated_brush_GLES_glsl.h
+    -D NAMESPACE=INVALID
+    -P ${shaderUtil-dir}/create_shader.cmake
+)
+add_dependencies(libImmPlayer ShadersPretessellated)
 
-# Include directories
-target_include_directories(ImmPlayer PUBLIC
-    ${PLAYER_SRC}
-    ${CORE_SRC}
-    ${IMPORTER_SRC}
-    ${CODE_ROOT}
+# Picture shaders are already C-string wrapped in .es.glsl files (included directly)
+
+# Add libImmCore dependency
+set(core-dir ${CMAKE_CURRENT_SOURCE_DIR}/../libImmCore)
+set(core-build-dir ${core-dir}/build)
+file(MAKE_DIRECTORY ${core-build-dir})
+
+include_directories(
+    ${core-dir}/..
 )
 
-# Add compile definitions
-target_compile_definitions(ImmPlayer PRIVATE
-    ANDROID
-    __ANDROID__
-    PLATFORM_ANDROID
-    GLES_SILENCE_DEPRECATION
+add_library(libImmCore STATIC IMPORTED)
+set_target_properties(libImmCore PROPERTIES IMPORTED_LOCATION
+    ${core-build-dir}/libs/${ANDROID_ABI}/liblibImmCore.a)
+
+# Add libImmImporter dependency
+set(imm-importer-dir ${CMAKE_CURRENT_SOURCE_DIR}/../libImmImporter)
+set(imm-importer-build-dir ${imm-importer-dir}/build)
+file(MAKE_DIRECTORY ${imm-importer-build-dir})
+
+add_library(libImmImporter STATIC IMPORTED)
+set_target_properties(libImmImporter PROPERTIES IMPORTED_LOCATION
+    ${imm-importer-build-dir}/libs/${ANDROID_ABI}/liblibImmImporter.a)
+
+# Android system libraries
+find_library(android-lib android)
+find_library(log-lib log)
+find_library(gl3-lib GLESv3)
+find_library(z-lib z)
+
+# Link libraries
+target_link_libraries(
+    libImmPlayer
+    libImmImporter
+    libImmCore
+    ${android-lib}
+    ${gl3-lib}
+    ${log-lib}
+    ${z-lib}
 )
 
-# Link against ImmCore and ImmImporter
-target_link_libraries(ImmPlayer
-    ImmCore
-    ImmImporter
-)
-
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/libs/${ANDROID_ABI})
+set_target_properties(libImmPlayer PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/libs/${ANDROID_ABI})

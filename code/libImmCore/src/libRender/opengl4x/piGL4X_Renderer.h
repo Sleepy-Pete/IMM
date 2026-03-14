@@ -8,6 +8,10 @@
 #include "piGL4X_RenderContext.h"
 #include "piGL4X_Ext.h"
 
+#ifndef CALLBACK
+#define CALLBACK
+#endif
+
 namespace ImmCore {
 
 class piRendererGL4X : public piRenderer
@@ -115,6 +119,7 @@ public:
 	void      SetShaderConstant4UI(const unsigned int pos, const unsigned int *value, int num);
 	void      SetShaderConstantMat4F(const unsigned int pos, const float *value, int num, bool transpose);
     void      SetShaderConstantSampler(const unsigned int pos, int unit);
+	int       GetShaderUniformLocation(piShader shader, const char *name);
     void      AttachShaderBuffer(piBuffer obj, int unit);
     void      DettachShaderBuffer(int unit);
     void      AttachAtomicsBuffer(piBuffer obj, int unit);

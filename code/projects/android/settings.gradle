@@ -1,27 +1,17 @@
-// IMM Viewer Android Project Settings
-// This file defines the project structure for building the IMM Viewer APK for Meta Quest
+include 'libImmCore'
+project(':libImmCore').projectDir = file('../../libImmCore')
 
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
+include 'libImmImporter'
+project(':libImmImporter').projectDir = file('../../libImmImporter')
 
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
+include 'libImmPlayer'
+project(':libImmPlayer').projectDir = file('../../libImmPlayer')
 
-rootProject.name = "ImmViewer"
+include 'appImmUnity'
+project(':appImmUnity').projectDir = file('../../appImmUnity/Projects/Android/app')
 
-// Include the main application module
-include ':app'
+include 'appImmViewer'
+project(':appImmViewer').projectDir = file('appImmViewer')
 
-// Set the project directory for the app module
-project(':app').projectDir = file('../../appImmViewer')
-
+include 'appImmStrokeReader'
+project(':appImmStrokeReader').projectDir = file('../../appImmStrokeReader/Projects/Android')

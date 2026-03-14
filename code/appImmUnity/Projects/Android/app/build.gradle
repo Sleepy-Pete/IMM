@@ -1,0 +1,70 @@
+plugins {
+    id 'com.android.library'
+}
+
+android {
+    namespace 'com.immersive.immunityplugin'
+    compileSdk 34
+    ndkVersion "26.1.10909125"
+
+    defaultConfig {
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++17", "-D__ANDROID__", "-DANDROID"
+                arguments "-DANDROID_STL=c++_static",
+                        "-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY",
+                        "-DCMAKE_C_COMPILER_WORKS=1",
+                        "-DCMAKE_CXX_COMPILER_WORKS=1",
+                        "-DCMAKE_C_ABI_COMPILED=1",
+                        "-DCMAKE_CXX_ABI_COMPILED=1",
+                        "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
+                abiFilters "arm64-v8a"
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+}
+
+// Copy .so to Unity sample project after build
+def unityPluginDir = "${projectDir}/../../../../ImmUnitySampleProject/Packages/com.immersive-foundation.imm-unity/Plugins/Android/libs/arm64-v8a"
+
+tasks.register('copyToUnity') {
+    doLast {
+        // Find the .so file in build output
+        def soFile = fileTree(dir: "${buildDir}/intermediates/cxx", include: '**/arm64-v8a/libImmUnityPlugin.so').files.find()
+        if (soFile != null && soFile.exists()) {
+            def destDir = file(unityPluginDir)
+            destDir.mkdirs()
+            copy {
+                from soFile
+                into destDir
+            }
+            println "Copied libImmUnityPlugin.so to ${destDir}"
+        } else {
+            println "WARNING: libImmUnityPlugin.so not found, skipping copy to Unity project"
+        }
+    }
+}
+
+afterEvaluate {
+    tasks.named('assembleDebug').configure {
+        finalizedBy 'copyToUnity'
+    }
+    tasks.named('assembleRelease').configure {
+        finalizedBy 'copyToUnity'
+    }
+}

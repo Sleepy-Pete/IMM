@@ -1,4 +1,4 @@
-#include <malloc.h>
+#include <stdlib.h>
 #include <thread>
 #include <chrono>
 
@@ -321,6 +321,13 @@ namespace ImmPlayer
                 if (mState.mLoadingState == LoadingState::Loaded)
                 {
                     mPlayerManager.SkipBack(now);
+                }
+            }
+            else if (command->mType == Command::Type::SetChapter)
+            {
+                if (mState.mLoadingState == LoadingState::Loaded)
+                {
+                    mPlayerManager.SetChapter(now, static_cast<size_t>(command->mIntArg));
                 }
             }
             else if (command->mType == Command::Type::Pause)

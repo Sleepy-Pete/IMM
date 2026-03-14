@@ -152,7 +152,7 @@ namespace ImmImporter
         #endif
 
            
-        bool ReadDrawing(LayerImplementation vme, uint32_t drawingId, piIStream *fp, piLog* log, Drawing::ColorSpace colorSpace, Drawing::PaintRenderingTechnique renderingTechnique, bool flipped)
+        bool ReadDrawing(LayerImplementation vme, uint32_t drawingId, piIStream *fp, piLog* log, Drawing::ColorSpace colorSpace, Drawing::PaintRenderingTechnique renderingTechnique, bool flipped, IStrokeCollector* collector)
         {
             LayerPaint* lp = (LayerPaint*)vme;
             Drawing* dr = lp->GetDrawing(drawingId);
@@ -260,6 +260,11 @@ namespace ImmImporter
                 if (!(biggestStroke > 0.0f))
                 {
                     log->Printf(LT_WARNING, L"IMM_IMPORT: biggestStroke=%f in drawing %u", biggestStroke, drawingId);
+                }
+
+                if (collector)
+                {
+                    collector->OnDrawingBiggestStroke(drawingId, biggestStroke);
                 }
                 
                 if (version == 1)
@@ -506,6 +511,19 @@ namespace ImmImporter
 
                     ele.Compute(biggestStroke);
 
+                    // Forward to collector if present
+                    if (collector)
+                    {
+                        collector->OnStroke(
+                            j,
+                            static_cast<uint8_t>(ele.GetBrush()),
+                            static_cast<uint8_t>(ele.GetVisibleMode()),
+                            ele.GetNumPoints(),
+                            ele.GetPoints(),
+                            ele.GetBBox()
+                        );
+                    }
+
                     if (!dr->Add(&ele, static_cast<Drawing::ColorSpace>(colorSpace), flipped))
                         return false;
                 }
@@ -538,7 +556,7 @@ namespace ImmImporter
             return true;
         }
 
-        bool ReadAsset(LayerImplementation vme, piIStream *fp, piLog* log, Drawing::ColorSpace colorSpace, Drawing::PaintRenderingTechnique renderingTechnique, bool flipped)
+        bool ReadAsset(LayerImplementation vme, piIStream *fp, piLog* log, Drawing::ColorSpace colorSpace, Drawing::PaintRenderingTechnique renderingTechnique, bool flipped, IStrokeCollector* collector)
         {
             // only loads the main layerpaint asset, drawings are loaded separately
             LayerPaint *me = (LayerPaint *)vme;

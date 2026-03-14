@@ -1,150 +1,76 @@
-# IMM Viewer Android Project
+# Android Build Notes
 
-This directory contains the Android Studio project for building the IMM Viewer APK for Meta Quest devices.
+All commands run from `code/projects/android`.
 
-## Quick Start
+## Build (Non-VR — phones, tablets)
 
-### Prerequisites
-1. Android Studio Hedgehog (2023.1.1) or later
-2. Android SDK Platform 33
-3. Android NDK 25.2.9519653
-4. CMake 3.22.1
-5. Oculus Mobile SDK (VrApi)
-
-### Building
-
-**Option 1: Android Studio**
-1. Open this directory in Android Studio
-2. Wait for Gradle sync to complete
-3. Build > Build Bundle(s) / APK(s) > Build APK(s)
-
-**Option 2: Command Line**
 ```bash
-# From this directory
-./gradlew assembleDebug    # Build debug APK
-./gradlew assembleRelease  # Build release APK
-./gradlew clean            # Clean build
+./gradlew :appImmViewer:assembleDebug -PimmNonVr=ON
 ```
 
-**Option 3: Build Script (from project root)**
+APK output: `appImmViewer/build/outputs/apk/debug/appImmViewer-debug.apk`
+
+Install and launch:
+
 ```bash
-# From IMM root directory
-build_android.bat debug    # Build debug APK
-build_android.bat release  # Build release APK
-build_android.bat clean    # Clean build
+adb install -r appImmViewer/build/outputs/apk/debug/appImmViewer-debug.apk
+adb shell am start -n org.linuxfoundation.imm.player/.MainActivity
 ```
 
-## Project Structure
+## Build (VR — Quest)
 
-```
-android/
-├── build.gradle           # Root build configuration
-├── settings.gradle        # Project settings
-├── gradle.properties      # Gradle properties
-└── gradle/
-    └── wrapper/           # Gradle wrapper files
-```
+The VR build requires separate library compilation with a dedicated build dir to avoid conflicts:
 
-The actual application code is in `../../appImmViewer/`:
-```
-appImmViewer/
-├── build.gradle           # App-level build config
-├── CMakeLists.txt         # Native C++ build config
-├── proguard-rules.pro     # ProGuard rules
-└── src/
-    └── android/
-        ├── AndroidManifest.xml
-        ├── java/          # Kotlin source code
-        ├── cpp/           # Native C++ code
-        ├── res/           # Android resources
-        └── assets/        # App assets
-```
-
-## Important Notes
-
-### Oculus Mobile SDK Required
-The project requires the Oculus Mobile SDK (VrApi) which is NOT included in this repository.
-
-**Download from:** https://developer.oculus.com/downloads/native-android/
-
-**Installation:**
-1. Download and extract the Oculus Mobile SDK
-2. Copy the `VrApi` directory to: `../../../thirdparty/ovr-mobile-sdk/VrApi/`
-3. Verify these files exist:
-   - `../../../thirdparty/ovr-mobile-sdk/VrApi/Include/VrApi.h`
-   - `../../../thirdparty/ovr-mobile-sdk/VrApi/Libs/Android/arm64-v8a/libvrapi.so`
-
-### Third-Party Libraries
-The project also requires ARM64 versions of:
-- Audio360 SDK
-- libjpeg-turbo
-- libpng
-- libogg
-- libvorbis
-- opus
-- libopusenc
-- zlib
-
-See `../../../ANDROID_BUILD_GUIDE.md` for detailed instructions on building or obtaining these libraries.
-
-## Build Output
-
-After a successful build, the APK will be located at:
-- **Debug:** `../../appImmViewer/build/outputs/apk/debug/appImmViewer-debug.apk`
-- **Release:** `../../appImmViewer/build/outputs/apk/release/appImmViewer-release.apk`
-
-## Deployment
-
-### Install on Quest
 ```bash
-# Connect Quest via USB and enable Developer Mode
-adb install -r ../../appImmViewer/build/outputs/apk/debug/appImmViewer-debug.apk
+./gradlew :libImmCore:assembleDebug :libImmImporter:assembleDebug :libImmPlayer:assembleDebug -PimmBuildDir=build_vr
+./gradlew :appImmViewer:assembleDebug -PimmNonVr=OFF -PimmBuildDir=build_vr
 ```
 
-### Or use the deployment script (from project root)
+APK output: `appImmViewer/build_vr/outputs/apk/debug/appImmViewer-debug.apk`
+
+Install and launch on Quest:
+
 ```bash
-deploy_to_quest.bat debug    # Deploy debug APK
-deploy_to_quest.bat release  # Deploy release APK
+adb install -r appImmViewer/build_vr/outputs/apk/debug/appImmViewer-debug.apk
+adb shell am start -n org.linuxfoundation.imm.player/.MainActivity
 ```
 
-## Troubleshooting
+## Build flag reference
 
-### Gradle Sync Failed
-- Ensure Android SDK and NDK are installed
-- Check that `ANDROID_HOME` environment variable is set
-- Verify NDK version 25.2.9519653 is installed
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-PimmNonVr=ON/OFF` | `ON` | `ON` = phone/tablet build, `OFF` = Quest VR build |
+| `-PimmBuildDir=<dir>` | `build` | Custom build output dir (use `build_vr` for VR to avoid conflicts) |
 
-### CMake Error: VrApi.h not found
-- Oculus Mobile SDK not installed correctly
-- Check path: `../../../thirdparty/ovr-mobile-sdk/VrApi/Include/VrApi.h`
+## Loading IMM content on device
 
-### Build Error: Undefined reference to VrApi functions
-- VrApi library not found
-- Check path: `../../../thirdparty/ovr-mobile-sdk/VrApi/Libs/Android/arm64-v8a/libvrapi.so`
+The Android player loads content in this order:
 
-### App crashes on Quest
-- Check logcat: `adb logcat -s ImmViewer:V MainActivity:V VrApi:V`
-- Verify all native libraries are ARM64 (not x86 or ARM32)
-- Ensure Developer Mode is enabled on Quest
+1. `/sdcard/Android/data/org.linuxfoundation.imm.player/files/IMM/default.imm` (if present)
+2. `/sdcard/Android/data/org.linuxfoundation.imm.player/files/IMM/default/` (folder-based Quill export)
+3. The newest `.imm` file in `/sdcard/Android/data/org.linuxfoundation.imm.player/files/IMM/`
+4. `sample1.imm` bundled in the APK
 
-## Documentation
+To play a different file, copy it to the app's external files directory:
 
-For complete build instructions, see:
-- **Main Guide:** `../../../ANDROID_BUILD_GUIDE.md`
-- **Deployment:** `../../../deploy_to_quest.bat`
-- **Build Script:** `../../../build_android.bat`
+```bash
+adb push myfile.imm /sdcard/Android/data/org.linuxfoundation.imm.player/files/IMM/
+```
 
-## Support
+Note: Quest devices load from the app folder as expected. Many Android phones do not allow apps to read files copied into `Android/data` via MTP/adb; for those devices, use the intent flow below.
 
-For issues or questions:
-1. Check the troubleshooting section in `ANDROID_BUILD_GUIDE.md`
-2. Review Meta Quest developer documentation: https://developer.oculus.com/
-3. Check VrApi documentation: https://developer.oculus.com/documentation/native/android/mobile-vrapi/
+## Opening .imm files via Android intents
 
----
+The Android player accepts `ACTION_VIEW` intents for `.imm` files. If a file manager provides a `content://` URI, the player will copy it into the app's internal files directory and load it from there. This is the most reliable approach on Android phones.
 
-**Target Platform:** Meta Quest 2, Quest 3, Quest Pro  
-**Minimum Android Version:** 8.0 (API 26)  
-**Target Android Version:** 13 (API 33)  
-**Architecture:** ARM64-v8a only
+## Windows standalone viewer
 
+From the repository root:
+
+```bash
+MSBuild code/projects/windows/imm.sln -t:appImmViewer -p:Configuration=Release -p:Platform=x64 -m
+```
+
+Executable output: `code/appImmViewer/exe/appImmViewer_Release.exe`
+
+Settings: `code/appImmViewer/exe/settings.json` (set `EnableVR: false` for desktop non-VR).
