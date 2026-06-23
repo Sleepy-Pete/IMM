@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dxrq2se1fvtxw"]
 
-[ext_resource type="Script" uid="uid://bhunfscvj5yb7" path="res://scripts/sample_scene_controller.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/sample_scene_controller.gd" id="1"]
 
 [sub_resource type="ImmViewerCompositorEffect" id="ImmViewerCompositorEffect_xc5g8"]
 
@@ -11,8 +11,7 @@ compositor_effects = Array[CompositorEffect]([SubResource("ImmViewerCompositorEf
 script = ExtResource("1")
 
 [node name="ImmViewer" type="ImmViewerNode" parent="." unique_id=513623797]
-document_path = "../../exampleImmFiles/the-arrest-of-the-consul.imm"
-load_on_ready = true
+document_path = "res://../../exampleImmFiles/sample1.imm"
 auto_queue_render = true
 render_camera_path = NodePath("../CameraRig/Camera3D")
 

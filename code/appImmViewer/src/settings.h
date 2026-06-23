@@ -58,7 +58,8 @@ namespace ExePlayer
                 GL = 0,
                 DX = 1,
                 GLES = 2,
-                Metal = 3
+                Metal = 3,
+                Vulkan = 4
             };
 
             enum Technique : int
@@ -67,7 +68,14 @@ namespace ExePlayer
                 Pretessellated = 1
             };
 
+            enum class XRRuntime
+            {
+                Legacy = 0,
+                OpenXR = 1
+            };
+
             API        mRenderingAPI;
+            XRRuntime  mXRRuntime;
             Technique  mRenderingTechnique;
             bool mEnableVR;
             float mPixelDensity;
