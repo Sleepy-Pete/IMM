@@ -329,12 +329,11 @@ namespace ImmPlayer
                 byte[] data = request.downloadHandler.data;
                 Debug.Log($"{DiagPrefix}Loaded {data.Length} bytes from StreamingAssets");
 
-                // Copy to persistentDataPath and load from there (avoids native plugin memory issues)
-                string destPath = Path.Combine(Application.persistentDataPath, fileName);
-                File.WriteAllBytes(destPath, data);
-                Debug.Log($"{DiagPrefix}Copied to: {destPath}");
-
-                _doc = ImmPlayerManager.Instance.LoadDocument(destPath);
+                // Load straight from the in-memory bytes (no temp file). Everything stays inside the
+                // APK, and this avoids the file-path load (Player::Load(wchar_t* path)) that segfaults
+                // on Android (wchar_t is 4 bytes there). The native LoadFromMemory uses the byte-buffer
+                // overload instead.
+                _doc = ImmPlayerManager.Instance.LoadDocumentFromMemory(data, fileName);
             }
         }
 
