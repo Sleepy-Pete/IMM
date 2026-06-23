@@ -41,7 +41,12 @@
   },
 
   "Sound": {
-    "Device": "Default"
+    "// Device": "Default routes to the Windows default endpoint (may be a virtual device). Set explicitly to bypass routing. Options from the startup log include: Speakers (Scarlett 2i2 USB)",
+    "Device": "Speakers (Scarlett 2i2 USB)",
+    "// BufferSize": "0=engine default (512). Larger = more latency but fewer realtime glitches. Try 1024/2048/4096.",
+    "BufferSize": 2048,
+    "// SampleRate": "0=engine default (48000). Set to match your output device's rate to avoid resampling glitches.",
+    "SampleRate": 0
   },
 
   "UI": {
