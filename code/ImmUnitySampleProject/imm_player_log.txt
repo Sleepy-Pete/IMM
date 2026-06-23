@@ -1,7 +1,7 @@
 ===================================================
-date  : 2:25:16 of Tue 5/1/2026
+date  : 0:33:19 of Sun 14/3/2026
 
-Memory: 33867 / 65277 Megabytes 
+Memory: 33612 / 65277 Megabytes 
 CPU   : 12th Gen Intel(R) Core(TM) i9-12900K
 Units : 24
 Speed : 3187 Mhz
@@ -24,12 +24,13 @@ ColorSpace: Linear
 Rending in Static mode
 Player Init...
 Player Init OK!
+Player Init OK
 IMMl Player initialized successfully.
-loading from file: A:/Github/IMM2/IMM/code/ImmUnitySampleProject/Assets\ExampleImmFiles\sample1.imm
-LoadFromFile: Successfully loaded file: A:/Github/IMM2/IMM/code/ImmUnitySampleProject/Assets\ExampleImmFiles\sample1.imm (ID: 0)
+loading from file: C:/Users/pjpar/AppData/LocalLow/Immersive Foundation/IMM Unity Test\sample1.imm
+LoadFromFile: Successfully loaded file: C:/Users/pjpar/AppData/LocalLow/Immersive Foundation/IMM Unity Test\sample1.imm (ID: 0)
 Loading in CPU...
 IMM_IMPORT: ImportFromDisk entering
-IMM_IMPORT: filename pointer=0000014D31BB60E0
+IMM_IMPORT: filename pointer=000001F5B15088B0
 IMM_IMPORT: ImportFromDisk opened file
 IMM_IMPORT: ImportFromDisk created stream
 Importing IMM stream...
@@ -259,23 +260,23 @@ IMM_IMPORT: ReadDrawing layer=NewLayer1 drawingId=0 flipped=0
 IMM_IMPORT: ReadDrawing id=0 offset=5830530 version=1
 IMM_IMPORT: drawing 0 elements=4 totalPoints=40
 IMM_IMPORT: Finished drawing 0
-Loaded in CPU! (60 ms), file: A:/Github/IMM2/IMM/code/ImmUnitySampleProject/Assets\ExampleImmFiles\sample1.imm
+Loaded in CPU! (47 ms), file: C:/Users/pjpar/AppData/LocalLow/Immersive Foundation/IMM Unity Test\sample1.imm
 Loading in SPU...
 Add OGG OPUS sound object Forest_Night 1.wav ID=0 chan=2
 Add OGG OPUS sound object Happy.wav ID=1 chan=2
 Add OGG OPUS sound object Forest birds.wav ID=2 chan=2
-Loaded in SPU! (3 ms)
+Loaded in SPU! (2 ms)
 Loading in GPU [0]...
 Loaded in GPU [0]! (0 ms)
 Has 1 chapters
-[-2]  C:\Users\andyb\Documents\IMM\code\libImmCore\src\libSound\windows\piSoundEngineAudioSDKBackend.cpp::ImmCore::piSoundEngineAudioSDK::Play (535) :piSoundEngineAudioSDK::Play(): id = 0, offset 0 SEEK FAILED!
-[-2]  C:\Users\andyb\Documents\IMM\code\libImmCore\src\libSound\windows\piSoundEngineAudioSDKBackend.cpp::ImmCore::piSoundEngineAudioSDK::Play (535) :piSoundEngineAudioSDK::Play(): id = 1, offset 0 SEEK FAILED!
-[-2]  C:\Users\andyb\Documents\IMM\code\libImmCore\src\libSound\windows\piSoundEngineAudioSDKBackend.cpp::ImmCore::piSoundEngineAudioSDK::Play (535) :piSoundEngineAudioSDK::Play(): id = 2, offset 0 SEEK FAILED!
+[-2]  A:\Github\IMM2\IMM\code\libImmCore\src\libSound\windows\piSoundEngineAudioSDKBackend.cpp::ImmCore::piSoundEngineAudioSDK::Play (535) :piSoundEngineAudioSDK::Play(): id = 0, offset 0 SEEK FAILED!
+[-2]  A:\Github\IMM2\IMM\code\libImmCore\src\libSound\windows\piSoundEngineAudioSDKBackend.cpp::ImmCore::piSoundEngineAudioSDK::Play (535) :piSoundEngineAudioSDK::Play(): id = 1, offset 0 SEEK FAILED!
+[-2]  A:\Github\IMM2\IMM\code\libImmCore\src\libSound\windows\piSoundEngineAudioSDKBackend.cpp::ImmCore::piSoundEngineAudioSDK::Play (535) :piSoundEngineAudioSDK::Play(): id = 2, offset 0 SEEK FAILED!
 Unload(0) received
 Unloading GPU [0]...
 Unloaded in GPU [0]! (0 ms)
 Unloading SPU [0]...
 Unloaded in SPU! (0 ms)
-Unloaded in CPU [0]! (1 ms)
+Unloaded in CPU [0]! (0 ms)
 Player Deinit...
 Player Deinit OK!
