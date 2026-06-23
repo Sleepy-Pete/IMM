@@ -25,6 +25,9 @@
 #include "libImmCore/src/libBasics/piWindow.h"
 #include "libImmCore/src/libBasics/piImage.h"
 #include "libImmCore/src/libBasics/piFile.h"
+#if defined(WINDOWS)
+#include "libImmCore/src/libSound/windows/piSoundEngineAudioSDKBackend.h"
+#endif
 #if DISABLE_VR==0
 #include "libImmCore/src/libVR/piVR.h"
 #endif
@@ -524,7 +527,12 @@ int piMainFunc(const wchar_t* path, const wchar_t** args, int numArgs, void* ins
     // renderer
     const void* hwnds[1] = { piWindow_getHandle(mWindow) };
     bool disableRendererErrors = false; // can set this to true
-    if (!mRenderer->Initialize(0, hwnds, 1, true, disableRendererErrors, mRenderReporter, true, nullptr))
+    // In VR the HMD compositor paces presentation (BeginFrame/EndFrame), so vsync stays off.
+    // In mono windowed mode there is no such pacing: leaving vsync off lets the loop free-run at
+    // thousands of FPS, saturating the CPU and starving FBA's audio mixing thread -> choppy
+    // audio. Enable vsync for the non-VR case so the frame loop (and per-frame sound Tick) is paced.
+    const bool disableVSync = mSettings.mRendering.mEnableVR;
+    if (!mRenderer->Initialize(0, hwnds, 1, disableVSync, disableRendererErrors, mRenderReporter, true, nullptr))
     {
         mLog.Printf(LT_ERROR, L"Can't create renderer");
         {
@@ -728,6 +736,24 @@ int piMainFunc(const wchar_t* path, const wchar_t** args, int numArgs, void* ins
 #endif
 
     piSoundEngineBackend::Configuration config;
+    if (mSettings.mSound.mSampleRate > 0) config.mSampleRate = mSettings.mSound.mSampleRate;
+    if (mSettings.mSound.mBufferSize > 0) config.mBufferSize = mSettings.mSound.mBufferSize;
+    mLog.Printf(LT_MESSAGE, L"Sound config requested: sampleRate=%d Hz, bufferSize=%d samples", config.mSampleRate, config.mBufferSize);
+
+#if defined(WINDOWS)
+    // Offline audio-dump diagnostic: when IMM_AUDIO_DUMP_WAV=<path> is set, render the engine's
+    // spatialised mix straight to a WAV with the OS audio device disabled, bypassing all device
+    // routing (Scarlett, VoiceMeeter, WASAPI sample-rate negotiation). Lets us judge the audio
+    // the engine actually produces, independent of the live playback path. Requires the normal
+    // (DirectSoundOVR/Audio360) backend; has no effect with the Null backend.
+    const char* gAudioDumpWav = getenv("IMM_AUDIO_DUMP_WAV");
+    const bool gAudioDumpMode = (gAudioDumpWav && gAudioDumpWav[0] && !useNullSoundBackend);
+    if (gAudioDumpMode)
+    {
+        piSoundEngineAudioSDKBackend::setDisableAudioDevice(mSoundEngineBackend, true);
+        mLog.Printf(LT_MESSAGE, L"Audio dump mode: OS audio device disabled (offline render)");
+    }
+#endif
 
     if (!mSoundEngineBackend->Init(piWindow_getHandle(mWindow), soundDevice, &config)) // TODO: copy max sounds setting from app
     {
@@ -806,6 +832,91 @@ int piMainFunc(const wchar_t* path, const wchar_t** args, int numArgs, void* ins
         return validationStartupExitCode;
     }
     mLog.Printf(LT_MESSAGE, L"Viewer initialized");
+
+#if defined(WINDOWS)
+    if (gAudioDumpMode)
+    {
+        const int kRate = 48000;       // engine configured sample rate
+        const int kBlock = 1024;       // samples per channel per getAudioMix call
+        const uint32_t dumpBudgetMicroseconds = 9000;
+        double dumpSeconds = 20.0;
+        const char* secEnv = getenv("IMM_AUDIO_DUMP_SECONDS");
+        if (secEnv && secEnv[0]) dumpSeconds = atof(secEnv);
+        if (dumpSeconds < 1.0) dumpSeconds = 1.0;
+        const uint64_t numBlocks = (uint64_t)(dumpSeconds * kRate / kBlock) + 1;
+        const float blockDt = float(kBlock) / float(kRate);
+        const uint64_t samplesPerCh = numBlocks * (uint64_t)kBlock;
+        const uint64_t dataBytes = samplesPerCh * 2ull /*stereo*/ * 2ull /*int16*/;
+
+        int16_t* pcm = (int16_t*)malloc((size_t)dataBytes);
+        float* block = (float*)malloc(sizeof(float) * kBlock * 2);
+        piWindowEvents* evt = piWindow_getEvents(mWindow);
+        const trans3d vr_to_head = trans3d::identity();
+        bool firstFrameLocal = true;
+        uint64_t outIdx = 0;
+        const double t0 = mTimer.GetTime();
+
+        mLog.Printf(LT_MESSAGE, L"Audio dump: rendering %.1f s (%llu blocks of %d samples)", dumpSeconds, (unsigned long long)numBlocks, kBlock);
+
+        const int vpM[4] = { 0, 0, mRenderSize.x * mSuperSample, mRenderSize.y * mSuperSample };
+        for (uint64_t b = 0; b < numBlocks && pcm && block; ++b)
+        {
+            // Mirror a normal mono frame so the document reaches and stays in the playing state.
+            // GlobalWork+GlobalRender drive the sound layers; skipping the render makes the player
+            // treat the sounds as inactive and unload them (yielding silence).
+            mRenderer->SetRenderTarget(mRenderTargetM);
+            mRenderer->SetViewport(0, vpM);
+            mRenderer->SetWriteMask(true, false, false, false, true);
+            mViewer.GlobalWork(evt, false, vr_to_head, nullptr, nullptr, &mLog, blockDt, mWindowSize, 1, dumpBudgetMicroseconds, firstFrameLocal);
+            firstFrameLocal = false;
+            mViewer.GlobalRender(vr_to_head, vec4(0.0f));
+            mViewer.RenderMono(mRenderSize * mSuperSample, vr_to_head, 0);
+            mSoundEngineBackend->Tick();
+
+            memset(block, 0, sizeof(float) * kBlock * 2);
+            piSoundEngineAudioSDKBackend::getAudioMix(mSoundEngineBackend, block, kBlock);
+            for (int s = 0; s < kBlock * 2; ++s)
+            {
+                float v = block[s];
+                v = (v > 1.0f) ? 1.0f : ((v < -1.0f) ? -1.0f : v);
+                pcm[outIdx++] = (int16_t)(v * 32767.0f);
+            }
+
+            // pace to ~realtime so the async Opus decoders keep the mix queue fed
+            const double target = t0 + (double)(b + 1) * blockDt;
+            const double now = mTimer.GetTime();
+            if (now < target) { DWORD ms = (DWORD)((target - now) * 1000.0); if (ms > 0 && ms < 100) Sleep(ms); }
+        }
+        free(block);
+
+        FILE* wf = fopen(gAudioDumpWav, "wb");
+        if (wf && pcm)
+        {
+            const uint32_t sr = (uint32_t)kRate; const uint16_t ch = 2, bits = 16;
+            const uint32_t byteRate = sr * ch * bits / 8;
+            const uint16_t blockAlign = (uint16_t)(ch * bits / 8);
+            const uint32_t dataSize = (uint32_t)dataBytes;
+            const uint32_t riffSize = 36u + dataSize; const uint32_t sc1 = 16u; const uint16_t fmt = 1;
+            fwrite("RIFF", 1, 4, wf); fwrite(&riffSize, 4, 1, wf); fwrite("WAVE", 1, 4, wf);
+            fwrite("fmt ", 1, 4, wf); fwrite(&sc1, 4, 1, wf);
+            fwrite(&fmt, 2, 1, wf); fwrite(&ch, 2, 1, wf); fwrite(&sr, 4, 1, wf);
+            fwrite(&byteRate, 4, 1, wf); fwrite(&blockAlign, 2, 1, wf); fwrite(&bits, 2, 1, wf);
+            fwrite("data", 1, 4, wf); fwrite(&dataSize, 4, 1, wf);
+            fwrite(pcm, 1, (size_t)dataSize, wf);
+            fclose(wf);
+            mLog.Printf(LT_MESSAGE, L"Audio dump written (%u PCM bytes)", dataSize);
+        }
+        else
+        {
+            mLog.Printf(LT_ERROR, L"Audio dump: could not open output WAV for writing");
+        }
+        free(pcm);
+
+        mViewer.Deinit();
+        mSettings.End();
+        return 0;
+    }
+#endif
 
     // enter render loop
 

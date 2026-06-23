@@ -39,6 +39,8 @@ namespace ExePlayer
         struct Sound
         {
             ImmCore::piString mDevice;
+            int mSampleRate;   // 0 = engine default (48000); set to match the output device's rate
+            int mBufferSize;   // 0 = engine default (512); larger = more latency but fewer glitches
         } mSound;
 
         struct  UI

@@ -100,6 +100,21 @@ namespace ImmCore {
             piSoundEngine::PlaybackState mState;
             ModifierParameters mModifier;
 
+            // FBA initializes the decoder/streaming buffer asynchronously after open() (an
+            // Event::DECODER_INIT is dispatched when it is ready to play). seekToMs() only works
+            // once that has happened, so a non-zero start offset requested by an early Play() is
+            // recorded here and applied from the DECODER_INIT handler if the immediate seek loses
+            // the race against decoder initialization.
+            bool     mHasPendingSeek;
+            uint64_t mPendingOffset;
+
+            // Diagnostics: FBA dispatches these when the mixer can't keep its output/decode
+            // queue fed (the audible symptom is choppy/stuttering audio). They were previously
+            // silent in release builds, so dropouts left no trace. Counted + logged (rate
+            // limited) so we can tell starvation apart from spatialization timbre.
+            uint32_t mUnderrunCount;
+            uint32_t mStarvationCount;
+
             void Init()
             {
                 mModifier.mType = piSoundEngine::ModifierType::None;
@@ -111,6 +126,10 @@ namespace ImmCore {
                 mStream = nullptr;
                 mCompressedStream = nullptr;
                 mType = piSoundEngine::SoundType::Num;
+                mHasPendingSeek = false;
+                mPendingOffset = 0;
+                mUnderrunCount = 0;
+                mStarvationCount = 0;
             }
         };
 
@@ -234,9 +253,23 @@ namespace ImmCore {
                     break;
                 }
 
-                case Event::ERROR_BUFFER_UNDERRUN: break;
+                case Event::ERROR_BUFFER_UNDERRUN:
+                    // Audible as a dropout/click. Log the first one and then every 128th so a
+                    // sustained problem is visible without flooding the log.
+                    me->mUnderrunCount++;
+                    if (me->mUnderrunCount == 1 || (me->mUnderrunCount & 127) == 0)
+                        me->mLog->Printf(LT_WARNING, L"piSoundEngineAudioSDK::Event(): id = %d BUFFER UNDERRUN (count=%u)", me->mID, me->mUnderrunCount);
+                    break;
 
                 case Event::DECODER_INIT:
+                    // The streaming buffer is ready now. Honor any non-zero start offset that was
+                    // deferred from a Play() issued before the decoder finished initializing.
+                    if (me->mHasPendingSeek)
+                    {
+                        me->mHasPendingSeek = false;
+                        if (me->mAudioObject->seekToMs(float(double(me->mPendingOffset) / 1000.)) != EngineError::OK)
+                            me->mLog->Printf(LT_ERROR, L"piSoundEngineAudioSDK::Event(): id = %d, offset %llu DEFERRED SEEK FAILED!", me->mID, me->mPendingOffset);
+                    }
 #ifdef _DEBUG
                     me->mLog->Printf(LT_DEBUG, L"piSoundEngineAudioSDK::Event(): id = %d DECODER INIT EVENT", me->mID);
 #endif
@@ -244,17 +277,18 @@ namespace ImmCore {
                     break;
 
                 case Event::ERROR_DECODER_FAIL:
-#ifdef _DEBUG
                     me->mLog->Printf(LT_ERROR, L"piSoundEngineAudioSDK::Event(): id = %d DECODER FAIL EVENT", me->mID);
-#endif
 #ifdef ANDROID
                     LOGD("piSoundEngineAudioSDK::Event(): id = %d DECODER FAIL EVENT", me->mID);
 #endif
                     break;
                 case Event::ERROR_QUEUE_STARVATION:
-#ifdef _DEBUG
-                    me->mLog->Printf(LT_ERROR, L"piSoundEngineAudioSDK::Event(): id = %d QUEUE STARVATION EVENT", me->mID);
-#endif
+                    // The decode/stream queue ran dry — the engine is not being serviced fast
+                    // enough (CPU starvation or update() not called often enough). Audible as
+                    // stuttering. Log always (rate limited), not just in debug builds.
+                    me->mStarvationCount++;
+                    if (me->mStarvationCount == 1 || (me->mStarvationCount & 127) == 0)
+                        me->mLog->Printf(LT_WARNING, L"piSoundEngineAudioSDK::Event(): id = %d QUEUE STARVATION (count=%u)", me->mID, me->mStarvationCount);
 #ifdef ANDROID
                     LOGD("piSoundEngineAudioSDK::Event(): id = %d QUEUE STARVATION EVENT", me->mID);
 #endif
@@ -531,8 +565,22 @@ namespace ImmCore {
             piAssert(id >= 0 && id < mBk->mSounds.GetMaxLength() && mBk->mSounds.IsUsed(id));
 
             iSoundEngineAudioSDKBackend::Sound *me = (iSoundEngineAudioSDKBackend::Sound*)mBk->mSounds.GetAddress(id);
-            if (me->mAudioObject->seekToMs(float(double(microSecondOffset) / 1000.)) != EngineError::OK)
-                mLog->Printf(LT_ERROR, L"piSoundEngineAudioSDK::Play(): id = %d, offset %llu SEEK FAILED!", id, microSecondOffset);
+
+            // FBA loads the decoder/streaming buffer on a background thread after open(), so a
+            // seek issued before the DECODER_INIT event fails (there is no initialized stream to
+            // seek within yet). Seeking to offset 0 is a no-op anyway — a freshly opened decoder
+            // is already positioned at the start — so only a non-zero offset needs handling.
+            // Record it as pending *before* attempting the seek so the DECODER_INIT handler can
+            // honor it if we lose the race; clear the flag if the immediate seek succeeds. play()
+            // below is queued by the engine and begins once the buffer is ready.
+            me->mPendingOffset = microSecondOffset;
+            me->mHasPendingSeek = false;
+            if (microSecondOffset != 0)
+            {
+                me->mHasPendingSeek = true;
+                if (me->mAudioObject->seekToMs(float(double(microSecondOffset) / 1000.)) == EngineError::OK)
+                    me->mHasPendingSeek = false;
+            }
 
 #ifdef _DEBUG
             mLog->Printf(LT_DEBUG, L"piSoundEngineAudioSDK::Play(): id = %d, offset %llu", id, microSecondOffset);
@@ -569,6 +617,7 @@ namespace ImmCore {
 
             // with FBA we must reset the sound here so we can restart it with an arbitrary seek later
             me->mAudioObject->seekToMs(0.0f);
+            me->mHasPendingSeek = false; // drop any seek deferred before this stop
 
             me->mState = PlaybackState::StoppingStarted;
 
@@ -1110,6 +1159,12 @@ namespace ImmCore {
               return false;
           }
         }
+
+        // Surface the rate the engine actually negotiated vs what we asked for. A mismatch here
+        // (or vs the OS device's shared-mode rate) is a prime cause of glitchy realtime output.
+        me->mLog->Printf(LT_MESSAGE, L"AudioEngine sample rate: negotiated %.0f Hz (requested %d Hz, buffer %d, device %s)",
+            me->pEngine->getSampleRate(), config->mSampleRate, config->mBufferSize, mDisableDevice ? L"disabled" : L"active");
+
         if (me->pEngine->setEventCallback(iEngineCallback, me->mLog) != EngineError::OK)
         {
 #ifdef _DEBUG

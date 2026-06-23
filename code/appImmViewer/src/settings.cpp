@@ -132,12 +132,18 @@ namespace ExePlayer
         }
 
         // Sound
+        this->mSound.mSampleRate = 0; // 0 => engine default
+        this->mSound.mBufferSize = 0; // 0 => engine default
         if (joRoot.count(L"Sound") > 0)
         {
             JSONObject joSnd = joRoot[L"Sound"]->AsObject();
             const std::wstring jDevice = joSnd[L"Device"]->AsString();
             if (!this->mSound.mDevice.InitCopyW(jDevice.c_str()))
                 return false;
+            if (joSnd.count(L"SampleRate") > 0)
+                this->mSound.mSampleRate = int(joSnd[L"SampleRate"]->AsNumber());
+            if (joSnd.count(L"BufferSize") > 0)
+                this->mSound.mBufferSize = int(joSnd[L"BufferSize"]->AsNumber());
         }
 
         this->mUI.mEnableHaptics = true;
