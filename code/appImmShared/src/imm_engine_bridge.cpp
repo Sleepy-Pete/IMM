@@ -524,7 +524,10 @@ namespace ImmShared
         conf.colorSpace = static_cast<Drawing::ColorSpace>(mConfig.colorSpace);
         conf.multisamplingLevel = mConfig.antialiasing;
         const bool usesZeroToOneDepth = (mConfig.rendererApi == piRenderer::API::DX || mConfig.rendererApi == piRenderer::API::Metal);
-        conf.depthBuffer = DepthBuffer::Linear01;
+        // Unity uses a reverse-Z depth buffer on DX (its GPU projection from GL.GetGPUProjectionMatrix
+        // is reverse-Z), so IMM's depth test must be GREATER (Linear10). Linear01 (LESS) is only
+        // correct for non-Unity DX. Leave non-DX bridge hosts (e.g. Godot Vulkan/Metal) on Linear01.
+        conf.depthBuffer = (mConfig.rendererApi == piRenderer::API::DX) ? DepthBuffer::Linear10 : DepthBuffer::Linear01;
         conf.clipDepth = usesZeroToOneDepth ? ClipSpaceDepth::FromZeroToOne : ClipSpaceDepth::FromNegativeOneToOne;
         conf.projectionMatrix = usesZeroToOneDepth ? ClipSpaceDepth::FromZeroToOne : ClipSpaceDepth::FromNegativeOneToOne;
         conf.frontIsCCW = (mConfig.rendererApi == piRenderer::API::DX) ? false : true;

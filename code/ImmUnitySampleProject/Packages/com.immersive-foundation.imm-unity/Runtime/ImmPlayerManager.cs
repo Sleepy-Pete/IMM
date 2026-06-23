@@ -370,7 +370,26 @@ namespace ImmPlayer
                 return false;
             if (IsEnvFlagEnabled("IMM_UNITY_FORCE_TEXTURE_PROJECTION"))
                 return true;
-            return cam != null && cam.cameraType == CameraType.SceneView;
+            if (cam == null)
+                return false;
+            // The Scene view always renders into a texture.
+            if (cam.cameraType == CameraType.SceneView)
+                return true;
+#if UNITY_6000_0_OR_NEWER
+            // Unity 6: the built-in render pipeline routes the Game camera through an intermediate
+            // texture (rather than straight to the back buffer) whenever HDR, MSAA, a target
+            // texture, or post-processing is active. In that case the GPU projection must use the
+            // render-into-texture convention, or IMM composites Y-flipped / off-screen and the
+            // Game view is black. (Unity 2022.3 rendered the Game camera to the back buffer, which
+            // is why the original SceneView-only check worked there.)
+            if (cam.targetTexture != null)
+                return true;
+            if (cam.allowHDR)
+                return true;
+            if (cam.allowMSAA && QualitySettings.antiAliasing > 1)
+                return true;
+#endif
+            return false;
         }
 
         private void CleanupCommandBuffers()
@@ -454,6 +473,13 @@ namespace ImmPlayer
 
             int eventId = (info.CameraId << 8) | (eyeIndex & 0x1);
             info.CommandBuffer.Clear();
+#if UNITY_6000_0_OR_NEWER
+            // Unity 6's render graph does not guarantee the camera's color target is bound when the
+            // plugin render event executes (Unity <=2022 left it bound implicitly). Bind it
+            // explicitly so the native IMM render draws into the camera target instead of nothing
+            // (which showed as a black Game view).
+            info.CommandBuffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
+#endif
             info.CommandBuffer.IssuePluginEvent(_renderEventFunc, eventId);
         }
 
