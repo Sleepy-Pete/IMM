@@ -4,7 +4,8 @@ name: Build
 
 on:
   push:
-    branches: [ main, develop ]
+    branches:
+      - '**'
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -12,7 +13,11 @@ on:
 jobs:
   build-windows:
     name: Windows
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || contains(github.event.head_commit.message, '[CI BUILD]')
     runs-on: windows-latest
+    env:
+      GODOT_CPP_REF: godot-4.5-stable
+      GODOT_VERSION: 4.5-stable
 
     steps:
     - name: Checkout repository
@@ -36,6 +41,60 @@ jobs:
     - name: Build Solution
       working-directory: code/projects/windows
       run: msbuild imm.sln /p:Configuration=Release /p:Platform=x64 /m
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install SCons
+      shell: pwsh
+      run: python -m pip install scons
+
+    - name: Cache godot-cpp
+      uses: actions/cache@v4
+      with:
+        path: thirdparty/godot-cpp
+        key: godot-cpp-${{ runner.os }}-${{ env.GODOT_CPP_REF }}-${{ hashFiles('code/appImmGodotGDExtension/SConstruct') }}
+        restore-keys: |
+          godot-cpp-${{ runner.os }}-${{ env.GODOT_CPP_REF }}-
+
+    - name: Download Godot
+      shell: pwsh
+      run: |
+        $version = "${env:GODOT_VERSION}"
+        $zipName = "Godot_v$($version)_win64.exe.zip"
+        $url = "https://github.com/godotengine/godot-builds/releases/download/$version/$zipName"
+        Invoke-WebRequest -Uri $url -OutFile $zipName
+        Expand-Archive -Path $zipName -DestinationPath godot
+        $godotExe = Get-ChildItem -Path godot -Filter "Godot*.exe" | Select-Object -First 1
+        if (-not $godotExe) {
+          throw "Godot executable not found after extracting $zipName"
+        }
+        "GODOT_EXE=$($godotExe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+    - name: Run Godot script smoke test
+      shell: pwsh
+      run: .\code\projects\windows\run-godot-smoke.ps1 -Configuration Release -GodotExe $env:GODOT_EXE -LogDir artifacts\godot-smoke-script
+
+    - name: Build Godot GDExtension
+      shell: pwsh
+      run: .\code\projects\windows\build-godot-extension.ps1 -Configuration Release -BootstrapGodotCpp -BuildGodotCpp -GodotCppRef $env:GODOT_CPP_REF
+
+    - name: Check Godot GDExtension staging
+      shell: pwsh
+      run: .\code\projects\windows\run-godot-smoke.ps1 -Configuration Release -GodotExe $env:GODOT_EXE -RequireExtension -PreflightOnly -LogDir artifacts\godot-extension-preflight
+
+    - name: Upload Godot smoke logs
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ImmGodotSmokeLogs-Windows
+        path: |
+          artifacts/godot-smoke-script
+          artifacts/godot-extension-preflight
+        if-no-files-found: ignore
+        retention-days: 7
 
     - name: Upload Stroke Reader DLL
       uses: actions/upload-artifact@v4
@@ -62,6 +121,7 @@ jobs:
         New-Item -ItemType Directory -Force $staging | Out-Null
         Copy-Item code/appImmViewer/exe/appImmViewer_Release.exe $staging
         Copy-Item code/appImmViewer/exe/settings.json $staging
+        Copy-Item exampleImmFiles/sample1.imm $staging
         Copy-Item code/appImmViewer/exe/*.dll $staging
         Copy-Item docs/viewer_settings.md $staging
         Copy-Item docs/viewer_readme.md $staging/README.md
@@ -80,7 +140,9 @@ jobs:
         $json = Get-Content $settingsPath -Raw | ConvertFrom-Json
         $json.Rendering.EnableVR = $true
         $json.Rendering.RenderingAPI = "OpenGL"
-        $json | ConvertTo-Json -Depth 6 | Set-Content $settingsPath -Encoding UTF8
+        $jsonText = $json | ConvertTo-Json -Depth 6
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText($settingsPath, $jsonText, $utf8NoBom)
 
     - name: Upload Viewer Executable
       uses: actions/upload-artifact@v4
@@ -94,15 +156,10 @@ jobs:
         name: ImmViewer-Windows-VR
         path: viewer_artifact_vr
         if-no-files-found: error
-    - name: Upload Sample IMM
-      uses: actions/upload-artifact@v4
-      with:
-        name: sample1-imm
-        path: exampleImmFiles/sample1.imm
-        if-no-files-found: error
 
   build-android:
     name: Android
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || contains(github.event.head_commit.message, '[CI BUILD]')
     runs-on: ubuntu-latest
 
     steps:
@@ -210,7 +267,10 @@ jobs:
 
   build-macos:
     name: macOS
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || contains(github.event.head_commit.message, '[CI BUILD]')
     runs-on: macos-latest
+    env:
+      GODOT_CPP_REF: godot-4.5-stable
 
     steps:
     - name: Checkout repository
@@ -222,23 +282,114 @@ jobs:
       run: brew install cmake
 
     - name: Configure macOS build
-      run: cmake -S code/projects/macos -B build/macos -DIMM_BUILD_VIEWER=OFF
+      run: cmake -S code/projects/macos -B build/macos -DIMM_BUILD_VIEWER=ON
 
     - name: Build macOS Unity plugin
-      if: false
-      run: cmake --build build/macos --config Release
+      run: cmake --build build/macos --target ImmUnity --config Release
+
+    - name: Build macOS Godot native plugin
+      run: cmake --build build/macos --target ImmGodotPlugin --config Release
+
+    - name: Build macOS Metal standalone viewer
+      run: cmake --build build/macos --target appImmViewerMetal --config Release
+
+    - name: Install Godot GDExtension build tools
+      run: python3 -m pip install --break-system-packages scons
+
+    - name: Cache godot-cpp
+      uses: actions/cache@v4
+      with:
+        path: thirdparty/godot-cpp
+        key: godot-cpp-${{ runner.os }}-${{ env.GODOT_CPP_REF }}-${{ hashFiles('code/appImmGodotGDExtension/SConstruct') }}
+        restore-keys: |
+          godot-cpp-${{ runner.os }}-${{ env.GODOT_CPP_REF }}-
+
+    - name: Build macOS Godot GDExtension
+      run: |
+        set -euo pipefail
+        if [ ! -d thirdparty/godot-cpp ]; then
+          git clone --depth 1 --branch "$GODOT_CPP_REF" https://github.com/godotengine/godot-cpp.git thirdparty/godot-cpp
+        fi
+        arch="$(uname -m)"
+        python3 -m SCons -C thirdparty/godot-cpp platform=macos target=template_release arch="$arch" generate_bindings=yes
+        python3 -m SCons -C code/appImmGodotGDExtension platform=macos target=template_release arch="$arch" godot_cpp="$GITHUB_WORKSPACE/thirdparty/godot-cpp" imm_godot_lib="$GITHUB_WORKSPACE/build/macos/godot/libImmGodotPlugin.dylib" imm_godot_runtime="$GITHUB_WORKSPACE/build/macos/godot/libImmGodotPlugin.dylib"
+
+    - name: Sign macOS Godot GDExtension dylibs (if unsigned)
+      run: |
+        for f in \
+          code/ImmGodotSampleProject/addons/imm_viewer/bin/macos/release/libimm_godot_extension.dylib \
+          code/ImmGodotSampleProject/addons/imm_viewer/bin/macos/release/libImmGodotPlugin.dylib; do
+          if ! codesign -v "$f" 2>/dev/null; then
+            codesign --sign - --deep "$f"
+          fi
+        done
+
+    - name: Stage macOS Godot GDExtension binaries
+      run: |
+        set -euo pipefail
+        staging="artifacts/ImmGodotGDExtension-macOS-platform/bin/macos/release"
+        rm -rf artifacts/ImmGodotGDExtension-macOS-platform
+        mkdir -p "$staging"
+        cp code/ImmGodotSampleProject/addons/imm_viewer/bin/macos/release/libimm_godot_extension.dylib "$staging/"
+        cp code/ImmGodotSampleProject/addons/imm_viewer/bin/macos/release/libImmGodotPlugin.dylib "$staging/"
+        test -f "$staging/libimm_godot_extension.dylib"
+        test -f "$staging/libImmGodotPlugin.dylib"
+
+    - name: Upload macOS Godot GDExtension platform binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: ImmGodotGDExtension-macOS-platform
+        path: artifacts/ImmGodotGDExtension-macOS-platform
+        if-no-files-found: error
+        retention-days: 1
+
+    - name: Sign macOS Metal viewer app (if unsigned)
+      run: |
+        if ! codesign -v build/macos/viewer/appImmViewerMetal.app 2>/dev/null; then
+          codesign --sign - --deep build/macos/viewer/appImmViewerMetal.app
+        fi
+
+    - name: Package macOS Metal standalone viewer app bundle
+      run: |
+        set -euo pipefail
+        staging="artifacts/ImmViewerMetal-macOS"
+        app="build/macos/viewer/appImmViewerMetal.app"
+        rm -rf "$staging"
+        mkdir -p "$staging"
+        test -d "$app"
+        ditto "$app" "$staging/appImmViewerMetal.app"
+        test -f "$staging/appImmViewerMetal.app/Contents/Info.plist"
+        test -x "$staging/appImmViewerMetal.app/Contents/MacOS/appImmViewerMetal"
+
+    - name: Upload macOS Metal Standalone Viewer
+      uses: actions/upload-artifact@v4
+      with:
+        name: ImmViewerMetal-macOS
+        path: |
+          artifacts/ImmViewerMetal-macOS
+        if-no-files-found: error
 
     - name: Build macOS Stroke Reader plugin
       run: cmake --build build/macos --target ImmStrokeReader --config Release
 
+    - name: Sign macOS Unity plugin and Stroke Reader dylib (if unsigned)
+      run: |
+        for f in \
+          build/macos/unity/ImmUnityPlugin.bundle \
+          code/ImmUnitySampleProject/Packages/com.immersive-foundation.imm-stroke-reader/Plugins/macOS/libImmStrokeReader.dylib; do
+          if ! codesign -v "$f" 2>/dev/null; then
+            codesign --sign - --deep "$f"
+          fi
+        done
+
     - name: Upload Unity Plugin Bundle
-      if: false
       uses: actions/upload-artifact@v4
       with:
         name: ImmViewerPlugin-macOS
         path: |
-          code/ImmUnitySampleProject/Assets/Plugins/OSX/ImmUnityPlugin.bundle
+          build/macos/unity/ImmUnityPlugin.bundle
         if-no-files-found: error
+        retention-days: 1
 
     - name: Upload Stroke Reader dylib
       uses: actions/upload-artifact@v4
@@ -251,6 +402,7 @@ jobs:
 
   build-ios:
     name: iOS
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || contains(github.event.head_commit.message, '[CI BUILD]')
     runs-on: macos-latest
 
     steps:
@@ -272,6 +424,12 @@ jobs:
     - name: Build iOS Stroke Reader
       run: cmake --build build/ios --target ImmStrokeReader --config Release
 
+    - name: Build iOS Unity plugin
+      run: cmake --build build/ios --target ImmUnity --config Release
+
+    - name: Link-check iOS Unity plugin
+      run: cmake --build build/ios --target ImmUnityIOSLinkSmoke --config Release
+
     - name: Upload Stroke Reader (iOS)
       uses: actions/upload-artifact@v4
       with:
@@ -281,8 +439,18 @@ jobs:
         if-no-files-found: error
         retention-days: 1
 
+    - name: Upload Unity Plugin (iOS)
+      uses: actions/upload-artifact@v4
+      with:
+        name: ImmViewerPlugin-iOS
+        path: |
+          build/ios/unity/libImmUnityPlugin.a
+        if-no-files-found: error
+        retention-days: 1
+
   package-unity-plugins:
     name: Package Unity Plugins
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || contains(github.event.head_commit.message, '[CI BUILD]')
     runs-on: ubuntu-latest
     needs:
       - build-windows
@@ -334,6 +502,18 @@ jobs:
         name: ImmViewerPlugin-Android
         path: artifacts/ImmViewerPlugin-Android
 
+    - name: Download macOS ImmUnity Plugin
+      uses: actions/download-artifact@v4
+      with:
+        name: ImmViewerPlugin-macOS
+        path: artifacts/ImmViewerPlugin-macOS
+
+    - name: Download iOS ImmUnity Plugin
+      uses: actions/download-artifact@v4
+      with:
+        name: ImmViewerPlugin-iOS
+        path: artifacts/ImmViewerPlugin-iOS
+
     - name: Sync stroke reader package binaries
       shell: bash
       run: |
@@ -356,7 +536,7 @@ jobs:
       run: |
         set -euo pipefail
         unity_pkg="code/ImmUnitySampleProject/Packages/com.immersive-foundation.imm-unity"
-        mkdir -p "$unity_pkg/Plugins/x86_64" "$unity_pkg/Plugins/Android/libs/arm64-v8a"
+        mkdir -p "$unity_pkg/Plugins/x86_64" "$unity_pkg/Plugins/Android/libs/arm64-v8a" "$unity_pkg/Plugins/OSX" "$unity_pkg/Plugins/iOS"
         cp artifacts/ImmViewerPlugin-Windows/ImmUnityPlugin.dll "$unity_pkg/Plugins/x86_64/ImmUnityPlugin.dll"
         shopt -s nullglob globstar
         android_unity_so=(artifacts/ImmViewerPlugin-Android/**/libImmUnityPlugin.so)
@@ -365,6 +545,10 @@ jobs:
           exit 1
         fi
         cp "${android_unity_so[0]}" "$unity_pkg/Plugins/Android/libs/arm64-v8a/libImmUnityPlugin.so"
+        rm -rf "$unity_pkg/Plugins/OSX/ImmUnityPlugin.bundle"
+        mkdir -p "$unity_pkg/Plugins/OSX/ImmUnityPlugin.bundle"
+        cp -R artifacts/ImmViewerPlugin-macOS/. "$unity_pkg/Plugins/OSX/ImmUnityPlugin.bundle/"
+        cp artifacts/ImmViewerPlugin-iOS/libImmUnityPlugin.a "$unity_pkg/Plugins/iOS/libImmUnityPlugin.a"
 
     - name: Archive stroke reader UPM package
       shell: bash
@@ -405,6 +589,8 @@ jobs:
             'ImmStrokeReaderPlugin-iOS',
             'ImmViewerPlugin-Windows',
             'ImmViewerPlugin-Android',
+            'ImmViewerPlugin-macOS',
+            'ImmViewerPlugin-iOS',
           ]);
           const owner = context.repo.owner;
           const repo = context.repo.repo;
@@ -424,12 +610,180 @@ jobs:
             }
           }
 
+  package-godot-extension:
+    name: Package Godot GDExtension
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || contains(github.event.head_commit.message, '[CI BUILD]')
+    runs-on: ubuntu-latest
+    needs:
+      - build-macos
+    permissions:
+      actions: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download Godot GDExtension platform binaries
+      uses: actions/download-artifact@v4
+      with:
+        pattern: ImmGodotGDExtension-*-platform
+        path: artifacts/platform-bins
+        merge-multiple: true
+
+    - name: Assemble Godot addon artifact
+      shell: bash
+      run: |
+        set -euo pipefail
+        # The packaged asset IS the example project's addon folder: same manifest,
+        # same self-contained layout (addons/imm_viewer/bin/<platform>/<variant>/).
+        addon="artifacts/ImmGodotGDExtension/addons/imm_viewer"
+        rm -rf artifacts/ImmGodotGDExtension
+        mkdir -p "$addon/bin"
+        # Ship the manifest verbatim - it declares every platform up front so
+        # Windows/Android binaries drop in later with no manifest or layout change.
+        cp code/ImmGodotSampleProject/addons/imm_viewer/imm_viewer.gdextension "$addon/"
+        if [ -f code/ImmGodotSampleProject/addons/imm_viewer/imm_viewer.gdextension.uid ]; then
+          cp code/ImmGodotSampleProject/addons/imm_viewer/imm_viewer.gdextension.uid "$addon/"
+        fi
+        # GDScript stub / API wrapper (ships alongside the native binaries so
+        # users who drop the addon into their project get a working ImmViewerNode).
+        cp code/ImmGodotSampleProject/addons/imm_viewer/imm_viewer_node.gd "$addon/"
+        if [ -f code/ImmGodotSampleProject/addons/imm_viewer/imm_viewer_node.gd.uid ]; then
+          cp code/ImmGodotSampleProject/addons/imm_viewer/imm_viewer_node.gd.uid "$addon/"
+        fi
+        # Merge whatever platform binaries were produced this run (bin/<platform>/...).
+        cp -R artifacts/platform-bins/bin/* "$addon/bin/"
+        # Mirror release -> debug for any platform that only built a release binary
+        # so the editor (which selects the debug feature tag) can load the extension.
+        for plat in "$addon"/bin/*/; do
+          if [ -d "${plat}release" ] && [ ! -d "${plat}debug" ]; then
+            cp -R "${plat}release" "${plat}debug"
+          fi
+        done
+        test -f "$addon/imm_viewer.gdextension"
+        test -f "$addon/bin/macos/release/libimm_godot_extension.dylib"
+        test -f "$addon/bin/macos/release/libImmGodotPlugin.dylib"
+
+    - name: Upload Godot GDExtension addon
+      uses: actions/upload-artifact@v4
+      with:
+        name: ImmGodotGDExtension
+        path: artifacts/ImmGodotGDExtension
+        if-no-files-found: error
+
+    - name: Delete intermediate Godot platform artifacts
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const owner = context.repo.owner;
+          const repo = context.repo.repo;
+          const run_id = context.runId;
+          const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+            owner,
+            repo,
+            run_id,
+          });
+          for (const artifact of artifacts) {
+            if (artifact.name.startsWith('ImmGodotGDExtension-') && artifact.name.endsWith('-platform')) {
+              await github.rest.actions.deleteArtifact({
+                owner,
+                repo,
+                artifact_id: artifact.id,
+              });
+            }
+          }
+
+  sync-binaries:
+    name: Sync Binaries to Repo
+    runs-on: ubuntu-latest
+    needs:
+      - package-unity-plugins
+      - package-godot-extension
+    # Only on direct pushes to integration branches. Opt-in branch builds must not push generated binaries back.
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.ref }}
+
+    - name: Download stroke reader UPM package
+      uses: actions/download-artifact@v4
+      with:
+        name: ImmStrokeReaderPlugin-UPM
+        path: upm
+
+    - name: Download ImmUnity UPM package
+      uses: actions/download-artifact@v4
+      with:
+        name: ImmViewerPlugin-UPM
+        path: upm
+
+    - name: Download Godot GDExtension addon
+      uses: actions/download-artifact@v4
+      with:
+        name: ImmGodotGDExtension
+        path: artifacts/ImmGodotGDExtension
+
+    - name: Extract and sync plugin binaries
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        unzip -q upm/ImmStrokeReaderPlugin-UPM.zip -d upm/stroke
+        unzip -q upm/ImmViewerPlugin-UPM.zip       -d upm/unity
+
+        stroke_src="upm/stroke/com.immersive-foundation.imm-stroke-reader/Plugins"
+        unity_src="upm/unity/com.immersive-foundation.imm-unity/Plugins"
+        stroke_dst="code/ImmUnitySampleProject/Packages/com.immersive-foundation.imm-stroke-reader/Plugins"
+        unity_dst="code/ImmUnitySampleProject/Packages/com.immersive-foundation.imm-unity/Plugins"
+
+        # Stroke Reader
+        cp "$stroke_src/x86_64/ImmStrokeReader.dll"              "$stroke_dst/x86_64/ImmStrokeReader.dll"
+        cp "$stroke_src/Android/arm64-v8a/libImmStrokeReader.so" "$stroke_dst/Android/arm64-v8a/libImmStrokeReader.so"
+        cp "$stroke_src/macOS/libImmStrokeReader.dylib"           "$stroke_dst/macOS/libImmStrokeReader.dylib"
+        cp "$stroke_src/iOS/libImmStrokeReader.a"                 "$stroke_dst/iOS/libImmStrokeReader.a"
+
+        # ImmUnity plugin
+        cp "$unity_src/x86_64/ImmUnityPlugin.dll"                   "$unity_dst/x86_64/ImmUnityPlugin.dll"
+        cp "$unity_src/Android/libs/arm64-v8a/libImmUnityPlugin.so" "$unity_dst/Android/libs/arm64-v8a/libImmUnityPlugin.so"
+        rm -rf "$unity_dst/OSX/ImmUnityPlugin.bundle"
+        cp -R  "$unity_src/OSX/ImmUnityPlugin.bundle"               "$unity_dst/OSX/ImmUnityPlugin.bundle"
+        mkdir -p "$unity_dst/iOS"
+        cp "$unity_src/iOS/libImmUnityPlugin.a"                     "$unity_dst/iOS/libImmUnityPlugin.a"
+
+    - name: Sync Godot GDExtension binaries
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Copy the freshly built platform binaries into the committed addon so the
+        # sample project runs out of the box from a clean clone.
+        cp -R artifacts/ImmGodotGDExtension/addons/imm_viewer/bin/. code/ImmGodotSampleProject/addons/imm_viewer/bin/
+
+    - name: Commit and push if changed
+      shell: bash
+      run: |
+        git config user.name  "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add code/ImmUnitySampleProject/Packages/*/Plugins/ code/ImmGodotSampleProject/addons/imm_viewer/bin/
+        if git diff --cached --quiet; then
+          echo "No binary changes — nothing to commit"
+        else
+          git commit -m "chore: update committed plugin binaries (Unity + Godot)"
+          git pull --rebase
+          git push
+        fi
+
   release:
     name: Release
     runs-on: ubuntu-latest
     needs:
       - build-windows
       - build-android
+      - package-godot-extension
       - publish-upm
       - package-unity-plugins
     if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[RELEASE]')
@@ -474,11 +828,11 @@ jobs:
         name: ImmViewer-Android-VR
         path: release-assets/ImmViewer-Android-VR
 
-    - name: Download sample IMM
+    - name: Download Godot GDExtension addon
       uses: actions/download-artifact@v4
       with:
-        name: sample1-imm
-        path: release-assets/sample1-imm
+        name: ImmGodotGDExtension
+        path: release-assets/ImmGodotGDExtension
 
     - name: Zip Windows viewer artifacts
       shell: bash
@@ -487,6 +841,7 @@ jobs:
         cd release-assets
         zip -r ImmViewer-Windows.zip ImmViewer-Windows
         zip -r ImmViewer-Windows-VR.zip ImmViewer-Windows-VR
+        zip -r ImmGodotGDExtension.zip ImmGodotGDExtension
 
     - name: Normalize Android APK names
       shell: bash
@@ -541,9 +896,10 @@ jobs:
           release-assets/upm/ImmViewerPlugin-UPM.zip \
           release-assets/ImmViewer-Windows.zip \
           release-assets/ImmViewer-Windows-VR.zip \
+          release-assets/ImmGodotGDExtension.zip \
           release-assets/ImmViewer-Android.apk \
           release-assets/ImmViewer-Android-VR.apk \
-          release-assets/sample1-imm/sample1.imm
+          release-assets/ImmViewer-Windows/sample1.imm
 
   publish-upm:
     name: Publish UPM Branch

@@ -8,6 +8,8 @@
 
 #define CUSTOM_ALPHA_TO_COVERAGE 1
 
+#include <cstdlib>
+
 #include "libImmCore/src/libBasics/piArray.h"
 #include "libImmCore/src/libBasics/piPool.h"
 #include "libImmCore/src/libBasics/piString.h"
@@ -45,6 +47,12 @@ namespace ImmPlayer
 	{
 		uint32_t dummy;
 	}ChunkData;
+
+    static int iForcedPaintBrushType()
+    {
+        const char *value = std::getenv("IMM_FORCE_PAINT_BRUSH_TYPE");
+        return (value && value[0]) ? atoi(value) : -1;
+    }
 
 	
 	struct iSLayerDrawInfoPretessellated
@@ -247,7 +255,7 @@ namespace ImmPlayer
                     continue;
                 }
             }
-			const piShaderOptions ops = { 5,{ { "COLOR_COMPRESSED", static_cast<int>(colorSpace) },
+			const piShaderOptions ops = { 6,{ { "COLOR_COMPRESSED", static_cast<int>(colorSpace) },
 												{ "WIGGLE", k },
 												{ "DRAWIN", j },
 #if PT_VERTEX_FORMAT==1
@@ -255,7 +263,8 @@ namespace ImmPlayer
 #else
 											  	{ "VERTEX_FORMAT", 0 },
 #endif
-												{ "STEREOMODE", static_cast<int>(i) } } };
+												{ "STEREOMODE", static_cast<int>(i) },
+                                                { "PRETESSELLATED", 1 } } };
 
 
 			char error[1024] = { 0 };
@@ -265,6 +274,10 @@ namespace ImmPlayer
 			{
 				mShader[dindex] = renderer->CreateShader(&ops, shader_pretessellated_brush_vs, nullptr, nullptr, nullptr, shader_pretessellated_brush_fs, error);
 			}
+            else if (renderer->GetAPI() == piRenderer::API::Metal)
+            {
+                mShader[dindex] = renderer->CreateShader(&ops, nullptr, nullptr, nullptr, nullptr, nullptr, error);
+            }
 			else
 			{
                 #ifndef ANDROID
@@ -276,6 +289,11 @@ namespace ImmPlayer
 
 				mShader[dindex] = renderer->CreateShaderBinary(nullptr, shader_pretessellated_brush_vs_code[vs_index], shader_pretessellated_brush_vs_size[vs_index], nullptr, 0, nullptr, 0, nullptr, 0,
 					shader_pretessellated_brush_fs_code[fs_index], shader_pretessellated_brush_fs_size[fs_index], error);
+                #else
+                if (renderer->GetAPI() == piRenderer::API::Metal)
+                {
+                    mShader[dindex] = renderer->CreateShaderBinary(nullptr, nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0, error);
+                }
                 #endif
 			}
 
@@ -289,10 +307,11 @@ namespace ImmPlayer
 			dindex++;
 		}
 
-        mRasterState[0] = renderer->CreateRasterState(false, frontIsCCW, piRenderer::CullMode::NONE, true, false);  // double sided, flip NO
-        mRasterState[1] = renderer->CreateRasterState(false, frontIsCCW, piRenderer::CullMode::BACK, true, false);  // single sided, flip NO
-        mRasterState[2] = renderer->CreateRasterState(false, frontIsCCW, piRenderer::CullMode::NONE, true, false);  // double sided, flip YES
-        mRasterState[3] = renderer->CreateRasterState(false, frontIsCCW, piRenderer::CullMode::FRONT, true, false); // single sided, flip YES
+        const bool forcePaintWireframe = std::getenv("IMM_FORCE_PAINT_WIREFRAME") != nullptr;
+        mRasterState[0] = renderer->CreateRasterState(forcePaintWireframe, frontIsCCW, piRenderer::CullMode::NONE, true, false);  // double sided, flip NO
+        mRasterState[1] = renderer->CreateRasterState(forcePaintWireframe, frontIsCCW, piRenderer::CullMode::BACK, true, false);  // single sided, flip NO
+        mRasterState[2] = renderer->CreateRasterState(forcePaintWireframe, frontIsCCW, piRenderer::CullMode::NONE, true, false);  // double sided, flip YES
+        mRasterState[3] = renderer->CreateRasterState(forcePaintWireframe, frontIsCCW, piRenderer::CullMode::FRONT, true, false); // single sided, flip YES
 
 		if (!mRasterState[0]) return false;
 		if (!mRasterState[1]) return false;
@@ -575,6 +594,7 @@ namespace ImmPlayer
 		if (num < 1) return;
 
 
+        const int forcedBrushType = iForcedPaintBrushType();
 		int lastShaderID = -1;
 		int lastStateID = -1;
 
@@ -636,6 +656,7 @@ namespace ImmPlayer
 			// for each chunk in that layer
 			for (uint32_t chunkType = 0; chunkType < kNumChunkTypes; chunkType++)
 			{
+                if (forcedBrushType >= 0 && static_cast<int>(chunkType) != forcedBrushType) continue;
                 const iSLayerDrawInfoPretessellated::BufferData *info = me->mBuffers + chunkType;
                 const uint64_t numChunks = info->mChunks.GetLength();
                 if (numChunks == 0) continue;

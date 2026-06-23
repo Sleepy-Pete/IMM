@@ -21,6 +21,12 @@ using namespace ImmImporter;
 
 namespace ImmPlayer
 {
+    static bool iEnvFlagEnabled(const char *name)
+    {
+        const char *value = getenv(name);
+        return value != nullptr && value[0] != '\0' && value[0] != '0';
+    }
+
     Document::Document() {}
 
     Document::~Document() {}
@@ -461,6 +467,52 @@ namespace ImmPlayer
         return (mState.mLoadingState == Document::LoadingState::Loaded && mState.mPlaybackState != Document::PlaybackState::PausedAndHidden);
     }
 
+    void Document::UnloadSync(
+        LayerRendererSound *layerRenderSound,
+        LayerRendererPaint *layerPaintRender,
+        LayerRendererPicture *layerRenderPicture,
+        LayerRendererModel *layerRendererModel,
+        Drawing::ColorSpace colorSpace,
+        Drawing::PaintRenderingTechnique renderingTechnique,
+        piSoundEngine *soundEngine,
+        piRenderer *renderer,
+        piLog *log,
+        const piTick now)
+    {
+        if (IsLoadingAsync())
+        {
+            StopLoadingAsync();
+        }
+
+        int guard = 0;
+        while (mState.mLoadingState != LoadingState::UnloadingCompleted && guard < 256)
+        {
+            if (mState.mLoadingState == LoadingState::Loaded)
+            {
+                mPlayerManager.Exit();
+                mState.mLoadingState = LoadingState::UnloadingGPU;
+            }
+
+            UpdateStateGPU(layerPaintRender, layerRenderPicture, layerRendererModel, renderer, log, colorSpace);
+            UpdateStateCPU(layerRenderSound,
+                           layerPaintRender,
+                           layerRenderPicture,
+                           layerRendererModel,
+                           colorSpace,
+                           renderingTechnique,
+                           soundEngine,
+                           log,
+                           now,
+                           nullptr);
+            ++guard;
+        }
+
+        if (mState.mLoadingState != LoadingState::UnloadingCompleted && log)
+        {
+            log->Printf(LT_ERROR, L"Document synchronous unload did not complete for id=%d state=%d", mID, static_cast<int>(mState.mLoadingState));
+        }
+    }
+
     //===============================================
     bool Document::iLoadSPU(LayerRendererSound *layerRenderSound, piSoundEngine* soundEngine, piLog *log)
     {
@@ -650,6 +702,10 @@ namespace ImmPlayer
             switch (layerType)
             {
             case Layer::Type::Paint:
+                if (iEnvFlagEnabled("IMM_UNITY_SKIP_GPU_LOAD_PAINT"))
+                {
+                    break;
+                }
                 if (!layerPaintRender->LoadInGPU(renderer, nullptr, log, layer))
                 {
                     log->Printf(LT_ERROR, L"Could not load in GPU [%d] Paint layer %s", mID, layer->GetFullName()->GetS());
@@ -657,6 +713,10 @@ namespace ImmPlayer
                 }
                 break;
             case Layer::Type::Picture:
+                if (iEnvFlagEnabled("IMM_UNITY_SKIP_GPU_LOAD_PICTURE"))
+                {
+                    break;
+                }
                 if (!layerRenderPicture->LoadInGPU(renderer, nullptr, log, layer))
                 {
                     log->Printf(LT_ERROR, L"Could not load in GPU [%d] Picture layer %s", mID, layer->GetFullName()->GetS());
@@ -664,6 +724,10 @@ namespace ImmPlayer
                 }
                 break;
             case Layer::Type::Model:
+                if (iEnvFlagEnabled("IMM_UNITY_SKIP_GPU_LOAD_MODEL"))
+                {
+                    break;
+                }
                 if (!layerRenderModel->LoadInGPU(renderer, nullptr, log, layer))
                 {
                     log->Printf(LT_ERROR, L"Could not load in GPU [%d] Model layer %s", mID, layer->GetFullName()->GetS());

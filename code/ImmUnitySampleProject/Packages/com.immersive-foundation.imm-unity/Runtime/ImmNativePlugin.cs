@@ -10,7 +10,11 @@ namespace ImmPlayer
     /// </summary>
     public static class ImmNativePlugin
     {
+#if UNITY_IOS && !UNITY_EDITOR
+        private const string DllName = "__Internal";
+#else
         private const string DllName = "ImmUnityPlugin";
+#endif
 
         #region Unity Plugin Callbacks
 
@@ -19,6 +23,11 @@ namespace ImmPlayer
 
         [DllImport(DllName)]
         public static extern void Debug();
+
+#if UNITY_IOS && !UNITY_EDITOR
+        [DllImport(DllName)]
+        public static extern void ImmUnityRegisterRenderingPlugin();
+#endif
 
         #endregion
 
@@ -62,6 +71,9 @@ namespace ImmPlayer
             float[] prjLeft,
             float[] world2reye,
             float[] prjRight);
+
+        [DllImport(DllName)]
+        public static extern void SetCameraViewport(int cameraID, int width, int height);
 
         #endregion
 

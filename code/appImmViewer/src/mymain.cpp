@@ -12,9 +12,19 @@
 #endif
 
 #include <float.h>
+#include <limits.h>
+#include <math.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#if defined(WINDOWS)
+#include <windows.h>
+#endif
 #include "libImmCore/src/libBasics/piTimer.h"
 #include "libImmCore/src/libBasics/piWindow.h"
 #include "libImmCore/src/libBasics/piImage.h"
+#include "libImmCore/src/libBasics/piFile.h"
 #if DISABLE_VR==0
 #include "libImmCore/src/libVR/piVR.h"
 #endif
@@ -24,6 +34,10 @@
 using namespace ImmCore;
 using namespace ImmImporter;
 using namespace ExePlayer;
+
+#ifndef PATH_MAX
+#define PATH_MAX 260
+#endif
 
 //-----
 
@@ -106,6 +120,270 @@ public:
 
 //----------------------------------------------------------------------------------
 
+static float iDecodeUnsignedFloat(uint32_t bits, int mantissaBits)
+{
+    const uint32_t mantissaMask = (1u << mantissaBits) - 1u;
+    const uint32_t mantissa = bits & mantissaMask;
+    const uint32_t exponent = (bits >> mantissaBits) & 0x1fu;
+    if (exponent == 0)
+    {
+        return ldexpf((float)mantissa / (float)(1u << mantissaBits), -14);
+    }
+    if (exponent == 31)
+    {
+        return 1.0f;
+    }
+    return ldexpf(1.0f + (float)mantissa / (float)(1u << mantissaBits), (int)exponent - 15);
+}
+
+static uint8_t iFloatToByte(float value)
+{
+    if (value <= 0.0f)
+    {
+        return 0;
+    }
+    if (value >= 1.0f)
+    {
+        return 255;
+    }
+    return (uint8_t)(value * 255.0f + 0.5f);
+}
+
+static bool iPathHasExtension(const char *path, const char *extension)
+{
+    if (!path || !extension)
+    {
+        return false;
+    }
+    const size_t pathLength = strlen(path);
+    const size_t extensionLength = strlen(extension);
+    if (pathLength < extensionLength)
+    {
+        return false;
+    }
+    const char *tail = path + pathLength - extensionLength;
+    for (size_t i = 0; i < extensionLength; ++i)
+    {
+        char a = tail[i];
+        char b = extension[i];
+        if (a >= 'A' && a <= 'Z')
+        {
+            a = (char)(a - 'A' + 'a');
+        }
+        if (b >= 'A' && b <= 'Z')
+        {
+            b = (char)(b - 'A' + 'a');
+        }
+        if (a != b)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void iDecodeRG11B10Pixels(uint8_t *dstRGB, const uint32_t *pixels, int width, int height)
+{
+    for (int y = 0; y < height; ++y)
+    {
+        const uint32_t *srcRow = pixels + (size_t)y * (size_t)width;
+        uint8_t *dstRow = dstRGB + (size_t)y * (size_t)width * 3u;
+        for (int x = 0; x < width; ++x)
+        {
+            const uint32_t pixel = srcRow[x];
+            dstRow[3 * x + 0] = iFloatToByte(iDecodeUnsignedFloat(pixel & 0x7ffu, 6));
+            dstRow[3 * x + 1] = iFloatToByte(iDecodeUnsignedFloat((pixel >> 11u) & 0x7ffu, 6));
+            dstRow[3 * x + 2] = iFloatToByte(iDecodeUnsignedFloat((pixel >> 22u) & 0x3ffu, 5));
+        }
+    }
+}
+
+static bool iWriteRG11B10PPM(const char *path, const uint32_t *pixels, int width, int height)
+{
+    if (!path || !path[0] || !pixels || width <= 0 || height <= 0)
+    {
+        return false;
+    }
+
+    FILE *file = fopen(path, "wb");
+    if (!file)
+    {
+        return false;
+    }
+
+    fprintf(file, "P6\n%d %d\n255\n", width, height);
+    uint8_t *rgb = (uint8_t*)malloc((size_t)width * (size_t)height * 3u);
+    if (!rgb)
+    {
+        fclose(file);
+        return false;
+    }
+    iDecodeRG11B10Pixels(rgb, pixels, width, height);
+    const bool ok = fwrite(rgb, 3u, (size_t)width * (size_t)height, file) == (size_t)width * (size_t)height;
+    free(rgb);
+
+    fclose(file);
+    return ok;
+}
+
+static bool iWriteRG11B10PNG(const char *path, const uint32_t *pixels, int width, int height)
+{
+    if (!path || !path[0] || !pixels || width <= 0 || height <= 0)
+    {
+        return false;
+    }
+
+    uint8_t *rgb = (uint8_t*)malloc((size_t)width * (size_t)height * 3u);
+    if (!rgb)
+    {
+        return false;
+    }
+    iDecodeRG11B10Pixels(rgb, pixels, width, height);
+
+    wchar_t *widePath = pistr2ws(path);
+    if (!widePath)
+    {
+        free(rgb);
+        return false;
+    }
+
+    piImage image;
+    image.InitWrap(piImage::TYPE_2D, width, height, 1, piImage::FORMAT_I_RGB, rgb);
+    const bool ok = image.WriteToDisk(widePath, 0, L"png");
+    image.Free();
+    free(widePath);
+    free(rgb);
+    return ok;
+}
+
+static bool iWriteRG11B10Capture(const char *path, const uint32_t *pixels, int width, int height)
+{
+    if (iPathHasExtension(path, ".png"))
+    {
+        return iWriteRG11B10PNG(path, pixels, width, height);
+    }
+    return iWriteRG11B10PPM(path, pixels, width, height);
+}
+
+static bool iFileExistsUtf8(const char *path)
+{
+    if (!path || !path[0])
+    {
+        return false;
+    }
+
+    wchar_t *widePath = pistr2ws(path);
+    if (!widePath)
+    {
+        return false;
+    }
+
+    const bool exists = piFile::Exists(widePath);
+    free(widePath);
+    return exists;
+}
+
+static const char *iGetValidationEnv(const char *genericName, const char *legacyName)
+{
+    const char *value = getenv(genericName);
+    if (value && value[0])
+    {
+        return value;
+    }
+    return getenv(legacyName);
+}
+
+static bool iHasImmExtension(const wchar_t *path)
+{
+    if (!path)
+        return false;
+    const wchar_t *dot = wcsrchr(path, L'.');
+#if defined(WINDOWS)
+    return dot && _wcsicmp(dot, L".imm") == 0;
+#else
+    return dot && wcscasecmp(dot, L".imm") == 0;
+#endif
+}
+
+static bool iSetSingleLoadedFile(ExePlayer::Settings *settings, const wchar_t *path)
+{
+    if (!settings || !path || !path[0])
+        return false;
+
+    for (ImmCore::piString &load : settings->mFiles.mLoad)
+    {
+        load.End();
+    }
+    settings->mFiles.mLoad.SetLength(0);
+
+    ImmCore::piString *fileToLoad = settings->mFiles.mLoad.GetAddress(0);
+    new (fileToLoad) ImmCore::piString();
+    settings->mFiles.mLoad.SetLength(1);
+    return fileToLoad && fileToLoad->InitCopyW(path);
+}
+
+static bool iFindFirstImmBesideExecutable(const wchar_t *executablePath, wchar_t *dst, size_t dstLen)
+{
+    if (!executablePath || !dst || dstLen == 0)
+        return false;
+
+    wchar_t directory[PATH_MAX] = {};
+    wcsncpy(directory, executablePath, PATH_MAX - 1);
+    wchar_t *slash = wcsrchr(directory, L'\\');
+    wchar_t *forwardSlash = wcsrchr(directory, L'/');
+    if (!slash || (forwardSlash && forwardSlash > slash))
+        slash = forwardSlash;
+    if (!slash)
+        return false;
+    *slash = 0;
+
+#if defined(WINDOWS)
+    wchar_t pattern[PATH_MAX] = {};
+    swprintf(pattern, PATH_MAX, L"%s\\*.imm", directory);
+    WIN32_FIND_DATAW findData = {};
+    HANDLE findHandle = FindFirstFileW(pattern, &findData);
+    if (findHandle == INVALID_HANDLE_VALUE)
+        return false;
+
+    bool found = false;
+    do
+    {
+        if ((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+        {
+            swprintf(dst, dstLen, L"%s\\%s", directory, findData.cFileName);
+            found = true;
+            break;
+        }
+    } while (FindNextFileW(findHandle, &findData));
+    FindClose(findHandle);
+    return found;
+#else
+    (void)iHasImmExtension;
+    return false;
+#endif
+}
+
+static bool iApplyDefaultImmWhenNoLoadConfigured(ExePlayer::Settings *settings, const wchar_t *executablePath, ImmCore::piLog *log)
+{
+    if (!settings || settings->mFiles.mLoad.GetLength() > 0)
+        return true;
+
+    wchar_t defaultImmPath[PATH_MAX] = {};
+    if (!iFindFirstImmBesideExecutable(executablePath, defaultImmPath, PATH_MAX))
+        return true;
+    if (!iSetSingleLoadedFile(settings, defaultImmPath))
+        return false;
+
+#if defined(WINDOWS)
+    if (log)
+        log->Printf(LT_MESSAGE, L"Using default IMM beside executable: %s", defaultImmPath);
+#else
+    if (log)
+        log->Printf(LT_MESSAGE, L"Using default IMM beside executable: %ls", defaultImmPath);
+#endif
+    return true;
+}
+
 #if !defined(ANDROID)
 #if defined(WINDOWS)
 extern "C" _declspec(dllexport) unsigned int NvOptimusEnablement = 0x00000001;
@@ -115,6 +393,10 @@ extern "C" _declspec(dllexport) unsigned int NvOptimusEnablement = 0x00000001;
 
 int piMainFunc(const wchar_t* path, const wchar_t** args, int numArgs, void* instance)
 {
+    const char *validationFrameEnv = iGetValidationEnv("IMM_VIEWER_VALIDATE_FRAME", "IMM_GL_VALIDATE_FRAME");
+    const bool validationRequested = validationFrameEnv && validationFrameEnv[0];
+    const int validationStartupExitCode = validationRequested ? 2 : 0;
+
     ExePlayer::Viewer mViewer;
     piLog mLog;
     int  mSuperSample;
@@ -175,6 +457,11 @@ int piMainFunc(const wchar_t* path, const wchar_t** args, int numArgs, void* ins
         return false;
     }
     mLog.Printf(LT_MESSAGE, L"Settings loaded");
+    if (!iApplyDefaultImmWhenNoLoadConfigured(&mSettings, path, &mLog))
+    {
+        mLog.Printf(LT_ERROR, L"Failed to apply default IMM file");
+        return false;
+    }
 
     mSuperSample = mSettings.mRendering.mSupersampling;
     if (mSuperSample < 1) { mSuperSample = 1; mLog.Printf(LT_WARNING, L"Supersampling factor must be between 1 and 3 (1 sample per pixel and 3x3 samples per pixel"); }
@@ -197,7 +484,12 @@ int piMainFunc(const wchar_t* path, const wchar_t** args, int numArgs, void* ins
     }
     piWindow_show(mWindow);
 
-    mLog.Printf(LT_MESSAGE, L"Rendering Backened: %s", (mSettings.mRendering.mRenderingAPI == Settings::Rendering::API::DX) ? L"DirectX" : L"OpenGL");
+    const wchar_t *renderingBackend =
+        (mSettings.mRendering.mRenderingAPI == Settings::Rendering::API::DX) ? L"DirectX" :
+        (mSettings.mRendering.mRenderingAPI == Settings::Rendering::API::Metal) ? L"Metal" :
+        (mSettings.mRendering.mRenderingAPI == Settings::Rendering::API::GLES) ? L"OpenGLES" :
+        L"OpenGL";
+    mLog.Printf(LT_MESSAGE, L"Rendering Backened: %s", renderingBackend);
     mLog.Printf(LT_MESSAGE, L"Rendering Technique: %s", (mSettings.mRendering.mRenderingTechnique==Settings::Rendering::Technique::Static)?L"Static":L"Pretessellated" );
     #if DISABLE_VR==0
     mLog.Printf(LT_MESSAGE, L"Rendering in VR: %s", (mSettings.mRendering.mEnableVR) ? L"yes" : L"no");
@@ -208,7 +500,21 @@ int piMainFunc(const wchar_t* path, const wchar_t** args, int numArgs, void* ins
     // renderer
     mRenderReporter = new MainRenderReporter(&mLog);
 
-    mRenderer = piRenderer::Create((mSettings.mRendering.mRenderingAPI == Settings::Rendering::API::GL) ? piRenderer::API::GL : piRenderer::API::DX);
+    piRenderer::API rendererAPI = piRenderer::API::GL;
+    if (mSettings.mRendering.mRenderingAPI == Settings::Rendering::API::DX)
+    {
+        rendererAPI = piRenderer::API::DX;
+    }
+    else if (mSettings.mRendering.mRenderingAPI == Settings::Rendering::API::GLES)
+    {
+        rendererAPI = piRenderer::API::GLES;
+    }
+    else if (mSettings.mRendering.mRenderingAPI == Settings::Rendering::API::Metal)
+    {
+        rendererAPI = piRenderer::API::Metal;
+    }
+
+    mRenderer = piRenderer::Create(rendererAPI);
     if (!mRenderer)
     {
         mSettings.End();
@@ -350,7 +656,9 @@ int piMainFunc(const wchar_t* path, const wchar_t** args, int numArgs, void* ins
 
     //------------------------------
 
-    mSoundEngineBackend = piCreateSoundEngineBackend(piSoundEngineBackend::API::DirectSoundOVR,&mLog);
+    const char *disableAudioForValidation = getenv("IMM_VIEWER_VALIDATE_DISABLE_AUDIO");
+    const bool useNullSoundBackend = disableAudioForValidation && disableAudioForValidation[0];
+    mSoundEngineBackend = piCreateSoundEngineBackend(useNullSoundBackend ? piSoundEngineBackend::API::Null : piSoundEngineBackend::API::DirectSoundOVR, &mLog);
     if (!mSoundEngineBackend)
     {
         mLog.Printf(LT_WARNING, L"Sound backend unavailable; continuing without audio");
@@ -495,7 +803,7 @@ int piMainFunc(const wchar_t* path, const wchar_t** args, int numArgs, void* ins
     {
         mLog.Printf(LT_ERROR, L"Viewer init failed");
         mSettings.End();
-        return false;
+        return validationStartupExitCode;
     }
     mLog.Printf(LT_MESSAGE, L"Viewer initialized");
 
@@ -526,6 +834,66 @@ int piMainFunc(const wchar_t* path, const wchar_t** args, int numArgs, void* ins
     mLog.Printf(LT_MESSAGE, L"X = next,  Z = prev,  C = restart,   v = replay,   P = pause/resume");
     int frameid = 0;
     bool isFirstFrame = true;
+    const bool validationEnabled = validationRequested;
+    const uint64_t validationFrame = validationEnabled ? strtoull(validationFrameEnv, nullptr, 10) : 0;
+    uint64_t validationMaxFrame = validationFrame + 300;
+    uint64_t validationMinNonZeroPixels = 16;
+    uint64_t validationMinDrawCalls = 1;
+    uint64_t validationMinPictureDrawCalls = 1;
+    uint64_t validationMinPicture360DrawCalls = 1;
+    uint64_t validationMinPicture360EquirectDrawCalls = 0;
+    uint64_t validationMinPicture360CubemapDrawCalls = 0;
+    uint64_t validationMinTriangles = 1;
+    bool validationDone = false;
+    int validationExitCode = 0;
+    char validationCapturePath[PATH_MAX] = {};
+
+    const char *validationMaxFrameEnv = iGetValidationEnv("IMM_VIEWER_VALIDATE_MAX_FRAME", "IMM_GL_VALIDATE_MAX_FRAME");
+    if (validationMaxFrameEnv && validationMaxFrameEnv[0])
+    {
+        validationMaxFrame = strtoull(validationMaxFrameEnv, nullptr, 10);
+    }
+    const char *validationMinNonZeroEnv = iGetValidationEnv("IMM_VIEWER_VALIDATE_MIN_NONZERO", "IMM_GL_VALIDATE_MIN_NONZERO");
+    if (validationMinNonZeroEnv && validationMinNonZeroEnv[0])
+    {
+        validationMinNonZeroPixels = strtoull(validationMinNonZeroEnv, nullptr, 10);
+    }
+    const char *validationMinDrawCallsEnv = iGetValidationEnv("IMM_VIEWER_VALIDATE_MIN_DRAWCALLS", "IMM_GL_VALIDATE_MIN_DRAWCALLS");
+    if (validationMinDrawCallsEnv && validationMinDrawCallsEnv[0])
+    {
+        validationMinDrawCalls = strtoull(validationMinDrawCallsEnv, nullptr, 10);
+    }
+    const char *validationMinPictureDrawCallsEnv = iGetValidationEnv("IMM_VIEWER_VALIDATE_MIN_PICTURE_DRAWCALLS", "IMM_GL_VALIDATE_MIN_PICTURE_DRAWCALLS");
+    if (validationMinPictureDrawCallsEnv && validationMinPictureDrawCallsEnv[0])
+    {
+        validationMinPictureDrawCalls = strtoull(validationMinPictureDrawCallsEnv, nullptr, 10);
+    }
+    const char *validationMinPicture360DrawCallsEnv = iGetValidationEnv("IMM_VIEWER_VALIDATE_MIN_PICTURE360_DRAWCALLS", "IMM_GL_VALIDATE_MIN_PICTURE360_DRAWCALLS");
+    if (validationMinPicture360DrawCallsEnv && validationMinPicture360DrawCallsEnv[0])
+    {
+        validationMinPicture360DrawCalls = strtoull(validationMinPicture360DrawCallsEnv, nullptr, 10);
+    }
+    const char *validationMinPicture360EquirectDrawCallsEnv = iGetValidationEnv("IMM_VIEWER_VALIDATE_MIN_PICTURE360_EQUIRECT_DRAWCALLS", "IMM_GL_VALIDATE_MIN_PICTURE360_EQUIRECT_DRAWCALLS");
+    if (validationMinPicture360EquirectDrawCallsEnv && validationMinPicture360EquirectDrawCallsEnv[0])
+    {
+        validationMinPicture360EquirectDrawCalls = strtoull(validationMinPicture360EquirectDrawCallsEnv, nullptr, 10);
+    }
+    const char *validationMinPicture360CubemapDrawCallsEnv = iGetValidationEnv("IMM_VIEWER_VALIDATE_MIN_PICTURE360_CUBEMAP_DRAWCALLS", "IMM_GL_VALIDATE_MIN_PICTURE360_CUBEMAP_DRAWCALLS");
+    if (validationMinPicture360CubemapDrawCallsEnv && validationMinPicture360CubemapDrawCallsEnv[0])
+    {
+        validationMinPicture360CubemapDrawCalls = strtoull(validationMinPicture360CubemapDrawCallsEnv, nullptr, 10);
+    }
+    const char *validationMinTrianglesEnv = iGetValidationEnv("IMM_VIEWER_VALIDATE_MIN_TRIANGLES", "IMM_GL_VALIDATE_MIN_TRIANGLES");
+    if (validationMinTrianglesEnv && validationMinTrianglesEnv[0])
+    {
+        validationMinTriangles = strtoull(validationMinTrianglesEnv, nullptr, 10);
+    }
+    const char *validationCapturePathEnv = iGetValidationEnv("IMM_VIEWER_VALIDATE_CAPTURE_PATH", "IMM_GL_VALIDATE_CAPTURE_PATH");
+    if (validationCapturePathEnv && validationCapturePathEnv[0])
+    {
+        strncpy(validationCapturePath, validationCapturePathEnv, sizeof(validationCapturePath) - 1);
+        validationCapturePath[sizeof(validationCapturePath) - 1] = 0;
+    }
 
     while (!done)
     {
@@ -648,6 +1016,133 @@ int piMainFunc(const wchar_t* path, const wchar_t** args, int numArgs, void* ins
             mViewer.GlobalRender(vr_to_head, vec4(0.0f));
             // render
             mViewer.RenderMono(mRenderSize*mSuperSample, vr_to_head, 0);
+
+            if (validationEnabled && !validationDone && (uint64_t)frameid >= validationFrame)
+            {
+                const size_t pixelCount = (size_t)mRenderSize.x * (size_t)mRenderSize.y;
+                uint32_t *pixels = (uint32_t*)malloc(pixelCount * sizeof(uint32_t));
+                if (!pixels)
+                {
+                    mLog.Printf(LT_ERROR, L"IMM GL validation failed: could not allocate readback buffer");
+                    validationDone = true;
+                    validationExitCode = 2;
+                    done = 1;
+                }
+                else
+                {
+                    mRenderer->GetTextureContent(mColorTextureM, pixels, piRenderer::Format::C3_11_11_10_FLOAT);
+
+                    uint64_t nonZeroPixels = 0;
+                    uint64_t hash = 1469598103934665603ull;
+                    for (size_t i = 0; i < pixelCount; ++i)
+                    {
+                        if (pixels[i] != 0)
+                        {
+                            ++nonZeroPixels;
+                        }
+                        hash ^= pixels[i];
+                        hash *= 1099511628211ull;
+                    }
+
+                    const ImmPlayer::Player::PerformanceInfo &perf = mViewer.GetPerformanceInfoForFrame();
+                    const bool passed =
+                        nonZeroPixels >= validationMinNonZeroPixels &&
+                        (uint64_t)perf.numDrawCalls >= validationMinDrawCalls &&
+                        (uint64_t)perf.numPictureDrawCalls >= validationMinPictureDrawCalls &&
+                        (uint64_t)perf.numPicture360DrawCalls >= validationMinPicture360DrawCalls &&
+                        (uint64_t)perf.numPicture360EquirectDrawCalls >= validationMinPicture360EquirectDrawCalls &&
+                        (uint64_t)perf.numPicture360CubemapDrawCalls >= validationMinPicture360CubemapDrawCalls &&
+                        (uint64_t)perf.numTriangles >= validationMinTriangles;
+
+                    if (!passed && (uint64_t)frameid < validationMaxFrame)
+                    {
+                        free(pixels);
+                    }
+                    else
+                    {
+                        validationDone = true;
+                        if (!passed)
+                        {
+                            mLog.Printf(LT_ERROR,
+                                        L"IMM GL validation failed: frame=%d pixels=%llu nonZero=%llu minNonZero=%llu hash=%llu drawCalls=%d minDrawCalls=%llu paintDrawCalls=%d pictureDrawCalls=%d minPictureDrawCalls=%llu picture2DDrawCalls=%d picture360DrawCalls=%d minPicture360DrawCalls=%llu picture360EquirectDrawCalls=%d minPicture360EquirectDrawCalls=%llu picture360CubemapDrawCalls=%d minPicture360CubemapDrawCalls=%llu modelDrawCalls=%d triangles=%d minTriangles=%llu culledCalls=%d",
+                                        frameid,
+                                        (unsigned long long)pixelCount,
+                                        (unsigned long long)nonZeroPixels,
+                                        (unsigned long long)validationMinNonZeroPixels,
+                                        (unsigned long long)hash,
+                                        perf.numDrawCalls,
+                                        (unsigned long long)validationMinDrawCalls,
+                                        perf.numPaintDrawCalls,
+                                        perf.numPictureDrawCalls,
+                                        (unsigned long long)validationMinPictureDrawCalls,
+                                        perf.numPicture2DDrawCalls,
+                                        perf.numPicture360DrawCalls,
+                                        (unsigned long long)validationMinPicture360DrawCalls,
+                                        perf.numPicture360EquirectDrawCalls,
+                                        (unsigned long long)validationMinPicture360EquirectDrawCalls,
+                                        perf.numPicture360CubemapDrawCalls,
+                                        (unsigned long long)validationMinPicture360CubemapDrawCalls,
+                                        perf.numModelDrawCalls,
+                                        perf.numTriangles,
+                                        (unsigned long long)validationMinTriangles,
+                                        perf.numDrawCallsCulled);
+                            validationExitCode = 2;
+                        }
+                        else
+                        {
+                            mLog.Printf(LT_MESSAGE,
+                                        L"IMM GL validation: frame=%d pixels=%llu nonZero=%llu hash=%llu drawCalls=%d paintDrawCalls=%d pictureDrawCalls=%d picture2DDrawCalls=%d picture360DrawCalls=%d picture360EquirectDrawCalls=%d picture360CubemapDrawCalls=%d modelDrawCalls=%d triangles=%d culledCalls=%d",
+                                        frameid,
+                                        (unsigned long long)pixelCount,
+                                        (unsigned long long)nonZeroPixels,
+                                        (unsigned long long)hash,
+                                        perf.numDrawCalls,
+                                        perf.numPaintDrawCalls,
+                                        perf.numPictureDrawCalls,
+                                        perf.numPicture2DDrawCalls,
+                                        perf.numPicture360DrawCalls,
+                                        perf.numPicture360EquirectDrawCalls,
+                                        perf.numPicture360CubemapDrawCalls,
+                                        perf.numModelDrawCalls,
+                                        perf.numTriangles,
+                                        perf.numDrawCallsCulled);
+                            if (validationCapturePath[0])
+                            {
+                                wchar_t *wideCapturePath = pistr2ws(validationCapturePath);
+                                if (wideCapturePath)
+                                {
+#if defined(WINDOWS)
+                                    mLog.Printf(LT_MESSAGE, L"IMM GL validation capture path: %s", wideCapturePath);
+#else
+                                    mLog.Printf(LT_MESSAGE, L"IMM GL validation capture path: %ls", wideCapturePath);
+#endif
+                                    free(wideCapturePath);
+                                }
+                                if (iWriteRG11B10Capture(validationCapturePath, pixels, mRenderSize.x, mRenderSize.y))
+                                {
+                                    if (iFileExistsUtf8(validationCapturePath))
+                                    {
+                                        mLog.Printf(LT_MESSAGE, L"IMM GL validation capture written");
+                                    }
+                                    else
+                                    {
+                                        mLog.Printf(LT_ERROR, L"IMM GL validation capture write reported success but file is missing");
+                                        validationExitCode = 2;
+                                    }
+                                }
+                                else
+                                {
+                                    mLog.Printf(LT_ERROR, L"IMM GL validation capture failed");
+                                    validationExitCode = 2;
+                                }
+                            }
+                        }
+                        free(pixels);
+                        done = 1;
+                    }
+                }
+            }
+
             // resolve multisampling and postpro
             mResolve.Do(mRenderer, nullptr, vpM, 0, mQuitFade, mColorTextureM);
 
@@ -718,5 +1213,5 @@ int piMainFunc(const wchar_t* path, const wchar_t** args, int numArgs, void* ins
 
     mLog.End();
 
-    return 1;
+    return validationEnabled ? validationExitCode : 1;
 }
