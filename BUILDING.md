@@ -66,6 +66,27 @@ Configure the macOS CMake project with the viewer targets enabled:
 cmake -S code/projects/macos -B build/macos -DIMM_BUILD_VIEWER=ON
 ```
 
+### Apple Silicon with an Intel (x86_64) CMake
+
+CMake targets its own process architecture by default. If `cmake` is an x86_64
+binary (e.g. installed under the Intel Homebrew prefix `/usr/local`), the build
+silently produces Rosetta-translated binaries, which can crash intermittently
+under load (`SIGBUS` in `___chkstk_darwin` on the document loader thread).
+Check with `file $(which cmake)`. To force a native build from an x86_64 CMake,
+configure with:
+
+```bash
+cmake -S code/projects/macos -B build/macos -DIMM_BUILD_VIEWER=ON \
+  -DCMAKE_OSX_ARCHITECTURES=arm64 \
+  -DCMAKE_C_FLAGS=-DPNG_ARM_NEON_OPT=0
+```
+
+The `PNG_ARM_NEON_OPT=0` flag is required because an x86_64 CMake reports
+`CMAKE_SYSTEM_PROCESSOR=x86_64`, so the vendored libpng skips its ARM/NEON
+sources (and this project's `PNG_ARM_NEON OFF` default never engages) while the
+arm64 compile still references the NEON symbols, failing the final link with
+`_png_riffle_palette_neon not found`. A native arm64 CMake needs neither flag.
+
 Build the standalone Metal player:
 
 ```bash
