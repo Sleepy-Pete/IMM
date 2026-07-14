@@ -13,6 +13,7 @@
 
 #include <limits.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -1664,6 +1665,15 @@ static uint64_t iCountNonZeroPixels(const uint32_t *pixels, size_t pixelCount)
             return;
         }
         logPath[logPathLen] = 0;
+    }
+    else if (access(".", W_OK) != 0)
+    {
+        // Finder/LaunchServices starts apps with an unwritable working directory;
+        // the relative default would fail log init and abort startup.
+        NSString *fallbackLogPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"metal_player_debug.txt"];
+        const size_t fallbackLen = mbstowcs(logPath, fallbackLogPath.fileSystemRepresentation, PATH_MAX - 1);
+        if (fallbackLen != (size_t)-1)
+            logPath[fallbackLen] = 0;
     }
 
     if (!_log.Init(logPath, PILOG_TXT + PILOG_CNS))
