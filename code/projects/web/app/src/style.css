@@ -1,0 +1,185 @@
+:root {
+    color: #e8edf2;
+    background: #10151d;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-synthesis: none;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+
+#viewport {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+}
+
+#panel {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    width: min(24rem, calc(100vw - 2rem));
+    max-height: calc(100vh - 2rem);
+    padding: 1rem;
+    overflow: auto;
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 0.75rem;
+    background: rgb(12 17 24 / 88%);
+    box-shadow: 0 1rem 3rem rgb(0 0 0 / 35%);
+    backdrop-filter: blur(12px);
+}
+
+h1 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.phase {
+    margin: 0.25rem 0 1rem;
+    color: #8fa4b8;
+    font-size: 0.85rem;
+}
+
+.file-picker {
+    display: block;
+    padding: 0.8rem;
+    border: 1px dashed #66829d;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+.file-picker:hover {
+    border-color: #9fc4e5;
+    background: rgb(120 170 210 / 8%);
+}
+
+.file-picker input {
+    display: block;
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+.url-picker {
+    margin-top: 0.75rem;
+}
+
+.url-picker div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.3rem;
+}
+
+.url-picker input {
+    min-width: 0;
+    flex: 1;
+}
+
+.url-picker button {
+    min-height: 2rem;
+}
+
+.playback-controls {
+    margin-top: 0.75rem;
+}
+
+.transport,
+.timeline-labels {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.transport button {
+    min-height: 2rem;
+}
+
+.playback-controls input[type="range"] {
+    width: 100%;
+    margin: 0.65rem 0 0.35rem;
+    touch-action: none;
+}
+
+.timeline-labels {
+    justify-content: space-between;
+    color: #c4d0dc;
+    font-size: 0.78rem;
+}
+
+.timeline-labels select {
+    max-width: 11rem;
+}
+
+.camera-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.65rem;
+}
+
+.camera-options label {
+    display: grid;
+    gap: 0.2rem;
+    color: #c4d0dc;
+    font-size: 0.75rem;
+}
+
+.camera-options select {
+    min-width: 0;
+    width: 100%;
+}
+
+.camera-help {
+    margin: 0.45rem 0 0;
+    color: #8fa4b8;
+    font-size: 0.7rem;
+    line-height: 1.35;
+}
+
+#VRButton {
+    right: 1rem !important;
+    bottom: 1rem !important;
+    left: auto !important;
+}
+
+body.visual-test #panel {
+    display: none;
+}
+
+#status {
+    color: #c4d0dc;
+    line-height: 1.4;
+}
+
+#summary {
+    padding: 0.75rem;
+    overflow: auto;
+    border-radius: 0.4rem;
+    background: #080b10;
+    color: #b9d9c1;
+    font-size: 0.75rem;
+}
+
+@media (max-width: 600px) {
+    #panel {
+        top: 0.5rem;
+        left: 0.5rem;
+        width: calc(100vw - 1rem);
+        max-height: 45vh;
+    }
+
+    .camera-options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

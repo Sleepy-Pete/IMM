@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.ivanmurzak.unity.mcp": "0.84.1",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.2d.tilemap": "1.0.0",
     "com.unity.ai.navigation": "2.0.9",
@@ -49,8 +50,7 @@
     "com.unity.modules.video": "1.0.0",
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
-    "com.unity.modules.xr": "1.0.0",
-    "com.ivanmurzak.unity.mcp": "0.82.1"
+    "com.unity.modules.xr": "1.0.0"
   },
   "scopedRegistries": [
     {

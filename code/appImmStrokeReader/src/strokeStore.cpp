@@ -65,6 +65,20 @@ StrokeStore::~StrokeStore()
 
 void StrokeStore::OnBeginLayer(uint32_t layerId, uint32_t layerType, const wchar_t* name, bool visible, float opacity)
 {
+    for (auto& existing : mDocument.layers)
+    {
+        if (existing.layerId == layerId)
+        {
+            existing.layerType = layerType;
+            existing.name = name ? name : L"";
+            existing.visible = visible;
+            existing.opacity = opacity;
+            mCurrentLayer = &existing;
+            mCurrentDrawing = nullptr;
+            return;
+        }
+    }
+
     StoredLayer layer;
     layer.layerId = layerId;
     layer.layerType = layerType;
@@ -133,6 +147,30 @@ void StrokeStore::OnPictureLayer(
     }
 }
 
+void StrokeStore::OnSpawnArea(uint32_t layerId, bool isDefault)
+{
+    bool hasDefault = false;
+    for (const auto& layer : mDocument.layers)
+    {
+        hasDefault = hasDefault || layer.isDefaultSpawn;
+    }
+    if (isDefault)
+    {
+        for (auto& layer : mDocument.layers)
+        {
+            layer.isDefaultSpawn = false;
+        }
+    }
+    for (auto& layer : mDocument.layers)
+    {
+        if (layer.layerId == layerId)
+        {
+            layer.isDefaultSpawn = isDefault || !hasDefault;
+            return;
+        }
+    }
+}
+
 void StrokeStore::OnPaintLayerInfo(uint32_t frameRate, uint32_t numFrames, uint32_t maxRepeatCount)
 {
     if (!mCurrentLayer) return;
@@ -157,6 +195,17 @@ void StrokeStore::OnFrameBuffer(const uint32_t* frameBuffer, uint32_t numFrames)
 void StrokeStore::OnBeginDrawing(uint32_t drawingId)
 {
     if (!mCurrentLayer) return;
+
+    for (auto& existing : mCurrentLayer->drawings)
+    {
+        if (existing.drawingId == drawingId)
+        {
+            existing.biggestStroke = 0.0f;
+            existing.strokes.clear();
+            mCurrentDrawing = &existing;
+            return;
+        }
+    }
 
     StoredDrawing drawing;
     drawing.drawingId = drawingId;
@@ -241,7 +290,7 @@ bool StrokeStore::GetLayerInfo(int layerIdx, StrokeLayerInfoC* info) const
     info->numDrawings = static_cast<int>(layer.drawings.size());
     info->visible = layer.visible ? 1 : 0;
     info->opacity = static_cast<float>(layer.opacity);
-    info->visible = layer.visible ? 1 : 0;
+    info->isDefaultSpawn = layer.isDefaultSpawn ? 1 : 0;
 
     StrokeLayerTransformC pivot = ToTransformC(layer.pivotTransform);
     info->pivotRotation[0] = pivot.rotation[0];
@@ -378,6 +427,23 @@ bool StrokeStore::GetStrokePoints(int layerIdx, int drawingIdx, int strokeIdx, S
         dst.width = widthScale * static_cast<float>(widQ);
     }
 
+    return true;
+}
+
+bool StrokeStore::GetStrokePointTimes(int layerIdx, int drawingIdx, int strokeIdx, float* times, int maxPoints) const
+{
+    if (!times || maxPoints <= 0 || layerIdx < 0 || layerIdx >= static_cast<int>(mDocument.layers.size()))
+        return false;
+    const auto& drawings = mDocument.layers[layerIdx].drawings;
+    if (drawingIdx < 0 || drawingIdx >= static_cast<int>(drawings.size()))
+        return false;
+    const auto& strokes = drawings[drawingIdx].strokes;
+    if (strokeIdx < 0 || strokeIdx >= static_cast<int>(strokes.size()))
+        return false;
+    const StoredStroke& stroke = strokes[strokeIdx];
+    const int copyCount = std::min(static_cast<int>(stroke.points.size()), maxPoints);
+    for (int index = 0; index < copyCount; ++index)
+        times[index] = stroke.points[index].mTim;
     return true;
 }
 
