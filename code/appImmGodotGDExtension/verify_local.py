@@ -474,7 +474,10 @@ def verify_unity_projection_guard() -> None:
             raise RuntimeError(f"Unity projection guard is missing token: {token}")
     if re.search(r"GraphicsDeviceType\.Direct3D11\)\s*\r?\n\s*return true;", manager):
         raise RuntimeError("Unity D3D11 projection guard must not apply texture projection to XR/stereo Game cameras")
-    if not re.search(r"GraphicsDeviceType\.Direct3D11\s*&&\s*\r?\n\s*cam != null\s*&&\s*\r?\n\s*cam\.cameraType == CameraType\.Game\s*&&\s*\r?\n\s*!cam\.stereoEnabled\)\s*\r?\n\s*return false;", manager):
+    if not re.search(
+        r"GraphicsDeviceType\.Direct3D11\s*&&\s*\r?\n\s*cam != null\s*&&\s*\r?\n\s*cam\.cameraType == CameraType\.Game\s*&&\s*\r?\n\s*!cam\.stereoEnabled\)\s*\r?\n\s*(?:return false;|\{[\s\S]{0,1200}?return false;\s*\r?\n\s*\})",
+        manager,
+    ):
         raise RuntimeError("Unity D3D11 projection guard must be limited to non-XR Game cameras")
     print("Unity D3D11/XR projection guard ok", flush=True)
 
