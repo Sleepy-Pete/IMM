@@ -16,10 +16,11 @@ This fork is the **VR line** of the IMM project: it tracks the active upstream
 - **macOS fixes**: Finder-launched Metal player startup fix; Apple Silicon build notes in `BUILDING.md`
 - **Docs and tooling organization**: `docs/architecture/` (diagram-driven system guide), `docs/android/` (Quest/Android bring-up guides), `docs/history/` (session notes and merge handoffs), `scripts/` (fork-local debug helpers)
 
-**Upstream repositories and contributors**
+**Project lineage and contributors**
 - **Original IMM project:** [Immersive-Foundation/IMM](https://github.com/Immersive-Foundation/IMM) by Inigo Quilez and the Immersive Foundation team
 - **Original-lineage fork:** [alegna901/IMM](https://github.com/alegna901/IMM) maintained by Angela Luo — Unity plugin and Android groundwork (2021–2024)
 - **Active upstream:** [icosa-mirror/IMM](https://github.com/icosa-mirror/IMM) by Joan Charmant and Andy Baker — complete Unity integration with OpenXR VR, Oculus PC VR + Platform SDKs, Audio360 spatial audio, runtime layer-control API, chapters and action keyframes, Android/Quest builds, non-VR standalone controls (PC + touch), vendored reproducible dependencies, automated UPM releases, Godot GDExtension, macOS Metal and iOS ports, the Vulkan renderer, and (2026) the browser-native **Three.js/WebAssembly web player with WebXR**
+- **This fork:** Peter Ariet (Studio Syro), working AI-assisted with Claude — continuing the work above to help keep the format alive on current engines and VR hardware
 
 All commit history and authorship is preserved. See `git log` for full attribution.
 
