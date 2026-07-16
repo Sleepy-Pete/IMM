@@ -421,7 +421,9 @@ namespace ImmPlayer
 
         private static bool IsVulkanRuntime()
         {
-#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN || UNITY_ANDROID
+            // Quest runs Vulkan; the native plugin now supports the Unity Vulkan
+            // external-device overlay path on Android as well as desktop.
             return SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Vulkan;
 #else
             return false;
