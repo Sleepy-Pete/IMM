@@ -1,4 +1,90 @@
-# Quest on-device: GLES ships; Vulkan overlay wired and inits, draw handoff is the remaining task
+# Quest on-device: GLES ships; Vulkan draw crash root-caused (validation layer), own-queue architecture in progress
+
+## STATUS 2026-07-16 (evening): VULKAN RENDERS CONTINUOUSLY ON QUEST - offscreen composite architecture working
+
+The full architecture landed and runs sustained (2+ minutes, 72 fps, serial 9500+ IMM frames,
+~38 draw calls/eye, zero crashes):
+
+1. **IMM renders each eye into its own offscreen RenderTexture** on IMM's **dedicated second
+   Vulkan graphics queue** (never touching Unity's queue or command buffers mid-frame), fully
+   fence-completed inside the plugin-event callback.
+2. **Unity composites the RT itself** (`CommandBuffer.Blit` with `Resources/ImmVulkanComposite`
+   material, Unlit/Transparent fileID 10750) inside its own camera pass - ordering vs clears is
+   Unity's problem again, as it should be.
+3. **THE final event bug: `CameraEvent.AfterSkybox` command buffers stop being executed by
+   Unity 6 XR on Quest** ~2 frames after the session reaches FOCUSED (PreCull kept issuing at
+   144 Hz with the buffer attached - dispatch simply stopped; app healthy at 72 fps). This is
+   what made every earlier run "stop after 3-4 frames". Fix: attach at
+   **`CameraEvent.AfterImageEffectsOpaque`** - the hook the GLES path always used.
+4. Diagnostics added along the way: `[IMM_PRECULL]` gate dump, `[IMM_HEARTBEAT]` main-thread
+   pulse, `Unity Vulkan frame begin/stage` serials, `IMM_UNITY_VK_BLUE_CANARY` (device-flag-file
+   toggled solid-blue camera clear), C# device flag file
+   (`.../files/imm_debug_flags.txt`), `IMM_UNITY_VK_NO_RENDER_EVENTS`, `IMM_UNITY_VK_NO_OFFSCREEN_TARGET`.
+
+**Known polish TODOs (visual correctness):** possible Y-flip of the composited image; no depth
+buffer in the offscreen path yet (stroke sorting artifacts) - add IMM-owned cached depth image;
+alpha semantics of the composite (IMM clear alpha vs Unlit/Transparent); MSAA; perf (per-draw
+fence waits -> batch one command buffer per frame); cross-queue sync is currently correct only
+because submits fence-complete inside the callback.
+
+---
+
+## STATUS 2026-07-16 (afternoon) - earlier context
+
+The SIGSEGV in vkCmdDrawIndexed is fully root-caused with the Khronos validation layer running
+ON the Quest (packaged in the APK + `adb shell setprop
+debug.oculus.loadandinjectpackagedvvl.com.ImmersiveFoundation.IMMUnityTest 1`; the Android
+GraphicsEnvironment injection route breaks Meta's `xrCreateVulkanInstanceKHR` - don't use it):
+
+1. **Host-render-pass path is fundamentally broken on Quest**: at plugin-event time Unity's
+   `CommandRecordingState` reports a command buffer that is NOT in the recording state
+   (`VUID-vkCmd*-commandBuffer-recording` for every recorded command, plus
+   `VUID-vkCmdDrawIndexed-renderpass`). Recording into it is illegal; the Adreno driver
+   survives the binds and null-derefs (fault 0x4dc) on the first vkCmdDrawIndexed.
+   `EnsureInsideRenderPass` cannot fix an un-begun command buffer. -> Android now defaults to
+   the external-image path (`IMM_UNITY_VK_FORCE_HOST_RENDER` opts back in for experiments).
+2. **The `source=display` fallback resolves to a 1x1 dummy buffer** on Quest
+   (`xr-use-vulkan-offscreen-swapchain-no-main-display-buffer=1`). C# now passes the real XR
+   eye texture via `XRDisplaySubsystem.GetRenderTextureForRenderPass` (per eye, MultiPass) -
+   `source=xrEyePass 1680x1760` confirmed; AccessRenderBufferTexture resolves it fine, draws
+   execute (14 draw calls: 13 paint + 360 picture), NO crash.
+3. **Any non-passive interaction with Unity's Vulkan frame breaks XR pacing -> black view**:
+   requesting queue access (AccessQueue) - and even dispatching an event whose config asks for
+   EnsureInside/ModifiesCommandBuffersState - makes Unity run
+   `XRDisplaySubsystem::GfxThread::AfterRendering -> GfxDeviceVK::FinalizeFrameForExternalPresent`
+   MID-FRAME (validation: Unity's own frame semaphore double-signaled,
+   `VUID-vkQueueSubmit-pSignalSemaphores-00067` x10; events stall after ~4 frames; headset
+   shows black - user-confirmed).
+4. **Adopted architecture (in progress): IMM renders on its OWN VkQueue.** Adreno 740 family 0
+   has 4 queues (`adb shell cmd gpu vkjson`); `Assets/Editor/AndroidBootConfigPatcher.cs` sets
+   `xr-request-additional-vulkan-graphics-queue=1` so Unity creates 2; the renderer grabs
+   queue index 1 on Android ("Vulkan renderer submitting on dedicated second graphics queue" -
+   VVL-clean) and ALL IMM submits go there (also fixes the pre-existing main-thread
+   PrepareCamera/upload races; every record->submit->wait helper now takes a recursive
+   submitMutex). Android Vulkan events are configured as PURE PASSIVE markers
+   (DontCare + flags=0) and the callback only OBSERVES images
+   (kUnityVulkanResourceAccess_ObserveOnly, no EnsureOutsideRenderPass, no AccessQueue).
+5. **Load/init race fixed** (`ImmFeatureExamples.LoadFromStreamingAssets` now waits for
+   `IsReadyForDocumentLoad`): the load used to win by ~8ms of luck; anything slowing init
+   (validation layer) made it fail with no retry.
+
+**Next milestone test** (build pending at interruption): passive-marker + own-queue run.
+Expected: no finalize errors, no event stall, Unity scene stays visible. IMM content drawn
+directly into the eye image will likely be INVISIBLE (Unity's later pass clears/overdraws it -
+execution-order): that's expected and OK. The visibility step after that: render IMM into
+per-eye offscreen RenderTextures (IMM queue) and let Unity composite them with a normal
+material/CommandBuffer draw (cross-queue sync coarse at first: 1-frame-stale sampling, then
+semaphore/double-buffer).
+
+**Current device/tooling state**: VVL packaged inside the APK (Assets/Plugins/Android/
+libVkLayer_khronos_validation.so, keep UNCOMMITTED, remove for shipping); logcat filter must
+include `piLog:V ImmRenderReporter:V`; all `IMM_UNITY_VK_*` toggles work on-device via
+`adb shell setprop debug.imm.<NAME> 1`; headset must be worn (app pauses ~12s doffed;
+prox_close broadcast does NOT hold this firmware awake).
+
+---
+
+# (Historical) Quest on-device: GLES ships; Vulkan overlay wired and inits, draw handoff is the remaining task
 
 **Date:** 2026-07-16
 **Shipping status:** **Quest renders in VR via OpenGLES3** (commit e132fa6, user-confirmed). That

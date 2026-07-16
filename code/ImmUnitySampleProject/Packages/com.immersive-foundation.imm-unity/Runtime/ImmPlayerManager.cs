@@ -66,6 +66,7 @@ namespace ImmPlayer
         private readonly HashSet<int> _configuredVulkanRenderEvents = new HashSet<int>();
         private const string NearDiagPrefix = "[IMMDBG_NEAR_20260208A] ";
         private const int VulkanCustomBlitEventId = 6;
+        private static readonly List<UnityEngine.XR.XRDisplaySubsystem> _xrDisplaySubsystems = new List<UnityEngine.XR.XRDisplaySubsystem>();
         private bool _useCommandBufferRendering = false;
         private bool _useCameraCallbackRendering = false;
         private Coroutine _vulkanSampleEventCoroutine = null;
@@ -73,10 +74,43 @@ namespace ImmPlayer
         private static Mesh _vulkanOverlayFixtureMesh;
         private static Material _vulkanOverlayFixtureMaterial;
 
+        private static HashSet<string> _debugFlagFileCache;
+
         private static bool IsEnvFlagEnabled(string name)
         {
             string value = Environment.GetEnvironmentVariable(name);
-            return !string.IsNullOrEmpty(value) && value != "0";
+            if (!string.IsNullOrEmpty(value))
+                return value != "0";
+#if UNITY_ANDROID && !UNITY_EDITOR
+            // Env vars never reach an Android app process. Mirror the flags to a device
+            // file instead (one flag name per line):
+            //   adb shell "echo IMM_UNITY_VK_NO_RENDER_EVENTS > /sdcard/Android/data/<pkg>/files/imm_debug_flags.txt"
+            if (_debugFlagFileCache == null)
+            {
+                _debugFlagFileCache = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                try
+                {
+                    string path = Path.Combine(Application.persistentDataPath, "imm_debug_flags.txt");
+                    if (File.Exists(path))
+                    {
+                        foreach (string line in File.ReadAllLines(path))
+                        {
+                            string flag = line.Trim();
+                            if (flag.Length > 0 && !flag.StartsWith("#"))
+                                _debugFlagFileCache.Add(flag);
+                        }
+                        Debug.Log($"[IMM_DEBUG_FLAGS] loaded {_debugFlagFileCache.Count} flags from {path}");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"[IMM_DEBUG_FLAGS] failed to read flag file: {e.Message}");
+                }
+            }
+            return _debugFlagFileCache.Contains(name);
+#else
+            return false;
+#endif
         }
 
         #endregion
@@ -139,6 +173,10 @@ namespace ImmPlayer
 
         private void LateUpdate()
         {
+            // Heartbeat: proves the main thread is alive when native logs go silent
+            // (distinguishes an app-wide wedge from a render-thread-only stall).
+            if (Time.frameCount % 72 == 0)
+                Debug.Log($"[IMM_HEARTBEAT] frame={Time.frameCount} t={Time.realtimeSinceStartup:F1}s");
             if (_isInitialized)
             {
                 ImmNativePlugin.GlobalWork(1);
@@ -386,6 +424,56 @@ namespace ImmPlayer
             public readonly float[] LeftProj = new float[16];
             public readonly float[] WorldToRight = new float[16];
             public readonly float[] RightProj = new float[16];
+            // Quest Vulkan: IMM renders each eye into its own offscreen texture on its
+            // dedicated queue; Unity composites it back with a material blit.
+            public readonly RenderTexture[] VulkanEyeTargets = new RenderTexture[2];
+        }
+
+        private Material _vulkanCompositeMaterial;
+
+        private RenderTexture EnsureVulkanEyeTarget(PerCameraInfo info, int eye, int width, int height)
+        {
+            RenderTexture rt = info.VulkanEyeTargets[eye];
+            if (rt != null && (rt.width != width || rt.height != height))
+            {
+                rt.Release();
+                UnityEngine.Object.Destroy(rt);
+                rt = null;
+            }
+            if (rt == null)
+            {
+                rt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32)
+                {
+                    name = $"IMM Vulkan Eye {eye} (cam {info.CameraId})",
+                    antiAliasing = 1,
+                    useMipMap = false,
+                    autoGenerateMips = false
+                };
+                rt.Create();
+                info.VulkanEyeTargets[eye] = rt;
+                Debug.Log($"[IMM_UNITY_VK_OFFSCREEN_20260716] created eye target cam={info.CameraId} eye={eye} {width}x{height}");
+            }
+            return rt;
+        }
+
+        private Material GetVulkanCompositeMaterial()
+        {
+            if (_vulkanCompositeMaterial == null)
+            {
+                Material loaded = Resources.Load<Material>("ImmVulkanComposite");
+                if (loaded != null)
+                {
+                    _vulkanCompositeMaterial = loaded;
+                }
+                else
+                {
+                    Shader shader = Shader.Find("Unlit/Transparent");
+                    if (shader != null)
+                        _vulkanCompositeMaterial = new Material(shader);
+                    Debug.LogWarning("[IMM_UNITY_VK_OFFSCREEN_20260716] ImmVulkanComposite material missing from Resources; Shader.Find fallback " + (_vulkanCompositeMaterial != null ? "succeeded" : "FAILED"));
+                }
+            }
+            return _vulkanCompositeMaterial;
         }
 
         public bool UsesCommandBufferRendering => _useCommandBufferRendering;
@@ -430,6 +518,29 @@ namespace ImmPlayer
 #endif
         }
 
+        private static RenderTexture GetXrEyeRenderTexture(Camera cam, int stereoMode)
+        {
+            if (cam == null || !cam.stereoEnabled)
+                return null;
+            SubsystemManager.GetSubsystems(_xrDisplaySubsystems);
+            if (_xrDisplaySubsystems.Count == 0)
+                return null;
+            UnityEngine.XR.XRDisplaySubsystem display = _xrDisplaySubsystems[0];
+            if (display == null || !display.running)
+                return null;
+            int renderPassCount = display.GetRenderPassCount();
+            if (renderPassCount <= 0)
+                return null;
+            int passIndex = 0;
+            if (stereoMode == (int)StereoMode.TwoPass &&
+                cam.stereoActiveEye == Camera.MonoOrStereoscopicEye.Right &&
+                renderPassCount > 1)
+            {
+                passIndex = 1;
+            }
+            return display.GetRenderTextureForRenderPass(passIndex);
+        }
+
         private static CameraEvent GetVulkanCommandBufferEvent()
         {
             string value = Environment.GetEnvironmentVariable("IMM_UNITY_VK_CAMERA_EVENT");
@@ -446,7 +557,11 @@ namespace ImmPlayer
             if (string.Equals(value, "BeforeForwardOpaque", StringComparison.OrdinalIgnoreCase))
                 return CameraEvent.BeforeForwardOpaque;
 
-            return CameraEvent.AfterSkybox;
+            // Unity 6 XR on Quest stops executing AfterSkybox command buffers once the
+            // XR eye render path takes over (~2 frames after FOCUSED) - PreCull kept
+            // issuing events but the marker never dispatched. AfterImageEffectsOpaque is
+            // the hook the GLES path has always used successfully on-device.
+            return CameraEvent.AfterImageEffectsOpaque;
         }
 
         public void SetRenderCamera(Camera camera)
@@ -542,14 +657,33 @@ namespace ImmPlayer
             _configuredVulkanRenderEvents.Clear();
         }
 
+        private int _preCullCount;
+
         private void OnCameraPreCull(Camera cam)
         {
+            if (cam != null)
+            {
+                _preCullCount++;
+                if (_preCullCount <= 12 || _preCullCount % 144 == 0)
+                {
+                    Debug.Log($"[IMM_PRECULL] n={_preCullCount} cam={cam.name} eye={cam.stereoActiveEye} init={_isInitialized} ready={IsReadyForDocumentLoad} renderable={HasRenderableDocument()} shouldRender={ShouldRenderCamera(cam)} cbCount={cam.commandBufferCount}");
+                }
+            }
             if (!_isInitialized || _renderEventFunc == IntPtr.Zero || cam == null)
                 return;
             if (!ShouldRenderCamera(cam))
                 return;
 
             PerCameraInfo info = GetOrCreateCameraInfo(cam, _useCommandBufferRendering);
+
+            if (IsVulkanRuntime() && IsEnvFlagEnabled("IMM_UNITY_VK_NO_RENDER_EVENTS"))
+            {
+                // Diagnostic: issue NO plugin events at all (Quest: every custom marker
+                // callback makes Unity finalize the XR frame mid-frame). Native rendering
+                // and deferred init will not run.
+                info.CommandBuffer.Clear();
+                return;
+            }
 
             if (!IsReadyForDocumentLoad)
             {
@@ -599,25 +733,71 @@ namespace ImmPlayer
             ImmNativePlugin.SetCameraViewport(info.CameraId, cam.pixelWidth, cam.pixelHeight);
             if (IsVulkanRuntime())
             {
-                RenderTexture vulkanTargetTexture = cam.targetTexture != null ? cam.targetTexture : cam.activeTexture;
-                RenderBuffer colorBuffer = vulkanTargetTexture != null ? vulkanTargetTexture.colorBuffer : Display.main.colorBuffer;
-                RenderBuffer depthBuffer = vulkanTargetTexture != null ? vulkanTargetTexture.depthBuffer : Display.main.depthBuffer;
-                int vulkanSampleCount = vulkanTargetTexture != null
-                    ? Math.Max(1, vulkanTargetTexture.antiAliasing)
-                    : (cam.allowMSAA ? Math.Max(1, QualitySettings.antiAliasing) : 1);
-                if (!_loggedVulkanRenderTargetSource.Contains(cam))
+                if (IsEnvFlagEnabled("IMM_UNITY_VK_BLUE_CANARY") && cam.clearFlags != CameraClearFlags.SolidColor)
                 {
-                    _loggedVulkanRenderTargetSource.Add(cam);
-                    string source = vulkanTargetTexture != null ? $"cameraTexture {vulkanTargetTexture.width}x{vulkanTargetTexture.height}" : "display";
-                    Debug.Log($"[IMM_UNITY_VK_RT_SRC_20260612] cam={cam.name} cameraId={info.CameraId} source={source} pixel={cam.pixelWidth}x{cam.pixelHeight} samples={vulkanSampleCount}");
+                    // Diagnostic canary: prove Unity's own Vulkan output path is visible at all.
+                    cam.clearFlags = CameraClearFlags.SolidColor;
+                    cam.backgroundColor = new Color(0.0f, 0.4f, 1.0f, 1.0f);
+                    Debug.Log("[IMM_UNITY_VK_CANARY_20260716] camera forced to solid blue clear");
                 }
-                ImmNativePlugin.SetVulkanCameraRenderBuffers(
-                    info.CameraId,
-                    colorBuffer.GetNativeRenderBufferPtr(),
-                    depthBuffer.GetNativeRenderBufferPtr(),
-                    cam.pixelWidth,
-                    cam.pixelHeight,
-                    vulkanSampleCount);
+
+                int vulkanEye = 0;
+                if (stereoMode == (int)StereoMode.TwoPass && cam.stereoEnabled && cam.stereoActiveEye == Camera.MonoOrStereoscopicEye.Right)
+                    vulkanEye = 1;
+                bool useOffscreenTargets = Application.platform == RuntimePlatform.Android && !IsEnvFlagEnabled("IMM_UNITY_VK_NO_OFFSCREEN_TARGET");
+
+                if (useOffscreenTargets)
+                {
+                    // Quest: IMM must not write into the XR eye buffer directly - its own-queue
+                    // writes race Unity's camera pass and get cleared/overwritten. Render into an
+                    // offscreen texture instead; the composite blit below runs inside Unity's own
+                    // pass where ordering is guaranteed.
+                    RenderTexture eyeTarget = EnsureVulkanEyeTarget(info, vulkanEye, cam.pixelWidth, cam.pixelHeight);
+                    ImmNativePlugin.SetVulkanCameraEyeRenderBuffers(
+                        info.CameraId,
+                        vulkanEye,
+                        eyeTarget.colorBuffer.GetNativeRenderBufferPtr(),
+                        IntPtr.Zero,
+                        eyeTarget.width,
+                        eyeTarget.height,
+                        1);
+                    if (!_loggedVulkanRenderTargetSource.Contains(cam))
+                    {
+                        _loggedVulkanRenderTargetSource.Add(cam);
+                        Debug.Log($"[IMM_UNITY_VK_RT_SRC_20260612] cam={cam.name} cameraId={info.CameraId} source=offscreenRT {eyeTarget.width}x{eyeTarget.height} pixel={cam.pixelWidth}x{cam.pixelHeight} samples=1");
+                    }
+                }
+                else
+                {
+                    RenderTexture vulkanTargetTexture = cam.targetTexture != null ? cam.targetTexture : cam.activeTexture;
+                    string vulkanTargetSource = vulkanTargetTexture != null ? "cameraTexture" : null;
+                    if (vulkanTargetTexture == null)
+                    {
+                        // On Quest (XR + offscreen swapchain) Display.main resolves to a 1x1 dummy
+                        // buffer - the real target is the XR eye texture for the current render pass.
+                        vulkanTargetTexture = GetXrEyeRenderTexture(cam, stereoMode);
+                        if (vulkanTargetTexture != null)
+                            vulkanTargetSource = "xrEyePass";
+                    }
+                    RenderBuffer colorBuffer = vulkanTargetTexture != null ? vulkanTargetTexture.colorBuffer : Display.main.colorBuffer;
+                    RenderBuffer depthBuffer = vulkanTargetTexture != null ? vulkanTargetTexture.depthBuffer : Display.main.depthBuffer;
+                    int vulkanSampleCount = vulkanTargetTexture != null
+                        ? Math.Max(1, vulkanTargetTexture.antiAliasing)
+                        : (cam.allowMSAA ? Math.Max(1, QualitySettings.antiAliasing) : 1);
+                    if (!_loggedVulkanRenderTargetSource.Contains(cam))
+                    {
+                        _loggedVulkanRenderTargetSource.Add(cam);
+                        string source = vulkanTargetTexture != null ? $"{vulkanTargetSource} {vulkanTargetTexture.width}x{vulkanTargetTexture.height}" : "display";
+                        Debug.Log($"[IMM_UNITY_VK_RT_SRC_20260612] cam={cam.name} cameraId={info.CameraId} source={source} pixel={cam.pixelWidth}x{cam.pixelHeight} samples={vulkanSampleCount}");
+                    }
+                    ImmNativePlugin.SetVulkanCameraRenderBuffers(
+                        info.CameraId,
+                        colorBuffer.GetNativeRenderBufferPtr(),
+                        depthBuffer.GetNativeRenderBufferPtr(),
+                        cam.pixelWidth,
+                        cam.pixelHeight,
+                        vulkanSampleCount);
+                }
                 int prepared = IsEnvFlagEnabled("IMM_UNITY_VK_SKIP_MANAGED_PREPARE")
                     ? 0
                     : ImmNativePlugin.PrepareCamera(info.CameraId);
@@ -671,6 +851,18 @@ namespace ImmPlayer
                 else
                 {
                     info.CommandBuffer.IssuePluginEvent(_renderEventFunc, eventId);
+                }
+                if (Application.platform == RuntimePlatform.Android && !IsEnvFlagEnabled("IMM_UNITY_VK_NO_OFFSCREEN_TARGET"))
+                {
+                    RenderTexture eyeTarget = info.VulkanEyeTargets[eyeIndex & 1];
+                    Material composite = GetVulkanCompositeMaterial();
+                    if (eyeTarget != null && composite != null)
+                    {
+                        // The plugin event above renders IMM into the offscreen texture
+                        // (fence-completed on IMM's own queue before the callback returns);
+                        // composite it into the eye buffer inside Unity's own pass.
+                        info.CommandBuffer.Blit(eyeTarget, cameraTarget, composite);
+                    }
                 }
                 AppendVulkanOverlayFixtureDraw(info.CommandBuffer, cam);
             }

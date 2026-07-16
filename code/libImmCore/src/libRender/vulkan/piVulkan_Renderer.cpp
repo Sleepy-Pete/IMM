@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <mutex>
 
 #if defined(WINDOWS)
 #define WIN32_LEAN_AND_MEAN
@@ -1532,6 +1533,11 @@ struct piVulkanState
     bool pictureDrawReported = false;
     bool hostPictureDrawReported = false;
     bool pictureDrawFailureReported = false;
+    bool ownsDedicatedQueue = false;
+    // Serializes every record->submit->wait sequence: they share commandBuffer,
+    // frameFence, and the queue, and can run from both the app and render threads
+    // (vkQueueSubmit is externally synchronized). Recursive because some helpers nest.
+    std::recursive_mutex submitMutex;
     bool presentLayoutReported = false;
     bool presentDescriptorReported = false;
     bool presentPipelineReported = false;
@@ -3828,6 +3834,7 @@ static bool iEnsureStaticPaintGraphicsPipeline(piVulkanState *state, piShader sh
 
 static bool iSubmitStaticPaintDraw(piVulkanState *state, piShader shader, piRTarget target, piVertexArray vertexArray, uint32_t num, uint32_t numInstances, uint32_t baseVertex, uint32_t baseInstance, uint32_t baseIndex, piRenderer::piReporter *reporter)
 {
+    std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
     const bool hostRenderPass = state && state->hostRenderPassFrameActive;
     if (!state || !shader || !target || !vertexArray || state->device == VK_NULL_DEVICE ||
         state->commandBuffer == VK_NULL_COMMAND_BUFFER || (!hostRenderPass && state->frameFence == VK_NULL_FENCE) ||
@@ -3931,6 +3938,7 @@ static bool iSubmitStaticPaintDraw(piVulkanState *state, piShader shader, piRTar
 
 static bool iTransitionColorTextureToShaderRead(piVulkanState *state, piTexture texture)
 {
+    std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
     if (!state || !texture || texture->image == 0 ||
         state->commandBuffer == VK_NULL_COMMAND_BUFFER || state->frameFence == VK_NULL_FENCE ||
         !state->vkCmdPipelineBarrier)
@@ -4169,6 +4177,7 @@ static bool iEnsurePictureGraphicsPipeline(piVulkanState *state, piShader shader
 
 static bool iSubmitPictureDraw(piVulkanState *state, piShader shader, piRTarget target, const piVertexArray vertexArray, uint32_t num, uint32_t numInstances, uint32_t baseIndex, piRenderer::piReporter *reporter)
 {
+    std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
     const bool hostRenderPass = state && state->hostRenderPassFrameActive;
     if (!state || !shader || !target || !vertexArray || !vertexArray->vertexBuffer[0] || !vertexArray->indexBuffer ||
         shader->pipeline == VK_NULL_PIPELINE || shader->pipelineLayout == VK_NULL_PIPELINE_LAYOUT ||
@@ -4316,6 +4325,7 @@ static bool iSubmitPictureDraw(piVulkanState *state, piShader shader, piRTarget 
 
 static bool iSubmitPictureQuadDraw(piVulkanState *state, piShader shader, piRTarget target, uint32_t numInstances, piRenderer::piReporter *reporter)
 {
+    std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
     const bool hostRenderPass = state && state->hostRenderPassFrameActive;
     if (!state || !shader || !target || !state->vkCmdDraw ||
         shader->pipeline == VK_NULL_PIPELINE || shader->pipelineLayout == VK_NULL_PIPELINE_LAYOUT ||
@@ -4413,6 +4423,7 @@ static bool iSubmitPictureQuadDraw(piVulkanState *state, piShader shader, piRTar
 
 static bool iReadBackTextureImage(piVulkanState *state, piTexture texture, piRenderer::piReporter *reporter)
 {
+    std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
     if (!state || !texture || !texture->data || texture->dataSize == 0 || texture->image == 0 ||
         texture->info.mFormat != piRenderer::Format::C3_11_11_10_FLOAT ||
         state->commandBuffer == VK_NULL_COMMAND_BUFFER || state->frameFence == VK_NULL_FENCE || !state->vkCmdCopyImageToBuffer)
@@ -4723,6 +4734,7 @@ static bool iReadBackTextureImage(piVulkanState *state, piTexture texture, piRen
 
 static bool iClearColorTextureImage(piVulkanState *state, piTexture texture, const float *color, piRenderer::piReporter *reporter)
 {
+    std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
     if (!state || !texture || texture->image == 0 || texture->info.mFormat == piRenderer::Format::D1_32_FLOAT ||
         texture->info.mFormat == piRenderer::Format::D1_16_UNORM || texture->info.mFormat == piRenderer::Format::DS_24_8_UINT ||
         texture->info.mFormat == piRenderer::Format::DS_32_8_UINT || state->commandBuffer == VK_NULL_COMMAND_BUFFER ||
@@ -4837,6 +4849,7 @@ static bool iClearColorTextureImage(piVulkanState *state, piTexture texture, con
 
 static bool iClearDepthTextureImage(piVulkanState *state, piTexture texture, piRenderer::piReporter *reporter)
 {
+    std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
     if (!state || !texture || texture->image == 0 ||
         (texture->info.mFormat != piRenderer::Format::D1_32_FLOAT &&
          texture->info.mFormat != piRenderer::Format::D1_16_UNORM &&
@@ -4953,6 +4966,7 @@ static bool iClearDepthTextureImage(piVulkanState *state, piTexture texture, piR
 
 static bool iUploadCpuColorToGpuColorAttachment(piVulkanState *state, piTexture texture, piRenderer::piReporter *reporter)
 {
+    std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
     if (!state || !texture || !texture->data || texture->dataSize == 0 || texture->image == 0 ||
         state->commandBuffer == VK_NULL_COMMAND_BUFFER || state->frameFence == VK_NULL_FENCE)
     {
@@ -5564,6 +5578,7 @@ static bool iUploadTextureToStaging(piVulkanState *state, piTexture texture, piR
 
 static bool iUploadTextureImageData(piVulkanState *state, piTexture texture, piRenderer::piReporter *reporter)
 {
+    std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
     if (!state || !texture || !texture->data || texture->dataSize == 0 || texture->image == 0 ||
         state->commandBuffer == VK_NULL_COMMAND_BUFFER || state->frameFence == VK_NULL_FENCE)
     {
@@ -5916,6 +5931,28 @@ bool piRendererVulkan::Initialize(int id, const void **hwnd, int num, bool disab
             Deinitialize();
             return false;
         }
+#if defined(ANDROID)
+        // Unity's XR Vulkan frame must never see foreign work on its queue: requesting
+        // queue access mid-frame makes Unity run FinalizeFrameForExternalPresent and
+        // breaks compositor pacing (black view on Quest). The build requests a second
+        // graphics queue via boot.config (xr-request-additional-vulkan-graphics-queue=1);
+        // submit all IMM work there. Kill-switch: IMM_UNITY_VK_NO_SECOND_QUEUE.
+        if (!iRendererFlagEnabled("IMM_UNITY_VK_NO_SECOND_QUEUE"))
+        {
+            VkQueue dedicatedQueue = VK_NULL_QUEUE;
+            mState->vkGetDeviceQueue(mState->device, mState->graphicsQueueFamilyIndex, 1, &dedicatedQueue);
+            if (dedicatedQueue != VK_NULL_QUEUE && dedicatedQueue != mState->graphicsQueue)
+            {
+                mState->graphicsQueue = dedicatedQueue;
+                mState->ownsDedicatedQueue = true;
+                iReport(mReporter, "Vulkan renderer submitting on dedicated second graphics queue");
+            }
+            else
+            {
+                iReport(mReporter, "Vulkan renderer second graphics queue unavailable; sharing host queue");
+            }
+        }
+#endif
         mState->initialized = true;
         iReport(mReporter, "Vulkan renderer initialized with external device");
         return true;
@@ -6941,6 +6978,11 @@ void piRendererVulkan::EndExternalImageFrame(void)
         SetRenderTarget(mState->hostPreviousRenderTarget);
         mState->hostPreviousRenderTarget = nullptr;
     }
+}
+
+bool piRendererVulkan::UsesDedicatedQueue(void) const
+{
+    return mState != nullptr && mState->ownsDedicatedQueue;
 }
 
 bool piRendererVulkan::BeginHostRenderPassFrame(void *commandBuffer, void *renderPass, void *framebuffer, uint32_t colorVkFormat, uint32_t colorVkSamples, bool hasDepthAttachment, bool useHostDepth, uint32_t subpass, int width, int height)

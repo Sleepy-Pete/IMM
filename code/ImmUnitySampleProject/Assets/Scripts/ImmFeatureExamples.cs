@@ -329,6 +329,20 @@ namespace ImmPlayer
                 byte[] data = request.downloadHandler.data;
                 Debug.Log($"{DiagPrefix}Loaded {data.Length} bytes from StreamingAssets");
 
+                // The native side rejects loads until the Android deferred renderer init has run on
+                // the render thread (first plugin render event). We usually win that race only
+                // because the UnityWebRequest above takes ~100 ms; anything that slows init (slow
+                // device, Vulkan validation layer) made the load fail with no retry. Wait for
+                // readiness explicitly.
+                float readyDeadline = Time.realtimeSinceStartup + 30.0f;
+                while (!ImmPlayerManager.Instance.IsReadyForDocumentLoad && Time.realtimeSinceStartup < readyDeadline)
+                    yield return null;
+                if (!ImmPlayerManager.Instance.IsReadyForDocumentLoad)
+                {
+                    Debug.LogError($"{DiagPrefix}Native renderer never became ready for document load (30s timeout)");
+                    yield break;
+                }
+
                 // Load straight from the in-memory bytes (no temp file). Everything stays inside the
                 // APK, and this avoids the file-path load (Player::Load(wchar_t* path)) that segfaults
                 // on Android (wchar_t is 4 bytes there). The native LoadFromMemory uses the byte-buffer

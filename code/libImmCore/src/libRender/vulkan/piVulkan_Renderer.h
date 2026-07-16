@@ -44,6 +44,9 @@ public:
     bool BeginHostRenderPassFrame(void *commandBuffer, void *renderPass, void *framebuffer, uint32_t colorVkFormat, uint32_t colorVkSamples, bool hasDepthAttachment, bool useHostDepth, uint32_t subpass, int width, int height);
     bool DebugClearHostRenderPassColor(float red, float green, float blue, float alpha);
     void EndExternalImageFrame(void);
+    // True when the renderer submits on its own device queue (not the host engine's),
+    // so callers must not route work through the host's queue-access mechanism.
+    bool UsesDedicatedQueue(void) const;
 
     void StartPerformanceMeasure(void) override;
     void EndPerformanceMeasure(void) override;

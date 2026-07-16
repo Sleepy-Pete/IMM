@@ -214,6 +214,9 @@ struct ImmUnityPlugin
 #if defined(IMM_UNITY_VULKAN)
             IUnityGraphicsVulkan *mVulkan = nullptr;
             UnityVulkanInstance mVulkanInstance = {};
+            // Indexed [camera][eye] - on Quest each eye renders to its own offscreen
+            // RenderTexture that Unity later composites; desktop keeps one target and
+            // the legacy setter fills both eye slots identically.
             struct
             {
                 UnityRenderBuffer color = nullptr;
@@ -221,7 +224,7 @@ struct ImmUnityPlugin
                 int width = 0;
                 int height = 0;
                 int samples = 1;
-            } mVulkanCameraTarget[256];
+            } mVulkanCameraTarget[256][2];
 #endif
 #if defined(__APPLE__)
 	        IUnityGraphicsMetalV2 *mMetalV2 = nullptr;
@@ -458,6 +461,17 @@ static UnityVulkanPluginEventConfig iMakeUnityVulkanEventConfig(int eventID)
 {
     UnityVulkanPluginEventConfig config = {};
     const bool prepareEvent = (eventID & kUnityVulkanPrepareEventFlag) != 0;
+#if defined(__ANDROID__) || defined(ANDROID)
+    // On Quest, any non-passive event config (EnsureInside/ModifiesCommandBuffersState)
+    // makes Unity run XRDisplaySubsystem AfterRendering -> FinalizeFrameForExternalPresent
+    // when dispatching the event marker - mid-frame - which double-signals Unity's frame
+    // semaphore and breaks compositor pacing (validation-layer confirmed). IMM renders on
+    // its own queue and only observes resources, so a pure passive marker is correct.
+    (void)prepareEvent;
+    config.renderPassPrecondition = kUnityVulkanRenderPass_DontCare;
+    config.graphicsQueueAccess = kUnityVulkanGraphicsQueueAccess_DontCare;
+    config.flags = 0;
+#else
     config.renderPassPrecondition = prepareEvent ? kUnityVulkanRenderPass_EnsureOutside : kUnityVulkanRenderPass_EnsureInside;
     if (!prepareEvent && iEnvFlagEnabled("IMM_UNITY_VK_DONTCARE_RENDERPASS"))
     {
@@ -475,6 +489,7 @@ static UnityVulkanPluginEventConfig iMakeUnityVulkanEventConfig(int eventID)
     {
         config.flags |= kUnityVulkanEventConfigFlag_EnsurePreviousFrameSubmission;
     }
+#endif
     return config;
 }
 
@@ -613,6 +628,8 @@ struct UnityRenderingExtCustomBlitParamsMinimal
     unsigned int commandFlags;
 };
 
+static int sUnityVulkanFrameSerial = 0;
+
 static void UNITY_INTERFACE_API iUnityVulkanQueueRenderCallback(int event_id, void *data)
 {
     UnityVulkanRenderContext *context = static_cast<UnityVulkanRenderContext *>(data);
@@ -621,9 +638,28 @@ static void UNITY_INTERFACE_API iUnityVulkanQueueRenderCallback(int event_id, vo
         iLog().Printf(LT_ERROR, L"Unity Vulkan queue render skipped: missing context for event=%d", event_id);
         return;
     }
+    // A "frame begin" without its matching "Unity Vulkan render:" completion line
+    // pinpoints a hang inside this callback (no-timeout vkQueueSubmit etc.).
+    const int frameSerial = ++sUnityVulkanFrameSerial;
+    iLog().Printf(LT_MESSAGE, L"Unity Vulkan frame begin: serial=%d event=%d", frameSerial, event_id);
 
     piRendererVulkan *vulkanRenderer = static_cast<piRendererVulkan *>(context->renderer);
-    if (!vulkanRenderer->BeginExternalImageFramePreserveColor(
+    bool frameBegun;
+    if (context->depthImage == 0)
+    {
+        // Offscreen-RT mode (Quest): IMM owns the whole target - clear and fully
+        // re-render it; EndExternalImageFrame leaves it SHADER_READ for Unity's
+        // composite pass to sample.
+        frameBegun = vulkanRenderer->BeginExternalImageFrame(
+            reinterpret_cast<void *>(static_cast<uintptr_t>(context->colorImage)),
+            context->colorFormat,
+            context->width,
+            context->height,
+            1);
+    }
+    else
+    {
+        frameBegun = vulkanRenderer->BeginExternalImageFramePreserveColor(
             reinterpret_cast<void *>(static_cast<uintptr_t>(context->colorImage)),
             context->colorFormat,
             context->colorSamples,
@@ -631,7 +667,9 @@ static void UNITY_INTERFACE_API iUnityVulkanQueueRenderCallback(int event_id, vo
             context->depthFormat,
             context->depthSamples,
             context->width,
-            context->height))
+            context->height);
+    }
+    if (!frameBegun)
     {
         iLog().Printf(LT_ERROR, L"Unity Vulkan queue render skipped: failed to begin external image frame for camera=%d", context->cameraID);
         return;
@@ -641,7 +679,9 @@ static void UNITY_INTERFACE_API iUnityVulkanQueueRenderCallback(int event_id, vo
         0.0f, 0.0f, static_cast<float>(context->width), static_cast<float>(context->height), 0.0f, 1.0f, true
     };
     const int eyeID = context->eventID & 1;
+    iLog().Printf(LT_MESSAGE, L"Unity Vulkan frame stage: serial=%d target begun", frameSerial);
     const bool rendered = gImmUnityPlugin.mBridge.RenderCamera(context->cameraID, viewport, eyeID, true);
+    iLog().Printf(LT_MESSAGE, L"Unity Vulkan frame stage: serial=%d camera rendered", frameSerial);
     vulkanRenderer->EndExternalImageFrame();
 
     const Player::PerformanceInfo &perf = iPlayer().GetPerformanceInfoForFrame();
@@ -665,11 +705,14 @@ static bool iRenderUnityVulkanCamera(int cameraID, int event_id, piRenderer *ren
         return false;
     }
 
-    const auto &target = gImmUnityPlugin.UnityAPI.mVulkanCameraTarget[cameraID];
+    const int eyeIndex = event_id & 1;
+    const auto &target = gImmUnityPlugin.UnityAPI.mVulkanCameraTarget[cameraID][eyeIndex];
     UnityRenderBuffer colorTarget = colorOverride ? colorOverride : target.color;
-    if (!colorTarget || !target.depth || target.width <= 0 || target.height <= 0)
+    // Depth is optional: the Quest offscreen-RT path is color-only (IMM clears and
+    // fully re-renders the target each frame).
+    if (!colorTarget || target.width <= 0 || target.height <= 0)
     {
-        iLog().Printf(LT_ERROR, L"Unity Vulkan render skipped: missing color/depth render buffers for camera=%d", cameraID);
+        iLog().Printf(LT_ERROR, L"Unity Vulkan render skipped: missing color render buffer for camera=%d eye=%d", cameraID, eyeIndex);
         return true;
     }
 
@@ -680,7 +723,19 @@ static bool iRenderUnityVulkanCamera(int cameraID, int event_id, piRenderer *ren
     constexpr VkAccessFlags kColorAttachmentAccess = 0x00000100 | 0x00000080; // COLOR_ATTACHMENT_WRITE/READ
     constexpr VkAccessFlags kDepthAttachmentAccess = 0x00000400 | 0x00000200; // DEPTH_STENCIL_ATTACHMENT_WRITE/READ
 
-    gImmUnityPlugin.UnityAPI.mVulkan->EnsureOutsideRenderPass();
+    // With a dedicated IMM queue the event is configured as a pure passive marker
+    // (flags=0): we must not modify Unity's command-buffer state - no render pass
+    // splitting, no barrier recording. Observe the images and do all transitions in
+    // IMM's own command buffer instead.
+    piRendererVulkan *vulkanRenderer = static_cast<piRendererVulkan *>(renderer);
+    const bool passiveAccess = vulkanRenderer->UsesDedicatedQueue();
+    const UnityVulkanResourceAccessMode accessMode = passiveAccess
+        ? kUnityVulkanResourceAccess_ObserveOnly
+        : kUnityVulkanResourceAccess_PipelineBarrier;
+    if (!passiveAccess)
+    {
+        gImmUnityPlugin.UnityAPI.mVulkan->EnsureOutsideRenderPass();
+    }
 
     UnityVulkanImage colorImage = {};
     if (!gImmUnityPlugin.UnityAPI.mVulkan->AccessRenderBufferTexture(
@@ -689,7 +744,7 @@ static bool iRenderUnityVulkanCamera(int cameraID, int event_id, piRenderer *ren
             kColorAttachmentLayout,
             kColorAttachmentStage,
             kColorAttachmentAccess,
-            kUnityVulkanResourceAccess_PipelineBarrier,
+            accessMode,
             &colorImage))
     {
         iLog().Printf(LT_ERROR, L"Unity Vulkan render skipped: failed to access color render buffer for camera=%d", cameraID);
@@ -697,13 +752,14 @@ static bool iRenderUnityVulkanCamera(int cameraID, int event_id, piRenderer *ren
     }
 
     UnityVulkanImage depthImage = {};
-    if (!gImmUnityPlugin.UnityAPI.mVulkan->AccessRenderBufferTexture(
+    if (target.depth != nullptr &&
+        !gImmUnityPlugin.UnityAPI.mVulkan->AccessRenderBufferTexture(
             target.depth,
             UnityVulkanWholeImage,
             kDepthAttachmentLayout,
             kDepthAttachmentStages,
             kDepthAttachmentAccess,
-            kUnityVulkanResourceAccess_PipelineBarrier,
+            accessMode,
             &depthImage))
     {
         iLog().Printf(LT_ERROR, L"Unity Vulkan render skipped: failed to access depth render buffer for camera=%d", cameraID);
@@ -752,6 +808,15 @@ static bool iRenderUnityVulkanCamera(int cameraID, int event_id, piRenderer *ren
     context.width = width;
     context.height = height;
 
+    if (passiveAccess)
+    {
+        // IMM submits on its own device queue, so no Unity queue access is needed.
+        // Requesting queue access here would make Unity finalize the XR frame for
+        // external present mid-frame (double-signals its frame semaphore, breaks
+        // compositor pacing -> black view on Quest).
+        iUnityVulkanQueueRenderCallback(event_id, &context);
+        return true;
+    }
     gImmUnityPlugin.UnityAPI.mVulkan->AccessQueue(iUnityVulkanQueueRenderCallback, event_id, &context, true);
     return true;
 }
@@ -762,7 +827,7 @@ static bool iRenderUnityVulkanCameraInHostRenderPass(int cameraID, int event_id,
     {
         return false;
     }
-    const auto &target = gImmUnityPlugin.UnityAPI.mVulkanCameraTarget[cameraID];
+    const auto &target = gImmUnityPlugin.UnityAPI.mVulkanCameraTarget[cameraID][event_id & 1];
     if (target.width <= 0 || target.height <= 0)
     {
         iLog().Printf(LT_ERROR, L"Unity Vulkan host render skipped: missing render target for camera=%d", cameraID);
@@ -957,7 +1022,7 @@ static void UNITY_INTERFACE_API iOnRenderEventAndData(int event_id, void *data)
         }
         if (cameraID >= 0 && cameraID < 256)
         {
-            const auto &target = gImmUnityPlugin.UnityAPI.mVulkanCameraTarget[cameraID];
+            const auto &target = gImmUnityPlugin.UnityAPI.mVulkanCameraTarget[cameraID][vulkanEventId & 1];
             UnityRenderBuffer colorTarget = params->destination ? params->destination : target.color;
             if (hasRecordingState)
             {
@@ -1034,12 +1099,25 @@ static void UNITY_INTERFACE_API iOnRenderEvent(int event_id)
             }
             return;
         }
-        const auto &target = gImmUnityPlugin.UnityAPI.mVulkanCameraTarget[unityVulkanCameraID];
+        const auto &target = gImmUnityPlugin.UnityAPI.mVulkanCameraTarget[unityVulkanCameraID][event_id & 1];
+#if defined(__ANDROID__) || defined(ANDROID)
+        // On Quest the host-render-pass path is fundamentally broken: Unity's recording
+        // state reports a command buffer that is NOT in the recording state when this
+        // event executes (validation-layer confirmed), so recording draws into it is
+        // illegal. Default to the external-image path; IMM_UNITY_VK_FORCE_HOST_RENDER
+        // opts back in for experiments.
+        if (!iEnvFlagEnabled("IMM_UNITY_VK_FORCE_HOST_RENDER"))
+        {
+            iRenderUnityVulkanCamera(unityVulkanCameraID, event_id, renderer, target.color);
+            return;
+        }
+#else
         if (iEnvFlagEnabled("IMM_UNITY_VK_FORCE_EXTERNAL_IMAGE"))
         {
             iRenderUnityVulkanCamera(unityVulkanCameraID, event_id, renderer, target.color);
             return;
         }
+#endif
         iRenderUnityVulkanCameraInHostRenderPass(unityVulkanCameraID, event_id, renderer, target.color);
         return;
     }
@@ -1438,16 +1516,17 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetCameraViewport(int
 #endif
 }
 
-extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetVulkanCameraRenderBuffers(int cameraID, void *colorRenderBuffer, void *depthRenderBuffer, int width, int height, int samples)
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetVulkanCameraEyeRenderBuffers(int cameraID, int eye, void *colorRenderBuffer, void *depthRenderBuffer, int width, int height, int samples)
 {
-    if (cameraID < 0 || cameraID > 255) return;
+    if (cameraID < 0 || cameraID > 255 || eye < 0 || eye > 1) return;
 #if defined(IMM_UNITY_VULKAN)
     IMM_UNITY_NATIVE_LOCK();
-    gImmUnityPlugin.UnityAPI.mVulkanCameraTarget[cameraID].color = static_cast<UnityRenderBuffer>(colorRenderBuffer);
-    gImmUnityPlugin.UnityAPI.mVulkanCameraTarget[cameraID].depth = static_cast<UnityRenderBuffer>(depthRenderBuffer);
-    gImmUnityPlugin.UnityAPI.mVulkanCameraTarget[cameraID].width = width;
-    gImmUnityPlugin.UnityAPI.mVulkanCameraTarget[cameraID].height = height;
-    gImmUnityPlugin.UnityAPI.mVulkanCameraTarget[cameraID].samples = samples > 0 ? samples : 1;
+    auto &target = gImmUnityPlugin.UnityAPI.mVulkanCameraTarget[cameraID][eye];
+    target.color = static_cast<UnityRenderBuffer>(colorRenderBuffer);
+    target.depth = static_cast<UnityRenderBuffer>(depthRenderBuffer);
+    target.width = width;
+    target.height = height;
+    target.samples = samples > 0 ? samples : 1;
 #else
     (void)colorRenderBuffer;
     (void)depthRenderBuffer;
@@ -1455,6 +1534,12 @@ extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetVulkanCameraRender
     (void)height;
     (void)samples;
 #endif
+}
+
+extern "C" void UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API SetVulkanCameraRenderBuffers(int cameraID, void *colorRenderBuffer, void *depthRenderBuffer, int width, int height, int samples)
+{
+    SetVulkanCameraEyeRenderBuffers(cameraID, 0, colorRenderBuffer, depthRenderBuffer, width, height, samples);
+    SetVulkanCameraEyeRenderBuffers(cameraID, 1, colorRenderBuffer, depthRenderBuffer, width, height, samples);
 }
 
 extern "C" int UNITY_INTERFACE_EXPORT UNITY_INTERFACE_API Init( int colorSpace, // 0=linear 1=gamma
