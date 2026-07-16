@@ -1711,6 +1711,9 @@ namespace ImmPlayer
         return static_cast<int>(id);
     }
 
+    // Takes ownership of `imm` (heap-allocated by the caller): the load is
+    // processed asynchronously, so the array must outlive this call. The
+    // document frees it in iUnloadCPU/End once the CPU data is released.
     int Player::Load(piTArray<uint8_t>* imm, const wchar_t* name)
     {
         mCPULoadStartTimeMS = std::chrono::system_clock::now();

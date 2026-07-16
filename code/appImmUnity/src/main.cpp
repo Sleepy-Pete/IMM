@@ -1535,11 +1535,30 @@ extern "C" int UNITY_INTERFACE_EXPORT LoadFromMemory(char *fileName, int size, v
     }
     iLog().Printf(LT_DEBUG, L"loading from memory...\nfile name is %s\nsize is %d", pistr2ws(fileName), size);
 
-    piTArray<uint8_t> imm;
-    imm.Init(0, false);
-    imm.Set((uint8_t*)(data), (uint64_t)(size));
-    return iPlayer().Load(&imm, pistr2ws(fileName));
+    // The player queues the load and imports asynchronously on a loader
+    // thread, long after this call returns and the managed buffer behind
+    // `data` is unpinned/moved. Copy the bytes into a heap array whose
+    // ownership passes to the document (freed in iUnloadCPU/End).
+    // Aliasing the caller's pointer here (the previous behavior) crashes
+    // in ImportFromMemory once loading became asynchronous.
+    piTArray<uint8_t>* imm = new piTArray<uint8_t>();
+    if (!imm->Init((uint64_t)size, false))
+    {
+        delete imm;
+        iLog().Printf(LT_ERROR, L"LoadFromMemory: failed to allocate %d byte copy", size);
+        return -1;
+    }
+    memcpy(imm->GetAddress(0), data, (size_t)size);
+    // NOTE: leave the array length at 0 — piIStreamArray uses GetLength()
+    // as its read cursor and GetMaxLength() as the stream size.
 
+    const int id = iPlayer().Load(imm, pistr2ws(fileName));
+    if (id < 0)
+    {
+        imm->End();
+        delete imm;
+    }
+    return id;
 }
 
 extern "C" void UNITY_INTERFACE_EXPORT Unload(int id)

@@ -58,6 +58,14 @@ namespace ImmPlayer
 
     void Document::End(void)
     {
+        // safety net for loads that never reached iUnloadCPU (e.g. a failed
+        // import): the document owns the memory-backed source buffer.
+        if (mIMM != nullptr)
+        {
+            mIMM->End();
+            delete mIMM;
+            mIMM = nullptr;
+        }
         mFileName.End();
         mState.mMutex.End();
     }
@@ -681,6 +689,16 @@ namespace ImmPlayer
 
         // sequence
         mSequence.Deinit(log);
+
+        // memory-backed source: LoadFromMemory hands the document a heap
+        // copy of the caller's buffer (see Player::Load(piTArray*, ...));
+        // release it with the rest of the CPU data.
+        if (mIMM != nullptr)
+        {
+            mIMM->End();
+            delete mIMM;
+            mIMM = nullptr;
+        }
 
         std::chrono::steady_clock::time_point timeEnd = std::chrono::steady_clock::now();
 

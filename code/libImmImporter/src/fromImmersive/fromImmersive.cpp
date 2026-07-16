@@ -880,6 +880,10 @@ namespace ImmImporter
 
     bool ImportFromMemory(piTArray<uint8_t>* data, Sequence* sq, piLog* log, const Drawing::ColorSpace colorSpace, Drawing::PaintRenderingTechnique renderingTechnique, IStrokeCollector* collector)
     {
+        // piIStreamArray repurposes the array's length as the read cursor
+        // (GetMaxLength() is the stream size); rewind so reading starts at
+        // the first byte regardless of how the caller filled the array.
+        data->SetLength(0);
         piIStreamArray* fstr = new piIStreamArray(data);
 
         // If a collector is provided, use synchronous import to collect stroke data
