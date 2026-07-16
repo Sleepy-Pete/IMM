@@ -1172,40 +1172,6 @@ static void UNITY_INTERFACE_API iOnRenderEvent(int event_id)
 	    };
     const int eyeID = event_id & 1;
 
-#if defined(WINDOWS)
-    // --- Unity 6 render-target diagnostic + fix ---
-    // libImmPlayer renders into whatever RTV/viewport is bound on Unity's immediate context (it
-    // shares that context). Unity 6's render graph may not leave the camera color target bound at
-    // the plugin event, which would make IMM draw to nothing (black Game view). Capture what is
-    // actually bound (logged for diagnosis) and explicitly re-bind it before the IMM render.
-    if (gImmUnityPlugin.UnityAPI.mGraphics != nullptr &&
-        gImmUnityPlugin.UnityAPI.mGraphics->GetRenderer() == kUnityGfxRendererD3D11 &&
-        gImmUnityPlugin.UnityAPI.mDevice != nullptr)
-    {
-        static int sU6DiagCount = 0;
-        ID3D11DeviceContext *ctx = nullptr;
-        ((ID3D11Device*)gImmUnityPlugin.UnityAPI.mDevice)->GetImmediateContext(&ctx);
-        if (ctx)
-        {
-            ID3D11RenderTargetView *rtv = nullptr;
-            ID3D11DepthStencilView *dsv = nullptr;
-            ctx->OMGetRenderTargets(1, &rtv, &dsv);
-            UINT nvp = 1;
-            D3D11_VIEWPORT vp = {};
-            ctx->RSGetViewports(&nvp, &vp);
-            if (sU6DiagCount < 8)
-            {
-                iLog().Printf(LT_MESSAGE, L"[U6DIAG] cam=%d rtv=%p dsv=%p vpN=%u vp=(%.0f,%.0f %.0fx%.0f)",
-                    cameraID, (void*)rtv, (void*)dsv, (unsigned)nvp, vp.TopLeftX, vp.TopLeftY, vp.Width, vp.Height);
-                sU6DiagCount++;
-            }
-            if (rtv) { ctx->OMSetRenderTargets(1, &rtv, dsv); rtv->Release(); }
-            if (dsv) dsv->Release();
-            ctx->Release();
-        }
-    }
-#endif
-
     const bool rendered = gImmUnityPlugin.mBridge.RenderCamera(cameraID, viewport, eyeID, true);
 
 #if defined(__APPLE__)
