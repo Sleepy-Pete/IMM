@@ -518,6 +518,41 @@ namespace ImmPlayer
 #endif
         }
 
+        /// <summary>
+        /// Authoritative per-eye view/projection straight from the XR display subsystem's
+        /// render parameters. On Quest+Vulkan, Camera.GetStereoViewMatrix returned the
+        /// camera's static (untracked) view - IMM content rendered head-locked. The XR
+        /// render pass parameters are what the runtime actually tracks with.
+        /// </summary>
+        private static bool TryGetXrEyeViewProjection(Camera cam, int eye, out Matrix4x4 view, out Matrix4x4 projection)
+        {
+            view = Matrix4x4.identity;
+            projection = Matrix4x4.identity;
+            if (cam == null)
+                return false;
+            SubsystemManager.GetSubsystems(_xrDisplaySubsystems);
+            if (_xrDisplaySubsystems.Count == 0)
+                return false;
+            UnityEngine.XR.XRDisplaySubsystem display = _xrDisplaySubsystems[0];
+            if (display == null || !display.running)
+                return false;
+            int renderPassCount = display.GetRenderPassCount();
+            if (renderPassCount <= 0)
+                return false;
+            // MultiPass: one render pass per eye, one render parameter each.
+            // SinglePass: one pass with two render parameters.
+            int passIndex = renderPassCount > 1 ? Mathf.Clamp(eye, 0, renderPassCount - 1) : 0;
+            display.GetRenderPass(passIndex, out UnityEngine.XR.XRDisplaySubsystem.XRRenderPass renderPass);
+            int parameterCount = renderPass.GetRenderParameterCount();
+            if (parameterCount <= 0)
+                return false;
+            int parameterIndex = renderPassCount > 1 ? 0 : Mathf.Clamp(eye, 0, parameterCount - 1);
+            renderPass.GetRenderParameter(cam, parameterIndex, out UnityEngine.XR.XRDisplaySubsystem.XRRenderParameter parameter);
+            view = parameter.view;
+            projection = parameter.projection;
+            return true;
+        }
+
         private static RenderTexture GetXrEyeRenderTexture(Camera cam, int stereoMode)
         {
             if (cam == null || !cam.stereoEnabled)
@@ -666,7 +701,9 @@ namespace ImmPlayer
                 _preCullCount++;
                 if (_preCullCount <= 12 || _preCullCount % 144 == 0)
                 {
-                    Debug.Log($"[IMM_PRECULL] n={_preCullCount} cam={cam.name} eye={cam.stereoActiveEye} init={_isInitialized} ready={IsReadyForDocumentLoad} renderable={HasRenderableDocument()} shouldRender={ShouldRenderCamera(cam)} cbCount={cam.commandBufferCount}");
+                    Matrix4x4 v = cam.worldToCameraMatrix;
+                    Matrix4x4 l = cam.GetStereoViewMatrix(Camera.StereoscopicEye.Left);
+                    Debug.Log($"[IMM_PRECULL] n={_preCullCount} cam={cam.name} stereoEnabled={cam.stereoEnabled} eye={cam.stereoActiveEye} xrActive={UnityEngine.XR.XRSettings.isDeviceActive} view=[{v.m00:F3} {v.m02:F3} {v.m03:F3}] stereoL=[{l.m00:F3} {l.m02:F3} {l.m03:F3}] eq={(v == l)}");
                 }
             }
             if (!_isInitialized || _renderEventFunc == IntPtr.Zero || cam == null)
@@ -721,15 +758,42 @@ namespace ImmPlayer
                 ConvertMatrixToArray(info.RightProj, GL.GetGPUProjectionMatrix(cam.GetStereoProjectionMatrix(Camera.StereoscopicEye.Right), renderIntoTexture));
             }
 
+            // Quest+Vulkan: Camera.GetStereoViewMatrix returns the camera's static view
+            // (no head tracking) - IMM rendered head-locked. Pull the tracked per-eye
+            // view/projection from the XR display subsystem's render parameters instead.
+            bool xrMatricesApplied = false;
+            if (Application.platform == RuntimePlatform.Android && IsVulkanRuntime() &&
+                !IsEnvFlagEnabled("IMM_UNITY_VK_NO_XR_RENDER_PARAMS"))
+            {
+                if (TryGetXrEyeViewProjection(cam, 0, out Matrix4x4 leftView, out Matrix4x4 leftProj) &&
+                    TryGetXrEyeViewProjection(cam, 1, out Matrix4x4 rightView, out Matrix4x4 rightProj))
+                {
+                    ConvertMatrixToArray(info.WorldToLeft, leftView);
+                    ConvertMatrixToArray(info.LeftProj, GL.GetGPUProjectionMatrix(leftProj, renderIntoTexture));
+                    ConvertMatrixToArray(info.WorldToRight, rightView);
+                    ConvertMatrixToArray(info.RightProj, GL.GetGPUProjectionMatrix(rightProj, renderIntoTexture));
+                    xrMatricesApplied = true;
+                    if (stereoMode == (int)StereoMode.Mono)
+                        stereoMode = (int)StereoMode.TwoPass;
+                    if (_preCullCount <= 12 || _preCullCount % 144 == 0)
+                        Debug.Log($"[IMM_XRPARAM] n={_preCullCount} L=[{leftView.m00:F3} {leftView.m02:F3} {leftView.m03:F3}] R=[{rightView.m00:F3} {rightView.m02:F3} {rightView.m03:F3}]");
+                }
+                else if (_preCullCount <= 12 || _preCullCount % 144 == 0)
+                {
+                    Debug.LogWarning($"[IMM_XRPARAM] n={_preCullCount} XR render parameters unavailable; falling back to camera stereo matrices");
+                }
+            }
+
+            bool hasStereoMatrices = cam.stereoEnabled || xrMatricesApplied;
             ImmNativePlugin.SetMatrices(
                 info.CameraId,
                 stereoMode,
                 info.WorldToHead,
                 info.HeadProj,
-                cam.stereoEnabled ? info.WorldToLeft : null,
-                cam.stereoEnabled ? info.LeftProj : null,
-                cam.stereoEnabled ? info.WorldToRight : null,
-                cam.stereoEnabled ? info.RightProj : null);
+                hasStereoMatrices ? info.WorldToLeft : null,
+                hasStereoMatrices ? info.LeftProj : null,
+                hasStereoMatrices ? info.WorldToRight : null,
+                hasStereoMatrices ? info.RightProj : null);
             ImmNativePlugin.SetCameraViewport(info.CameraId, cam.pixelWidth, cam.pixelHeight);
             if (IsVulkanRuntime())
             {

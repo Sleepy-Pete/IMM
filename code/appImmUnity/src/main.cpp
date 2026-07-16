@@ -642,6 +642,21 @@ static void UNITY_INTERFACE_API iUnityVulkanQueueRenderCallback(int event_id, vo
     // pinpoints a hang inside this callback (no-timeout vkQueueSubmit etc.).
     const int frameSerial = ++sUnityVulkanFrameSerial;
     iLog().Printf(LT_MESSAGE, L"Unity Vulkan frame begin: serial=%d event=%d", frameSerial, event_id);
+    if ((frameSerial % 72) == 1)
+    {
+        // Head-pose tracer: world2Head follows the (possibly static) camera transform;
+        // XR head TRACKING flows through the per-eye stereo matrices. If world2LeftEye
+        // stays constant while the user looks around - or stereoType is not 1 - the
+        // C#->bridge feed lost tracking; if it changes, the renderer consumes it wrong.
+        const ImmShared::ImmEngineBridge::CameraState *cs = gImmUnityPlugin.mBridge.GetCameraState(context->cameraID);
+        if (cs)
+        {
+            const float *h = (const float *)&cs->world2Head;
+            const float *l = (const float *)&cs->world2LeftEye;
+            iLog().Printf(LT_MESSAGE, L"VK cam pose: serial=%d stereo=%d w2h=[%.3f %.3f %.3f %.3f] w2L=[%.3f %.3f %.3f %.3f]",
+                          frameSerial, cs->stereoType, h[0], h[1], h[2], h[3], l[0], l[1], l[2], l[3]);
+        }
+    }
 
     piRendererVulkan *vulkanRenderer = static_cast<piRendererVulkan *>(context->renderer);
     bool frameBegun;
