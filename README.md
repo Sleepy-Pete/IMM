@@ -1,22 +1,27 @@
 # About this fork (Sleepy-Pete/IMM)
 
-This fork is based on the excellent work from [icosa-mirror/IMM](https://github.com/icosa-mirror/IMM) by Joan Charmant and Andy Baker, which added:
-- Complete Unity integration with OpenXR VR support
-- Oculus PC VR SDK and Platform SDK integration
-- Facebook Audio360 SDK for spatial audio
-- Enhanced runtime API for layer control
-- Chapter support and action keyframes
-- Android/Quest VR builds with audio
-- Non-VR standalone controls (PC + touch)
-- All dependencies vendored and ready to build
-- Automated UPM package releases
+This fork is the **VR line** of the IMM project: it tracks the active upstream
+[icosa-mirror/IMM](https://github.com/icosa-mirror/IMM) and carries it forward to
+**Unity 6 and Meta Quest (Android Vulkan)**.
 
-**Upstream repositories and contributors:**
+**Branches**
+- **`vr-main`** — the active branch: all of icosa-mirror's work plus this fork's additions below. Synced from upstream via explicit merges of `icosa-mirror/main`.
+- **`main`** — intentionally frozen at the original upstream tip, kept as a clean reference baseline.
+
+**What this fork adds (2026)**
+- **Unity 6 (6000.x) support** for the native plugin: render-into-texture projection handling and the reverse-Z depth fix Unity 6's pipeline requires (the plugin previously targeted Unity 2022.3)
+- **Android arm64 Vulkan plugin build for Quest** (16 KB page-size aligned) plus the CMake/NDK path that produces it — desktop-validated; on-device Quest validation in progress
+- **Vulkan-aware Godot smoke pipeline**: renderer-API selection, Vulkan adapter/device/queue diagnostics, compositor frame validation, macOS-aware smoke runner
+- **Audio robustness**: deferred-seek fix, configurable sample rate/buffer size, underrun/starvation logging, offline WAV dump harness
+- **macOS fixes**: Finder-launched Metal player startup fix; Apple Silicon build notes in `BUILDING.md`
+- **Docs and tooling organization**: `docs/architecture/` (diagram-driven system guide), `docs/android/` (Quest/Android bring-up guides), `docs/history/` (session notes and merge handoffs), `scripts/` (fork-local debug helpers)
+
+**Upstream repositories and contributors**
 - **Original IMM project:** [Immersive-Foundation/IMM](https://github.com/Immersive-Foundation/IMM) by Inigo Quilez and the Immersive Foundation team
-- **Current upstream:** [alegna901/IMM](https://github.com/alegna901/IMM) maintained by Angela Luo
-- **Icosa-mirror fork:** [icosa-mirror/IMM](https://github.com/icosa-mirror/IMM) by Joan Charmant and Andy Baker
+- **Original-lineage fork:** [alegna901/IMM](https://github.com/alegna901/IMM) maintained by Angela Luo — Unity plugin and Android groundwork (2021–2024)
+- **Active upstream:** [icosa-mirror/IMM](https://github.com/icosa-mirror/IMM) by Joan Charmant and Andy Baker — complete Unity integration with OpenXR VR, Oculus PC VR + Platform SDKs, Audio360 spatial audio, runtime layer-control API, chapters and action keyframes, Android/Quest builds, non-VR standalone controls (PC + touch), vendored reproducible dependencies, automated UPM releases, Godot GDExtension, macOS Metal and iOS ports, the Vulkan renderer, and (2026) the browser-native **Three.js/WebAssembly web player with WebXR**
 
-All commit history and authorship is preserved. See git log for full attribution.
+All commit history and authorship is preserved. See `git log` for full attribution.
 
 ---
 

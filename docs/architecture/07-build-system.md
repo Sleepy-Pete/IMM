@@ -180,15 +180,15 @@ docs (this folder) are the *conceptual* layer; the files below are *operational/
 |-----|--------|
 | `README.md` | Project overview, fork history, modules, deps, build quick-start, Android loading |
 | `BUILDING.md` | Authoritative build reference (all platforms, validation gates) |
-| `ANDROID_BUILD_GUIDE.md` / `_QUICK_START` / `_INDEX` / `_PROJECT_SUMMARY` | Android build setup, deploy, module map |
-| `ANDROID_BUILD_STATUS.md` / `BUILD_STATUS_SUMMARY.md` / `BUILD_SUCCESS.md` / `BUILD_CONFIGURATION_HISTORY.md` | Build status snapshots + history |
-| `ANDROID_PLUGIN_FIX_PRELOAD.md` / `ANDROID_UNITY_PLUGIN_FIX.md` / `UNITY_ANDROID_PLUGIN_*` / `PLUGIN_COMPARISON.md` | Native/Unity plugin fixes for Android |
-| `ANDROID_DEBUG_LOGS_ADDED.md` / `HOW_TO_COLLECT_ANDROID_LOGS.md` / `DIAGNOSIS_REPORT.md` | Debugging Quest/Android |
-| `AUDIO_EXTRACTION_GUIDE.md` | Extracting audio from `.imm` |
-| `SDK_DOWNLOAD_GUIDE.md` | Obtaining the SDKs (if not using vendored copies) |
-| `COMPARISON_UPSTREAM_VS_ICOSA.md` | What the icosa fork changed vs upstream |
-| `PROJECT_CONTEXT.md` / `PROJECT_NOTES.md` / `SESSION_NOTES.md` | Working notes |
-| `TEST_RESULTS.md` / `VR_TEST_RESULTS.md` | Test outcomes |
+| `docs/android/ANDROID_BUILD_GUIDE.md` / `_QUICK_START` / `_INDEX` / `_PROJECT_SUMMARY` | Android build setup, deploy, module map |
+| `docs/android/ANDROID_BUILD_STATUS.md` / `docs/history/BUILD_STATUS_SUMMARY.md` / `BUILD_SUCCESS.md` / `BUILD_CONFIGURATION_HISTORY.md` | Build status snapshots + history |
+| `docs/android/ANDROID_PLUGIN_FIX_PRELOAD.md` / `ANDROID_UNITY_PLUGIN_FIX.md` / `UNITY_ANDROID_PLUGIN_*` / `PLUGIN_COMPARISON.md` | Native/Unity plugin fixes for Android |
+| `docs/android/ANDROID_DEBUG_LOGS_ADDED.md` / `HOW_TO_COLLECT_ANDROID_LOGS.md` / `docs/history/DIAGNOSIS_REPORT.md` | Debugging Quest/Android |
+| `docs/history/AUDIO_EXTRACTION_GUIDE.md` | Extracting audio from `.imm` |
+| `docs/android/SDK_DOWNLOAD_GUIDE.md` | Obtaining the SDKs (if not using vendored copies) |
+| `docs/history/COMPARISON_UPSTREAM_VS_ICOSA.md` | What the icosa fork changed vs upstream |
+| `docs/history/PROJECT_CONTEXT.md` / `PROJECT_NOTES.md` / `SESSION_NOTES.md` | Working notes |
+| `docs/history/TEST_RESULTS.md` / `VR_TEST_RESULTS.md` | Test outcomes |
 | `code/docs/viewer_readme.md` / `viewer_settings.md` | Native viewer usage + settings.json |
 | `code/docs/unity-viewer-to-godot-port-plan.md` | Godot port plan/status |
 | `code/docs/{ANDROID_PLUGIN_FIX,CRASH_FIX,IMPLEMENTATION_COMPLETE}.md` | Historical fix notes |

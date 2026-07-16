@@ -235,9 +235,9 @@ Assets/
 
 ## Related Documentation
 
-**Project Root:**
-- `PROJECT_CONTEXT.md` - Overall project context and structure
-- `ANDROID_BUILD_GUIDE.md` - Native Android build guide
+**Repo docs (moved to docs/ in July 2026):**
+- `docs/history/PROJECT_CONTEXT.md` - Overall project context and structure
+- `docs/android/ANDROID_BUILD_GUIDE.md` - Native Android build guide
 - `README.md` - IMM format specification
 
 **Unity Scripts:**
@@ -245,8 +245,8 @@ Assets/
 - `Assets/Scripts/DEPLOYMENT.md` - DLL deployment instructions
 
 **Build Guides:**
-- `BUILD_SUCCESS.md` - Windows build status
-- `ANDROID_QUICK_START.md` - Android quick start guide
+- `docs/history/BUILD_SUCCESS.md` - Windows build status
+- `docs/android/ANDROID_QUICK_START.md` - Android quick start guide
 - `ANDROID_PLUGIN_BUILD_GUIDE.md` - **Android Unity plugin build instructions**
 
 ---
