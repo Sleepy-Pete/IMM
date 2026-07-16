@@ -56,6 +56,45 @@ for iteration).
 
 ---
 
+## 2026-07-16 (second session): crash bisected on-device — draw-state specific, validation layer staged
+
+**Tooling unblocked (big):**
+- `piLog` **does** reach logcat on Android (tag `piLog`; `ImmRenderReporter` for renderer reports).
+  The earlier capture filter `Unity:V ImmUnityPlugin:V *:S` silenced every native Vulkan diagnostic.
+  Correct filter: `adb logcat Unity:V ImmUnityPlugin:V piLog:V ImmRenderReporter:V DEBUG:V *:S`.
+- Env-var debug toggles were dead on Android (no env reaches an app process). All `IMM_UNITY_VK_*`
+  flags (native side) now also read Android system properties:
+  `adb shell setprop debug.imm.<FLAG_NAME> 1` (helpers in `main.cpp` and `piVulkan_Renderer.cpp`).
+- New renderer knob `IMM_UNITY_VK_HOST_BIND_ONLY` records all binds but skips the draw.
+
+**Changes landed (dormant unless gfx=Vulkan):**
+- `iRenderUnityVulkanCameraInHostRenderPass` calls `EnsureInsideRenderPass()` before
+  `CommandRecordingState` (kill-switch `IMM_UNITY_VK_NO_ENSURE_INSIDE`).
+- Host frames now always declare a depth attachment on the pipeline (spec-safe both ways;
+  kill-switch `IMM_UNITY_VK_NO_HOST_DEPTH_ATTACHMENT`) — the Quest `source=display` fallback
+  reports no depth RenderBuffer while Unity's eye pass owns depth.
+- `iSubmitPictureDraw` refuses draws whose vertex/index `VkBuffer` backing is null (the paint path
+  already guarded this) and one-shot-logs every handle right before the first host draw.
+- HOST_RT diagnostics re-fire whenever Unity's render pass handle changes (old 24-line cap
+  exhausted before the interesting XR transition).
+
+**On-device results (Quest 3, Adreno 740, all handles logged):**
+- `IMM_UNITY_VK_DEBUG_HOST_CLEAR_ONLY=1` → `vkCmdClearAttachments` into Unity's command buffer
+  runs crash-free frame after frame → **the recording state / render pass instance is valid.**
+- Full draw still SIGSEGVs (fault `0x4dc`, `vkCmdDrawIndexed+52`) on the **first** indexed draw,
+  with cmd/pipeline/renderPass/framebuffer/vb/ib/descriptor-set all verified non-null, pipeline
+  freshly created against Unity's actual render pass (subpass 0, 1 sample, depth-stencil present).
+  So the null the driver dereferences is inside draw-only state — not the pass, not the handles.
+
+**Next step (staged, needs headset worn):** the Khronos validation layer 1.4.350.1 is installed
+on-device (`code_cache/libVkLayer_khronos_validation.so` + `enable_gpu_debug_layers` settings for
+this package). One run that reaches the draw will emit the exact VUID. Blocked at session end:
+headset doffed — validation slows startup past the ~12 s proximity pause window and the
+`com.oculus.vrpowermanager.prox_close` broadcast didn't hold the device awake.
+To disable the layer afterwards: `adb shell settings put global enable_gpu_debug_layers 0`.
+
+---
+
 ## What works on-device (verified via adb logcat, 2026-07-16)
 
 - Headless batchmode build succeeds: `Unity.exe -batchmode -quit -executeMethod

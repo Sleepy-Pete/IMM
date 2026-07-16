@@ -16,9 +16,31 @@
 #elif defined(ANDROID)
 #include <android/native_window.h>
 #include <dlfcn.h>
+#include <sys/system_properties.h>
 #endif
 
 namespace ImmCore {
+
+// Env vars never reach an Android app process; mirror each env-gated toggle to an
+// adb-settable system property: `adb shell setprop debug.imm.<NAME> 1`.
+static bool iRendererFlagEnabled(const char *name)
+{
+    const char *value = std::getenv(name);
+    if (value != nullptr && value[0] != '\0')
+    {
+        return std::strcmp(value, "0") != 0;
+    }
+#if defined(ANDROID)
+    char propName[96];
+    std::snprintf(propName, sizeof(propName), "debug.imm.%s", name);
+    char propValue[PROP_VALUE_MAX] = {};
+    if (__system_property_get(propName, propValue) > 0 && propValue[0] != '\0')
+    {
+        return std::strcmp(propValue, "0") != 0;
+    }
+#endif
+    return false;
+}
 
 typedef uint32_t VkFlags;
 typedef uint32_t VkBool32;
@@ -1508,6 +1530,7 @@ struct piVulkanState
     bool pictureDescriptorReported = false;
     bool picturePipelineReported = false;
     bool pictureDrawReported = false;
+    bool hostPictureDrawReported = false;
     bool pictureDrawFailureReported = false;
     bool presentLayoutReported = false;
     bool presentDescriptorReported = false;
@@ -4154,6 +4177,24 @@ static bool iSubmitPictureDraw(piVulkanState *state, piShader shader, piRTarget 
     {
         return false;
     }
+    // A piBuffer can exist with no VkBuffer behind it (iCreateBufferObject early-outs succeed
+    // without one). Binding a null VkBuffer records fine and null-derefs inside the driver at
+    // vkCmdDrawIndexed, so refuse the draw instead (paint path already guards this).
+    if (vertexArray->vertexBuffer[0]->buffer == VK_NULL_BUFFER || vertexArray->indexBuffer->buffer == VK_NULL_BUFFER)
+    {
+        if (!state->pictureDrawFailureReported)
+        {
+            state->pictureDrawFailureReported = true;
+            char message[192];
+            std::snprintf(message,
+                          sizeof(message),
+                          "Vulkan picture draw skipped: null buffer backing vb=0x%llx ib=0x%llx",
+                          (unsigned long long)vertexArray->vertexBuffer[0]->buffer,
+                          (unsigned long long)vertexArray->indexBuffer->buffer);
+            iError(reporter, message);
+        }
+        return false;
+    }
 
     const uint64_t timeout = 5000000000ull;
     VkResult result = VK_SUCCESS;
@@ -4199,6 +4240,28 @@ static bool iSubmitPictureDraw(piVulkanState *state, piShader shader, piRTarget 
     scissor.offset.y = 0;
     scissor.extent.width = target->width;
     scissor.extent.height = target->height;
+    if (hostRenderPass && !state->hostPictureDrawReported)
+    {
+        state->hostPictureDrawReported = true;
+        char message[384];
+        std::snprintf(message,
+                      sizeof(message),
+                      "Vulkan host picture draw: cmd=%p pipeline=0x%llx renderPass=0x%llx framebuffer=0x%llx subpass=%u extent=%ux%u vb=0x%llx ib=0x%llx descSet=0x%llx num=%u instances=%u baseIndex=%u",
+                      (void *)state->commandBuffer,
+                      (unsigned long long)shader->pipeline,
+                      (unsigned long long)target->renderPass,
+                      (unsigned long long)target->framebuffer,
+                      target->subpass,
+                      target->width,
+                      target->height,
+                      (unsigned long long)vertexArray->vertexBuffer[0]->buffer,
+                      (unsigned long long)vertexArray->indexBuffer->buffer,
+                      (unsigned long long)state->pictureDescriptorSet,
+                      num,
+                      numInstances,
+                      baseIndex);
+        iReport(reporter, message);
+    }
     state->vkCmdSetViewport(state->commandBuffer, 0, 1, &viewport);
     state->vkCmdSetScissor(state->commandBuffer, 0, 1, &scissor);
     state->vkCmdBindPipeline(state->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shader->pipeline);
@@ -4207,6 +4270,12 @@ static bool iSubmitPictureDraw(piVulkanState *state, piShader shader, piRTarget 
     state->vkCmdBindVertexBuffers(state->commandBuffer, 0, 1, &vertexArray->vertexBuffer[0]->buffer, &vertexOffset);
     const VkIndexType indexType = vertexArray->indexFormat == piRenderer::IndexArrayFormat::UINT_32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16;
     state->vkCmdBindIndexBuffer(state->commandBuffer, vertexArray->indexBuffer->buffer, 0, indexType);
+    // Experiment knob: record every bind but skip the draw itself, to isolate
+    // draw-time driver crashes from bad bind state.
+    if (hostRenderPass && iRendererFlagEnabled("IMM_UNITY_VK_HOST_BIND_ONLY"))
+    {
+        return true;
+    }
     state->vkCmdDrawIndexed(state->commandBuffer, num, numInstances, baseIndex, 0, 0);
     if (hostRenderPass)
     {
@@ -6907,7 +6976,7 @@ bool piRendererVulkan::BeginHostRenderPassFrame(void *commandBuffer, void *rende
     mState->commandBuffer = static_cast<VkCommandBuffer>(commandBuffer);
     mState->externalFrameColorTexture = colorTexture;
     mState->externalFrameRenderTarget = target;
-    const bool useHostDepthReverseZ = std::getenv("IMM_UNITY_VK_HOST_DEPTH_REVERSE_Z") != nullptr;
+    const bool useHostDepthReverseZ = iRendererFlagEnabled("IMM_UNITY_VK_HOST_DEPTH_REVERSE_Z");
     mState->externalFrameUsesHostDepth = useHostDepth;
     mState->externalFrameHostDepthReverseZ = useHostDepth && useHostDepthReverseZ;
     mState->externalFramePreservesHostColor = true;

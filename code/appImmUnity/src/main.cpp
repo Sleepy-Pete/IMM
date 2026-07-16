@@ -129,6 +129,9 @@ using namespace ImmPlayer;
 #define _stdcall
 #include <android/log.h>
 #include <GLES3/gl3.h>
+#include <sys/system_properties.h>
+#include <cstdio>
+#include <cstdlib>
 #endif
 
 #if defined(WINDOWS)
@@ -392,15 +395,51 @@ static int sRenderEventCount = 0;
 static int sUnityMetalRenderReportCount = 0;
 static int sUnityMetalRenderBoundaryReportCount = 0;
 
+#if defined(__ANDROID__) || defined(ANDROID)
+// Environment variables never reach an Android app process, so every env-gated
+// debug/behavior toggle would be silently dead on Quest. Mirror each flag to an
+// adb-settable system property: `adb shell setprop debug.imm.<NAME> 1`.
+static const char *iAndroidPropertyValue(const char *name, char *buffer, size_t bufferSize)
+{
+    char propName[96];
+    std::snprintf(propName, sizeof(propName), "debug.imm.%s", name);
+    char propValue[PROP_VALUE_MAX] = {};
+    if (__system_property_get(propName, propValue) <= 0 || propValue[0] == '\0')
+    {
+        return nullptr;
+    }
+    std::snprintf(buffer, bufferSize, "%s", propValue);
+    return buffer;
+}
+#endif
+
+static const char *iRuntimeFlagValue(const char *name, char *buffer, size_t bufferSize)
+{
+    (void)buffer;
+    (void)bufferSize;
+    const char *value = std::getenv(name);
+    if (value != nullptr && value[0] != '\0')
+    {
+        return value;
+    }
+#if defined(__ANDROID__) || defined(ANDROID)
+    return iAndroidPropertyValue(name, buffer, bufferSize);
+#else
+    return nullptr;
+#endif
+}
+
 static bool iEnvFlagEnabled(const char *name)
 {
-    const char *value = std::getenv(name);
+    char buffer[96];
+    const char *value = iRuntimeFlagValue(name, buffer, sizeof(buffer));
     return value != nullptr && value[0] != '\0' && std::strcmp(value, "0") != 0;
 }
 
 static uint32_t iEnvUIntOrDefault(const char *name, uint32_t fallback)
 {
-    const char *value = std::getenv(name);
+    char buffer[96];
+    const char *value = iRuntimeFlagValue(name, buffer, sizeof(buffer));
     if (value == nullptr || value[0] == '\0')
     {
         return fallback;
@@ -730,6 +769,13 @@ static bool iRenderUnityVulkanCameraInHostRenderPass(int cameraID, int event_id,
         return true;
     }
 
+    // The recording state can report the last-known renderPass/framebuffer handles while the
+    // command buffer is actually between passes (seen on Quest when the XR eye pass takes over:
+    // recording a draw there null-derefs inside the Adreno driver). Force the pass active first.
+    if (!iEnvFlagEnabled("IMM_UNITY_VK_NO_ENSURE_INSIDE"))
+    {
+        gImmUnityPlugin.UnityAPI.mVulkan->EnsureInsideRenderPass();
+    }
     UnityVulkanRecordingState recordingState = {};
     const bool hasRecordingState = gImmUnityPlugin.UnityAPI.mVulkan->CommandRecordingState(&recordingState, kUnityVulkanGraphicsQueueAccess_DontCare);
     if (!hasRecordingState || !recordingState.commandBuffer || recordingState.renderPass == 0 || recordingState.framebuffer == 0)
@@ -737,6 +783,9 @@ static bool iRenderUnityVulkanCameraInHostRenderPass(int cameraID, int event_id,
         iLog().Printf(LT_ERROR, L"Unity Vulkan host render skipped: missing recording state for camera=%d hasRecordingState=%d", cameraID, hasRecordingState ? 1 : 0);
         return true;
     }
+    static unsigned long long sLastHostRenderPassHandle = 0;
+    const bool hostRenderPassChanged = static_cast<unsigned long long>(recordingState.renderPass) != sLastHostRenderPassHandle;
+    sLastHostRenderPassHandle = static_cast<unsigned long long>(recordingState.renderPass);
     if (iEnvFlagEnabled("IMM_UNITY_VK_QUERY_STATE_ONLY"))
     {
         if (!iEnvFlagEnabled("IMM_UNITY_VK_QUERY_STATE_NO_LOG"))
@@ -763,11 +812,15 @@ static bool iRenderUnityVulkanCameraInHostRenderPass(int cameraID, int event_id,
     const uint32_t colorFormat = iEnvUIntOrDefault("IMM_UNITY_VK_HOST_COLOR_FORMAT", 44u); // Default VK_FORMAT_B8G8R8A8_UNORM; Unity's render pass defines pipeline compatibility.
     const uint32_t colorSamples = static_cast<uint32_t>(target.samples > 0 ? target.samples : 1);
     const bool assumeHostDepth = iEnvFlagEnabled("IMM_UNITY_VK_ASSUME_HOST_DEPTH");
-    // Display render-buffer pointers can be null while Unity's active Vulkan render pass still owns depth.
-    const bool hostRenderPassHasDepth = iEnvFlagEnabled("IMM_UNITY_VK_HOST_RENDER_PASS_HAS_DEPTH") || assumeHostDepth;
-    const bool hasDepthAttachment = target.depth != nullptr || hostRenderPassHasDepth;
+    // Unity's host render pass (camera target / XR eye buffer) has a depth attachment in practice
+    // even when the C# side couldn't obtain a depth RenderBuffer pointer (Quest reports none via
+    // the Display.main fallback). A pipeline without pDepthStencilState against a depth-bearing
+    // render pass is a spec violation, while an extra (disabled) depth-stencil state on a
+    // depth-less pass is ignored - so default to declaring depth.
+    const bool hostRenderPassHasDepth = !iEnvFlagEnabled("IMM_UNITY_VK_NO_HOST_DEPTH_ATTACHMENT");
+    const bool hasDepthAttachment = target.depth != nullptr || hostRenderPassHasDepth || assumeHostDepth;
     const bool useHostDepth = hasDepthAttachment && iEnvFlagEnabled("IMM_UNITY_VK_USE_HOST_DEPTH");
-    if (sUnityVulkanRenderTargetDiagnosticCount < 24)
+    if (sUnityVulkanRenderTargetDiagnosticCount < 24 || hostRenderPassChanged)
     {
         iLog().Printf(
             LT_MESSAGE,
