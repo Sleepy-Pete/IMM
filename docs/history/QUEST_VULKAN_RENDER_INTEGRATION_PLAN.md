@@ -1,9 +1,58 @@
-# Quest on-device: build works, Vulkan render integration is the remaining task
+# Quest on-device: GLES ships; Vulkan overlay wired and inits, draw handoff is the remaining task
 
 **Date:** 2026-07-16
-**Status:** App builds, deploys, installs, launches on Quest 3; OpenXR runs to FOCUSED;
-`sample1.imm` loads from the APK. **Scene is blank because the IMM↔Unity Vulkan render
-integration exists only for Windows desktop and was never wired for Android.**
+**Shipping status:** **Quest renders in VR via OpenGLES3** (commit e132fa6, user-confirmed). That
+is the working, committed default.
+
+**Vulkan status (commit 85149ff, WIP):** the Android Vulkan overlay is now wired and, on Quest,
+the Vulkan external-device renderer **initializes successfully**, `sample1.imm` loads, and stereo
+render events fire — but it **crashes in `vkCmdDrawIndexed`** at the first real draw. Vulkan code
+is dormant unless the project selects Vulkan, so GLES is unaffected. See "Vulkan on-device result"
+below.
+
+---
+
+## Vulkan on-device result (2026-07-16, commit 85149ff)
+
+Switched Android gfx → Vulkan and deployed. logcat sequence:
+- `Configuring IMM for Unity Vulkan external device (Quest)` ✅
+- `AndroidCompleteInit ... (api=Vulkan)` → `Vulkan renderer initialized in deferred init - SUCCESS` ✅
+  (the hard part — IMM's Vulkan renderer accepts Unity's external VkDevice/queue on Quest)
+- `[IMM] Loaded document from memory: sample1.imm (ID: 0)` ✅
+- `[IMM_UNITY_VK_RT_SRC ...] source=display pixel=1680x1760 samples=1` — C# `SetVulkanCameraRenderBuffers` ran ✅
+- `[IMM_UNITY_VK_EVENTCFG ...] eventId=0/1 configured=1` ✅ — `ConfigureVulkanRenderEvent` OK both eyes
+- `iOnRenderEvent event_id=0/1` ✅ — render events fire
+- **SIGSEGV, fault 0x4dc**, backtrace:
+  ```
+  #01 vkCmdDrawIndexed            (vulkan.adreno.so)
+  #03 piRendererVulkan::DrawPrimitiveIndexed
+  #04 piRenderMesh::Render
+  #05 LayerRendererPicture::DisplayRender      ← 360 background picture
+  #06 Player::RenderStereoMultiPass
+  #07 ImmEngineBridge::RenderPreparedCamera
+  ```
+
+**Root cause:** IMM's `piRendererVulkan` (built for the standalone Android VR viewer) **owns its own
+command buffers, render pass, and framebuffer**. As a Unity *overlay* it must instead record its
+draws into **Unity's** command buffer, obtained at the plugin event via
+`IUnityGraphicsVulkan::CommandRecordingState` / `AccessQueue` (the desktop overlay path does this).
+On Quest the draw reaches `vkCmdDrawIndexed` with an invalid/foreign command-buffer + render-pass
+state → null deref in the Adreno driver. Also note `source=display` — for XR the render target is
+the OpenXR eye swapchain image, not `Display.main`; the overlay needs Unity's active eye render
+buffer (`AccessRenderBufferTexture`), not the display buffer.
+
+**Next step (the real remaining work):** make `piRendererVulkan` record into Unity's supplied
+command buffer / render pass when running as an external-device overlay, instead of its own —
+specifically for stereo MultiPass. Study how the desktop `iUnityVulkanQueueRenderCallback` /
+`iRenderUnityVulkanCameraInHostRenderPass` bridge IMM's draws onto Unity's command buffer, and
+extend that to the Quest eye-buffer path. Until then, ship GLES3.
+
+**Quick de-risk experiments to try first:** (1) `IMM_UNITY_VK_SKIP_HOST_RENDER=1` env to isolate
+whether the crash is the host-render-pass path vs the external-image path; (2) confirm whether
+`AccessRenderBufferTexture` returns a valid image for the XR eye buffer (the `source=display`
+fallback suggests it may not); (3) add a null-guard on the command-recording state in the native
+render callback so an invalid state skips the draw instead of crashing (turns crash → blank, safer
+for iteration).
 
 ---
 
