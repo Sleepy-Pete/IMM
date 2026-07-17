@@ -501,6 +501,14 @@ namespace ImmPlayer
                         _vulkanCompositeMaterial = new Material(shader);
                     Debug.LogWarning("[IMM_UNITY_VK_OFFSCREEN_20260716] ImmVulkanComposite material missing from Resources; Shader.Find fallback " + (_vulkanCompositeMaterial != null ? "succeeded" : "FAILED"));
                 }
+                if (_vulkanCompositeMaterial != null && !IsEnvFlagEnabled("IMM_UNITY_VK_NO_COMPOSITE_VFLIP"))
+                {
+                    // IMM renders the offscreen RT bottom-up relative to Unity's
+                    // sampling convention (headset showed the scene upside down);
+                    // flip V in the composite sample. Flag reverts without rebuild.
+                    _vulkanCompositeMaterial.SetTextureScale("_MainTex", new Vector2(1f, -1f));
+                    _vulkanCompositeMaterial.SetTextureOffset("_MainTex", new Vector2(0f, 1f));
+                }
             }
             return _vulkanCompositeMaterial;
         }
@@ -845,7 +853,11 @@ namespace ImmPlayer
                     // writes race Unity's camera pass and get cleared/overwritten. Render into an
                     // offscreen texture instead; the composite blit below runs inside Unity's own
                     // pass where ordering is guaranteed.
-                    RenderTexture eyeTarget = EnsureVulkanEyeTarget(info, vulkanEye, cam.pixelWidth, cam.pixelHeight);
+                    // A/B lever: route BOTH eyes' native draws into eye0's RT. Distinguishes an
+                    // eye1-image problem (strokes appear doubled) from an eye1-pass problem
+                    // (still a single stroke set).
+                    int rtEye = IsEnvFlagEnabled("IMM_UNITY_VK_EYE0_RT_BOTH_EYES") ? 0 : vulkanEye;
+                    RenderTexture eyeTarget = EnsureVulkanEyeTarget(info, rtEye, cam.pixelWidth, cam.pixelHeight);
                     ImmNativePlugin.SetVulkanCameraEyeRenderBuffers(
                         info.CameraId,
                         vulkanEye,

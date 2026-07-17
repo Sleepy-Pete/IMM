@@ -1535,6 +1535,7 @@ struct piVulkanState
     bool pictureDrawFailureReported = false;
     bool ownsDedicatedQueue = false;
     int paintProbeLogCount = 0;
+    int handleProbeLogCount = 0;
     // Serializes every record->submit->wait sequence: they share commandBuffer,
     // frameFence, and the queue, and can run from both the app and render threads
     // (vkQueueSubmit is externally synchronized). Recursive because some helpers nest.
@@ -3838,6 +3839,18 @@ static bool iEnsureStaticPaintGraphicsPipeline(piVulkanState *state, piShader sh
     shader->pipelineDepthCompareOp = depthCompareOp;
     shader->pipelineAlphaToCoverage = alphaToCoverage;
     shader->pipelineBlendEnabled = blendEnabled;
+    if (state->handleProbeLogCount < 60)
+    {
+        ++state->handleProbeLogCount;
+        char message[224];
+        std::snprintf(message, sizeof(message),
+                      "paint pipeline CREATE: pipe=%llx rp=%llx dt=%d dw=%d cmp=%d blend=%d a2c=%d",
+                      (unsigned long long)(uintptr_t)shader->pipeline,
+                      (unsigned long long)(uintptr_t)target->renderPass,
+                      depthTest ? 1 : 0, depthWrite ? 1 : 0, (int)depthCompareOp,
+                      blendEnabled ? 1 : 0, alphaToCoverage ? 1 : 0);
+        iReport(reporter, message);
+    }
     if (!state->graphicsPipelineReported)
     {
         iReport(reporter, "Vulkan renderer created static paint graphics pipeline");
@@ -3882,8 +3895,14 @@ static bool iSubmitStaticPaintDraw(piVulkanState *state, piShader shader, piRTar
     if (state->paintProbeLogCount < 40)
     {
         ++state->paintProbeLogCount;
-        char message[128];
-        std::snprintf(message, sizeof(message), "paint draw OK: num=%u base=%u host=%d", num, baseIndex, hostRenderPass ? 1 : 0);
+        char message[256];
+        std::snprintf(message, sizeof(message),
+                      "paint draw OK: num=%u host=%d rp=%llx fb=%llx pipe=%llx pipeRP=%llx",
+                      num, hostRenderPass ? 1 : 0,
+                      (unsigned long long)(uintptr_t)target->renderPass,
+                      (unsigned long long)(uintptr_t)target->framebuffer,
+                      (unsigned long long)(uintptr_t)shader->pipeline,
+                      (unsigned long long)(uintptr_t)shader->pipelineRenderPass);
         iReport(reporter, message);
     }
 
@@ -6983,6 +7002,15 @@ void piRendererVulkan::EndExternalImageFrame(void)
     }
 
     const bool wasHostRenderPassFrame = mState->hostRenderPassFrameActive;
+    if (mState->externalFrameColorTexture && mState->handleProbeLogCount < 60)
+    {
+        ++mState->handleProbeLogCount;
+        char message[160];
+        std::snprintf(message, sizeof(message), "ext end: img=%llx preservesHost=%d",
+                      (unsigned long long)(uintptr_t)mState->externalFrameColorTexture->image,
+                      mState->externalFramePreservesHostColor ? 1 : 0);
+        iReport(mReporter, message);
+    }
     if (mState->externalFrameColorTexture &&
         !mState->externalFramePreservesHostColor &&
         !iTransitionColorTextureToShaderRead(mState, mState->externalFrameColorTexture))
@@ -7322,6 +7350,19 @@ bool piRendererVulkan::BeginExternalImageFrameWithView(void *image, void *imageV
     mState->externalFrameUsesHostDepth = hasExternalDepth && !clearExternalDepth;
     mState->externalFrameHostDepthReverseZ = false;
     mState->externalFramePreservesHostColor = !clearColor;
+    if (mState->handleProbeLogCount < 60)
+    {
+        ++mState->handleProbeLogCount;
+        char message[256];
+        std::snprintf(message, sizeof(message),
+                      "ext begin: img=%llx view=%llx rp=%llx fb=%llx depthImg=%llx",
+                      (unsigned long long)(uintptr_t)colorTexture->image,
+                      (unsigned long long)(uintptr_t)colorTexture->imageView,
+                      (unsigned long long)(uintptr_t)renderTarget->renderPass,
+                      (unsigned long long)(uintptr_t)renderTarget->framebuffer,
+                      (unsigned long long)(uintptr_t)depthTexture->image);
+        iReport(mReporter, message);
+    }
     iReport(mReporter, hasExternalDepth ? (clearExternalDepth ? "Vulkan renderer began external image frame with owned external depth" : "Vulkan renderer began external image frame with host depth") : "Vulkan renderer began external image frame");
     return true;
 }
