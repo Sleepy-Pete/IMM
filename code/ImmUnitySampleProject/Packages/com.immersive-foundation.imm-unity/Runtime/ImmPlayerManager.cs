@@ -177,6 +177,8 @@ namespace ImmPlayer
             // (distinguishes an app-wide wedge from a render-thread-only stall).
             if (Time.frameCount % 72 == 0)
                 Debug.Log($"[IMM_HEARTBEAT] frame={Time.frameCount} t={Time.realtimeSinceStartup:F1}s");
+            foreach (var kvp in _cameras)
+                MaybeDumpVulkanEyeTargets(kvp.Value);
             if (_isInitialized)
             {
                 ImmNativePlugin.GlobalWork(1);
@@ -454,6 +456,33 @@ namespace ImmPlayer
                 Debug.Log($"[IMM_UNITY_VK_OFFSCREEN_20260716] created eye target cam={info.CameraId} eye={eye} {width}x{height}");
             }
             return rt;
+        }
+
+        private int _rtDumpCounter;
+
+        private void MaybeDumpVulkanEyeTargets(PerCameraInfo info)
+        {
+            if (!IsEnvFlagEnabled("IMM_UNITY_VK_DUMP_RTS"))
+                return;
+            _rtDumpCounter++;
+            if (_rtDumpCounter != 300)
+                return;
+            for (int eye = 0; eye < 2; eye++)
+            {
+                RenderTexture rt = info.VulkanEyeTargets[eye];
+                if (rt == null)
+                    continue;
+                RenderTexture previous = RenderTexture.active;
+                RenderTexture.active = rt;
+                var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false);
+                tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+                tex.Apply();
+                RenderTexture.active = previous;
+                string path = Path.Combine(Application.persistentDataPath, $"imm_rt_eye{eye}.png");
+                File.WriteAllBytes(path, tex.EncodeToPNG());
+                Destroy(tex);
+                Debug.Log($"[IMM_RT_DUMP] wrote {path}");
+            }
         }
 
         private Material GetVulkanCompositeMaterial()
@@ -862,12 +891,20 @@ namespace ImmPlayer
                         cam.pixelHeight,
                         vulkanSampleCount);
                 }
-                int prepared = IsEnvFlagEnabled("IMM_UNITY_VK_SKIP_MANAGED_PREPARE")
-                    ? 0
-                    : ImmNativePlugin.PrepareCamera(info.CameraId);
-                if (prepared == 0 && _loggedVulkanPrepareWarning.Add(cam))
+                // Offscreen path: the render event calls RenderCamera which prepares
+                // internally. A managed PrepareCamera here runs on the MAIN thread and
+                // races the render-thread event between its prepare and its eye render
+                // (no native lock on Android) - the player's global head state can be
+                // overwritten mid-eye, splitting the two eyes' views.
+                if (!useOffscreenTargets)
                 {
-                    Debug.LogWarning($"[IMM_UNITY_VK_PREPARE_20260612] cam={cam.name} cameraId={info.CameraId} prepared=0");
+                    int prepared = IsEnvFlagEnabled("IMM_UNITY_VK_SKIP_MANAGED_PREPARE")
+                        ? 0
+                        : ImmNativePlugin.PrepareCamera(info.CameraId);
+                    if (prepared == 0 && _loggedVulkanPrepareWarning.Add(cam))
+                    {
+                        Debug.LogWarning($"[IMM_UNITY_VK_PREPARE_20260612] cam={cam.name} cameraId={info.CameraId} prepared=0");
+                    }
                 }
             }
 
@@ -918,7 +955,11 @@ namespace ImmPlayer
                 }
                 if (Application.platform == RuntimePlatform.Android && !IsEnvFlagEnabled("IMM_UNITY_VK_NO_OFFSCREEN_TARGET"))
                 {
-                    RenderTexture eyeTarget = info.VulkanEyeTargets[eyeIndex & 1];
+                    // Probe: blit the LEFT RT into BOTH eyes. Right eye lights up -> the
+                    // right RT was empty (native render side); still dark -> the right
+                    // pass composite itself is broken (Unity side).
+                    int blitEye = IsEnvFlagEnabled("IMM_UNITY_VK_BLIT_LEFT_RT_BOTH_EYES") ? 0 : (eyeIndex & 1);
+                    RenderTexture eyeTarget = info.VulkanEyeTargets[blitEye];
                     Material composite = GetVulkanCompositeMaterial();
                     if (eyeTarget != null && composite != null)
                     {
@@ -926,6 +967,8 @@ namespace ImmPlayer
                         // (fence-completed on IMM's own queue before the callback returns);
                         // composite it into the eye buffer inside Unity's own pass.
                         info.CommandBuffer.Blit(eyeTarget, cameraTarget, composite);
+                        if (_preCullCount <= 12)
+                            Debug.Log($"[IMM_UNITY_VK_BLIT] n={_preCullCount} eye={eyeIndex} blitEye={blitEye} rt={eyeTarget.GetInstanceID()} colorPtr=0x{eyeTarget.colorBuffer.GetNativeRenderBufferPtr().ToInt64():X}");
                     }
                 }
                 AppendVulkanOverlayFixtureDraw(info.CommandBuffer, cam);

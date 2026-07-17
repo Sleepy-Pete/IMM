@@ -1534,6 +1534,7 @@ struct piVulkanState
     bool hostPictureDrawReported = false;
     bool pictureDrawFailureReported = false;
     bool ownsDedicatedQueue = false;
+    int paintProbeLogCount = 0;
     // Serializes every record->submit->wait sequence: they share commandBuffer,
     // frameFence, and the queue, and can run from both the app and render threads
     // (vkQueueSubmit is externally synchronized). Recursive because some helpers nest.
@@ -3683,6 +3684,19 @@ static bool iEnsureStaticPaintGraphicsPipeline(piVulkanState *state, piShader sh
         shader->pipelineLayout == VK_NULL_PIPELINE_LAYOUT || target->renderPass == VK_NULL_RENDER_PASS ||
         !state->vkCreateGraphicsPipelines)
     {
+        if (state->paintProbeLogCount < 40)
+        {
+            ++state->paintProbeLogCount;
+            char message[192];
+            std::snprintf(message, sizeof(message),
+                          "paint pipeline ensure SKIP: vs=%d fs=%d layout=%d rp=%d fn=%d",
+                          shader->vertexModule != VK_NULL_SHADER_MODULE ? 1 : 0,
+                          shader->fragmentModule != VK_NULL_SHADER_MODULE ? 1 : 0,
+                          shader->pipelineLayout != VK_NULL_PIPELINE_LAYOUT ? 1 : 0,
+                          target->renderPass != VK_NULL_RENDER_PASS ? 1 : 0,
+                          state->vkCreateGraphicsPipelines ? 1 : 0);
+            iReport(reporter, message);
+        }
         return true;
     }
 
@@ -3843,7 +3857,34 @@ static bool iSubmitStaticPaintDraw(piVulkanState *state, piShader shader, piRTar
         target->renderPass == VK_NULL_RENDER_PASS || target->framebuffer == VK_NULL_FRAMEBUFFER ||
         !vertexArray->indexBuffer || vertexArray->indexBuffer->buffer == VK_NULL_BUFFER)
     {
+        // These silent skips still count as "draw calls" player-side; log the first
+        // several with reasons so per-eye asymmetries are visible.
+        if (state && state->paintProbeLogCount < 40)
+        {
+            ++state->paintProbeLogCount;
+            char message[256];
+            std::snprintf(message, sizeof(message),
+                          "paint draw SKIP: shader=%d target=%d va=%d pipe=%d layout=%d desc=%d rp=%d fb=%d ib=%d ibbuf=%d",
+                          shader ? 1 : 0,
+                          target ? 1 : 0,
+                          vertexArray ? 1 : 0,
+                          (shader && shader->pipeline != VK_NULL_PIPELINE) ? 1 : 0,
+                          (shader && shader->pipelineLayout != VK_NULL_PIPELINE_LAYOUT) ? 1 : 0,
+                          state->staticPaintDescriptorSet != VK_NULL_DESCRIPTOR_SET ? 1 : 0,
+                          (target && target->renderPass != VK_NULL_RENDER_PASS) ? 1 : 0,
+                          (target && target->framebuffer != VK_NULL_FRAMEBUFFER) ? 1 : 0,
+                          (vertexArray && vertexArray->indexBuffer) ? 1 : 0,
+                          (vertexArray && vertexArray->indexBuffer && vertexArray->indexBuffer->buffer != VK_NULL_BUFFER) ? 1 : 0);
+            iReport(reporter, message);
+        }
         return true;
+    }
+    if (state->paintProbeLogCount < 40)
+    {
+        ++state->paintProbeLogCount;
+        char message[128];
+        std::snprintf(message, sizeof(message), "paint draw OK: num=%u base=%u host=%d", num, baseIndex, hostRenderPass ? 1 : 0);
+        iReport(reporter, message);
     }
 
     const uint64_t timeout = 5000000000ull;

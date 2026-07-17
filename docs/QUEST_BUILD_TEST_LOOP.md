@@ -89,11 +89,19 @@ unzip -p IMMUnityTest.apk assets/bin/Data/boot.config
 
 ```bash
 ADB="$LOCALAPPDATA/Android/Sdk/platform-tools/adb.exe"
+"$ADB" -s 2G0YC1ZF98028F shell am force-stop com.ImmersiveFoundation.IMMUnityTest   # ALWAYS - it stays resident
 "$ADB" -s 2G0YC1ZF98028F install -r Builds/Android/IMMUnityTest.apk
 "$ADB" -s 2G0YC1ZF98028F logcat -c
 "$ADB" -s 2G0YC1ZF98028F shell monkey -p com.ImmersiveFoundation.IMMUnityTest -c android.intent.category.LAUNCHER 1
 "$ADB" -s 2G0YC1ZF98028F logcat Unity:V ImmUnityPlugin:V piLog:V ImmRenderReporter:V DEBUG:V libc:F *:S > run.txt
 ```
+
+After capturing logs, force-stop the app again before the next build/install cycle.
+
+**Visual debugging without wearing the headset:**
+- `adb shell screencap -p /sdcard/x.png` + pull - the composited both-eye view.
+- Device flag `IMM_UNITY_VK_DUMP_RTS` - dumps IMM's RAW per-eye offscreen textures (~4 s after
+  start) to `files/imm_rt_eye0.png` / `imm_rt_eye1.png` (pre-composite ground truth).
 
 **THE logging gotcha:** the native engine logs under tag **`piLog`** and renderer reports under
 **`ImmRenderReporter`** - a filter of just `Unity:V ImmUnityPlugin:V *:S` silences every native

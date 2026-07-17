@@ -651,10 +651,10 @@ static void UNITY_INTERFACE_API iUnityVulkanQueueRenderCallback(int event_id, vo
         const ImmShared::ImmEngineBridge::CameraState *cs = gImmUnityPlugin.mBridge.GetCameraState(context->cameraID);
         if (cs)
         {
-            const float *h = (const float *)&cs->world2Head;
             const float *l = (const float *)&cs->world2LeftEye;
-            iLog().Printf(LT_MESSAGE, L"VK cam pose: serial=%d stereo=%d w2h=[%.3f %.3f %.3f %.3f] w2L=[%.3f %.3f %.3f %.3f]",
-                          frameSerial, cs->stereoType, h[0], h[1], h[2], h[3], l[0], l[1], l[2], l[3]);
+            const float *r = (const float *)&cs->world2RightEye;
+            iLog().Printf(LT_MESSAGE, L"VK cam pose: serial=%d stereo=%d w2L=[%.3f %.3f %.3f %.3f] w2R=[%.3f %.3f %.3f %.3f]",
+                          frameSerial, cs->stereoType, l[0], l[1], l[2], l[3], r[0], r[1], r[2], r[3]);
         }
     }
 
@@ -810,6 +810,12 @@ static bool iRenderUnityVulkanCamera(int cameraID, int event_id, piRenderer *ren
 
     const int width = colorImage.extent.width > 0 ? static_cast<int>(colorImage.extent.width) : target.width;
     const int height = colorImage.extent.height > 0 ? static_cast<int>(colorImage.extent.height) : target.height;
+    if (sUnityVulkanFrameSerial < 12)
+    {
+        iLog().Printf(LT_MESSAGE, L"VK eye target: event=%d eye=%d colorRB=%p image=0x%llx extent=%dx%d",
+                      event_id, eyeIndex, colorTarget,
+                      static_cast<unsigned long long>(colorImage.image), width, height);
+    }
     UnityVulkanRenderContext &context = sUnityVulkanRenderContext[cameraID];
     context.renderer = renderer;
     context.cameraID = cameraID;

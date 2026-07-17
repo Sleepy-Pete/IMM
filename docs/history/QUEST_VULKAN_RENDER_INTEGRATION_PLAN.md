@@ -1,5 +1,52 @@
 # Quest on-device: GLES ships; Vulkan draw crash root-caused (validation layer), own-queue architecture in progress
 
+## STATUS 2026-07-16 (night, session end) - CURRENT STATE, read this first
+
+**Vulkan on Quest renders the forest.** Verified by pulling the raw offscreen textures off the
+device (`IMM_UNITY_VK_DUMP_RTS` device flag -> `files/imm_rt_eye0/1.png`): the LEFT eye's texture
+contains the complete correct scene (paint strokes, 360 backdrop, butterfly - looks right).
+Sustained 72 fps, no crashes, head pose flows (native log: eye matrices share rotation, differ by
+the ~6.2 cm IPD).
+
+**Open bug A - right eye loses all paint strokes:** eye 1's texture contains ONLY the blurry 360
+backdrop; all 7 paint draws are dropped SILENTLY inside piRendererVulkan (the player counts the
+calls regardless, so drawCalls looks symmetric). Chain verified good: distinct per-eye RTs,
+correct native routing (event->eye->image logged), correct matrices, composite blit works (probe:
+blitting the left RT into both eyes lights the right eye). Suspects: the silent `return true`
+guards in `iSubmitStaticPaintDraw` / `iEnsureStaticPaintGraphicsPipeline` (pipeline is
+destroyed+recreated per eye because each BeginExternalImageFrame makes a fresh render pass -
+handle-reuse aliasing the cache, or a guard failing only on the second eye of a frame).
+**Probe logging added and .so DEPLOYED to the package but APK NOT yet rebuilt** (session ended):
+first 40 paint submits/skips log reasons as `paint draw OK/SKIP: ...` / `paint pipeline ensure
+SKIP: ...` (ImmRenderReporter tag). NEXT SESSION: rebuild APK, run, grep those lines - the eye-1
+skip reason will be explicit.
+
+**Open bug B - world orientation wrong vs GLES** (user report; also content appears clustered
+top-left with an odd tilt). Compare the RT dump against a GLES reference; suspects: Y-flip
+between IMM's negative-viewport render and Unity's RT sampling, and the
+`UseRenderIntoTextureProjection` flag now that the target is an offscreen RT (not the eye
+buffer). Not yet investigated.
+
+**Correction to commit 945ec3e's claim:** later evidence (consecutive PreCull samples with the
+headset moving) showed `Camera.GetStereoViewMatrix` DOES deliver tracked per-eye matrices at
+PreCull on Quest Vulkan - the earlier "untracked" reading came from a headset sitting still on a
+desk. The XR-render-parameter path still works and stays available, but it is currently DISABLED
+on-device via the flag file (`IMM_UNITY_VK_NO_XR_RENDER_PARAMS`) and the camera-matrix path is
+active. The head-lock the user reported in the first composite build remains unexplained -
+retest tracking once bug A/B are fixed (it may have been the managed-PrepareCamera race, since
+removed: C# no longer calls PrepareCamera on the offscreen path - it raced the render-thread
+event between prepare and render).
+
+**Device/tooling state at session end:** Vulkan test APK (RT-dumper build) installed; device
+flag file contains `IMM_UNITY_VK_NO_XR_RENDER_PARAMS` + `IMM_UNITY_VK_DUMP_RTS`; ProjectSettings
+gfx=Vulkan (uncommitted) and the Khronos VVL .so sits in Assets/Plugins/Android (uncommitted) -
+restore GLES + remove VVL for any shipping build. **Workflow (user directive): ALWAYS
+`adb shell am force-stop com.ImmersiveFoundation.IMMUnityTest` after capturing logs and before
+installing a new build - the app tends to stay resident.** Screencap (`adb shell screencap`)
+captures the composited both-eye view; the RT dump captures IMM's raw output pre-composite.
+
+---
+
 ## STATUS 2026-07-16 (evening): VULKAN RENDERS CONTINUOUSLY ON QUEST - offscreen composite architecture working
 
 The full architecture landed and runs sustained (2+ minutes, 72 fps, serial 9500+ IMM frames,
