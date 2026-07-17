@@ -198,7 +198,7 @@ static constexpr VkStructureType VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO = 39
 static constexpr VkStructureType VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO = 40;
 static constexpr VkStructureType VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO = 42;
 static constexpr VkStructureType VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO = 43;
-static constexpr VkStructureType VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER = 44;
+static constexpr VkStructureType VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER = 45;
 static constexpr VkStructureType VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR = 1000009000;
 static constexpr VkStructureType VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR = 1000008000;
 static constexpr VkStructureType VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR = 1000001000;
@@ -1361,6 +1361,25 @@ struct piVulkanState
     bool externalFrameUsesHostDepth = false;
     bool externalFrameHostDepthReverseZ = false;
     bool externalFramePreservesHostColor = false;
+    // Persistent wrappers for external images (Unity's offscreen eye RTs are
+    // stable VkImages): view/renderpass/framebuffer/depth survive across
+    // frames instead of being destroyed+recreated every eye-frame.
+    struct ExternalImageCacheEntry
+    {
+        VkImage image = 0;
+        uint32_t vkFormat = 0;
+        int width = 0;
+        int height = 0;
+        int arrayLayers = 0;
+        piTexture colorTexture = nullptr;
+        piTexture depthTexture = nullptr;
+        piRTarget renderTarget = nullptr;
+        uint64_t lastUseSerial = 0;
+    };
+    static const int kExternalImageCacheSize = 4;
+    ExternalImageCacheEntry externalImageCache[kExternalImageCacheSize];
+    uint64_t externalImageCacheSerial = 0;
+    bool externalFrameFromCache = false;
     bool hostRenderPassFrameActive = false;
     bool hostRenderPassFrameReported = false;
     VkBuffer hostTransientUniformBuffer = VK_NULL_BUFFER;
@@ -6042,6 +6061,18 @@ void piRendererVulkan::Deinitialize(void)
         {
             mState->vkDeviceWaitIdle(mState->device);
         }
+        for (int i = 0; i < piVulkanState::kExternalImageCacheSize; ++i)
+        {
+            piVulkanState::ExternalImageCacheEntry &entry = mState->externalImageCache[i];
+            if (entry.renderTarget == nullptr)
+            {
+                continue;
+            }
+            DestroyRenderTarget(entry.renderTarget);
+            DestroyTexture(entry.depthTexture);
+            DestroyTexture(entry.colorTexture);
+            entry = piVulkanState::ExternalImageCacheEntry();
+        }
         if (mState->imageAvailableSemaphore != VK_NULL_SEMAPHORE && mState->vkDestroySemaphore)
         {
             mState->vkDestroySemaphore(mState->device, mState->imageAvailableSemaphore, nullptr);
@@ -7021,6 +7052,15 @@ void piRendererVulkan::EndExternalImageFrame(void)
     {
         SetRenderTarget(nullptr);
     }
+    if (mState->externalFrameFromCache)
+    {
+        // Wrappers live in the external-image cache; keep them (and their
+        // tracked image layouts) for the next Begin of the same image.
+        mState->externalFrameRenderTarget = nullptr;
+        mState->externalFrameDepthTexture = nullptr;
+        mState->externalFrameColorTexture = nullptr;
+        mState->externalFrameFromCache = false;
+    }
     if (mState->externalFrameRenderTarget)
     {
         DestroyRenderTarget(mState->externalFrameRenderTarget);
@@ -7139,6 +7179,52 @@ bool piRendererVulkan::BeginExternalImageFrame(void *image, uint32_t vkFormat, i
         return false;
     }
 
+    const bool cacheEnabled = !iRendererFlagEnabled("IMM_UNITY_VK_NO_EXTERNAL_IMAGE_CACHE");
+    const VkImage vkImage = static_cast<VkImage>(reinterpret_cast<uintptr_t>(image));
+    if (cacheEnabled)
+    {
+        for (int i = 0; i < piVulkanState::kExternalImageCacheSize; ++i)
+        {
+            piVulkanState::ExternalImageCacheEntry &entry = mState->externalImageCache[i];
+            if (entry.renderTarget == nullptr || entry.image != vkImage || entry.vkFormat != vkFormat ||
+                entry.width != width || entry.height != height || entry.arrayLayers != arrayLayers)
+            {
+                continue;
+            }
+            entry.lastUseSerial = ++mState->externalImageCacheSerial;
+            const float transparentBlack[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            if (!SetRenderTarget(entry.renderTarget) ||
+                !iClearColorTextureImage(mState, entry.colorTexture, transparentBlack, mReporter) ||
+                !iClearDepthTextureImage(mState, entry.depthTexture, mReporter))
+            {
+                // Entry unusable - drop it and rebuild through the create path.
+                DestroyRenderTarget(entry.renderTarget);
+                DestroyTexture(entry.depthTexture);
+                DestroyTexture(entry.colorTexture);
+                entry = piVulkanState::ExternalImageCacheEntry();
+                break;
+            }
+            mState->externalFrameColorTexture = entry.colorTexture;
+            mState->externalFrameDepthTexture = entry.depthTexture;
+            mState->externalFrameRenderTarget = entry.renderTarget;
+            mState->externalFrameUsesHostDepth = false;
+            mState->externalFrameHostDepthReverseZ = false;
+            mState->externalFramePreservesHostColor = false;
+            mState->externalFrameFromCache = true;
+            if (mState->handleProbeLogCount < 60)
+            {
+                ++mState->handleProbeLogCount;
+                char message[192];
+                std::snprintf(message, sizeof(message), "ext begin CACHED: img=%llx rp=%llx fb=%llx",
+                              (unsigned long long)(uintptr_t)entry.image,
+                              (unsigned long long)(uintptr_t)entry.renderTarget->renderPass,
+                              (unsigned long long)(uintptr_t)entry.renderTarget->framebuffer);
+                iReport(mReporter, message);
+            }
+            return true;
+        }
+    }
+
     VkImageViewCreateInfo viewInfo = {};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = static_cast<VkImage>(reinterpret_cast<uintptr_t>(image));
@@ -7170,6 +7256,44 @@ bool piRendererVulkan::BeginExternalImageFrame(void *image, uint32_t vkFormat, i
     if (mState->externalFrameColorTexture)
     {
         mState->externalFrameColorTexture->ownsImageView = true;
+    }
+
+    if (cacheEnabled && mState->externalFrameRenderTarget != nullptr)
+    {
+        int slot = 0;
+        uint64_t oldest = ~0ull;
+        for (int i = 0; i < piVulkanState::kExternalImageCacheSize; ++i)
+        {
+            if (mState->externalImageCache[i].renderTarget == nullptr)
+            {
+                slot = i;
+                break;
+            }
+            if (mState->externalImageCache[i].lastUseSerial < oldest)
+            {
+                oldest = mState->externalImageCache[i].lastUseSerial;
+                slot = i;
+            }
+        }
+        piVulkanState::ExternalImageCacheEntry &entry = mState->externalImageCache[slot];
+        if (entry.renderTarget != nullptr)
+        {
+            // Evictions only happen when a new image appears (e.g. an XR session
+            // restart replaced the RTs); the old image's work is long fenced.
+            DestroyRenderTarget(entry.renderTarget);
+            DestroyTexture(entry.depthTexture);
+            DestroyTexture(entry.colorTexture);
+        }
+        entry.image = vkImage;
+        entry.vkFormat = vkFormat;
+        entry.width = width;
+        entry.height = height;
+        entry.arrayLayers = arrayLayers;
+        entry.colorTexture = mState->externalFrameColorTexture;
+        entry.depthTexture = mState->externalFrameDepthTexture;
+        entry.renderTarget = mState->externalFrameRenderTarget;
+        entry.lastUseSerial = ++mState->externalImageCacheSerial;
+        mState->externalFrameFromCache = true;
     }
 
     iReport(mReporter, "Vulkan renderer began external image frame with owned image view");
@@ -7273,7 +7397,10 @@ bool piRendererVulkan::BeginExternalImageFrameWithView(void *image, void *imageV
     colorTexture->ownsImageView = ownsColorImageView;
     colorTexture->vkFormat = static_cast<VkFormat>(vkFormat);
     colorTexture->imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    colorTexture->imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    // A fresh wrapper's true layout is unknown; when the clear below discards
+    // contents anyway, declare UNDEFINED so its barrier is legal from any
+    // actual layout. Preserve paths keep the attachment layout the host set.
+    colorTexture->imageLayout = clearColor ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     colorTexture->sampleCount = static_cast<VkSampleCountFlagBits>(colorVkSamples != 0 ? colorVkSamples : VK_SAMPLE_COUNT_1_BIT);
     if (!colorTexture->data)
     {
