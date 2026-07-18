@@ -98,6 +98,10 @@ ADB="$LOCALAPPDATA/Android/Sdk/platform-tools/adb.exe"
 
 After capturing logs, force-stop the app again before the next build/install cycle.
 
+**Stream, never dump:** the logcat ring buffer wraps in under a second at full frame rate -
+`logcat -d` after the fact loses all startup lines (renderer init, first-frame probes).
+Always start the streaming capture BEFORE launching the app, as above.
+
 **Visual debugging without wearing the headset:**
 - `adb shell screencap -p /sdcard/x.png` + pull - the composited both-eye view.
 - Device flag `IMM_UNITY_VK_DUMP_RTS` - dumps IMM's RAW per-eye offscreen textures (~4 s after
@@ -148,6 +152,15 @@ while it's on - use it for log capture, not visual checks). Baseline Unity6+Open
 Quest already emits `VUID-vkQueueSubmit-pSignalSemaphores-00067` (x~10 at startup),
 `VUID-vkCreateInstance-ppEnabledExtensionNames-01388`, and finalize-related stacks even with
 IMM fully disabled - don't chase those as IMM bugs.
+
+**Attributing VUIDs (validated 2026-07-17):** run once with `IMM_UNITY_VK_NO_RENDER_EVENTS`
+in the C# flag file - IMM's Vulkan never initializes, so every VUID that survives is Unity/
+Meta baseline; anything that disappears is IMM's. Two gotchas: VVL suppresses each VUID
+after `duplicate_message_limit` (10) reports, so "10x" means ">=10"; and the `E Unity`
+validation lines carry a native backtrace a few lines ABOVE them (search up for
+`libImmUnityPlugin.so` frames to confirm the call site). Current IMM debt:
+`VUID-RuntimeSpirv-OpEntryPoint-08743` only (generated paint SPIR-V, needs Vulkan SDK to
+regenerate - see the plan doc STATUS).
 
 ## 6. Known state / architecture notes (2026-07-16)
 

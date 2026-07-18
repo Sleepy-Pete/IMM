@@ -1,6 +1,97 @@
-# Quest on-device: GLES ships; Vulkan draw crash root-caused (validation layer), own-queue architecture in progress
+# Quest on-device: Vulkan renders both eyes correctly; hardening landed; polish roadmap below
 
-## STATUS 2026-07-16 (night, session end) - CURRENT STATE, read this first
+## STATUS 2026-07-17 (session end) - CURRENT STATE, read this first
+
+**Both Vulkan bugs are root-caused and fixed; the renderer is validation-clean except one
+known shader item. vr-main @ 28e2872 pushed.** Awaiting one in-headset confirmation pass
+(both eyes show strokes / scene upright / tracking feels correct - the fix build was left
+running on the device).
+
+### Root cause A - right eye lost all paint strokes (fixed, 52f3e46)
+
+`Player::RenderStereoMultiPass` forced `eid = 0` on non-GL APIs, writing the per-eye
+view-projection only into `mDisplayRenderState.mEye[0]`. The multipass paint vertex shader
+(STEREOMODE=1) indexes `mEye[pass.mID]`, and `mPassState.mID = eyeID`, so the right-eye pass
+transformed every stroke by the never-written `mEye[1]` (zeros): all triangles degenerated,
+zero fragments, no error anywhere. The generated Vulkan *picture* shaders pin `mEye[0]`
+(generate_vulkan_picture_shaders.ps1), which is why the 360 backdrop still rendered in both
+eyes - the exact "right eye = skybox only" asymmetry chased across two sessions. GLES was
+unaffected because it used `eid = eyeID`. Fix: write the current eye's matrix into BOTH
+slots each multipass call (correct for every consumer on every API; single-pass and mono
+paths untouched). Empirically verified: RT dumps show both eyes symmetric with proper IPD
+parallax.
+
+Debug method that cracked it: C# flag `IMM_UNITY_VK_EYE0_RT_BOTH_EYES` routed both eyes'
+native draws into eye0's RT - the shared RT also lost its strokes, proving the second PASS
+itself emitted nothing (uniforms), not the image/framebuffer plumbing.
+
+### Root cause B - scene upside down in headset (fixed, aeb4711)
+
+The composite `CommandBuffer.Blit` uses a custom material, so Unity applies no automatic
+platform Y-flip. `GetVulkanCompositeMaterial` now sets `_MainTex` ST scale (1,-1) offset
+(0,1). Revert on-device without rebuild: flag `IMM_UNITY_VK_NO_COMPOSITE_VFLIP`.
+
+### Hardening landed (28e2872)
+
+- **Persistent external-image wrappers:** Begin/End previously destroyed+recreated the
+  image view, render pass, framebuffer, and depth image EVERY eye-frame (~288 object
+  creations/sec at 72fps). The driver deterministically recycled the freed handle VALUES,
+  which aliased the handle-keyed pipeline caches and reset layout tracking every frame.
+  Wrappers are now cached per external VkImage (Unity's two eye RTs are stable), LRU-4,
+  kill-switch `IMM_UNITY_VK_NO_EXTERNAL_IMAGE_CACHE`. On-device verified: 2 creations at
+  startup then 100% `ext begin CACHED` hits with stable distinct per-eye handles.
+- **True image-layout tracking across frames:** barriers use the real oldLayout (fresh
+  wrappers start UNDEFINED when the clear discards contents). The previous hardcoded
+  COLOR_ATTACHMENT_OPTIMAL on an image actually in SHADER_READ_ONLY was a per-frame spec
+  violation Adreno tolerated.
+- **Barrier sType header typo:** the hand-rolled Vulkan declarations had
+  `VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER = 44` - the spec value is **45** (44 is the
+  BUFFER barrier). Every image barrier IMM ever recorded carried the wrong sType. All other
+  constants in the header audited: correct.
+- **XR session restart resilience verified:** doff/don tears the session down; IMM skips
+  ~5s of frames gracefully ("missing color render buffer" errors are benign during the
+  transition), Unity recreates the eye RTs, rendering resumes. No crash, no leak.
+
+### Validation-layer state (attribution method worth keeping)
+
+Control run with `IMM_UNITY_VK_NO_RENDER_EVENTS` (IMM Vulkan never initializes) separates
+Unity baseline noise from IMM debt. Note VVL's duplicate_message_limit=10: "10x" means
+">=10, then suppressed".
+
+- Unity/Meta baseline (present with IMM fully disabled): `VUID-vkQueueSubmit-
+  pSignalSemaphores-00067`, `VUID-vkCreateInstance-ppEnabledExtensionNames-01388`.
+- IMM debt remaining: **`VUID-RuntimeSpirv-OpEntryPoint-08743`** only - the generated
+  Vulkan paint SPIR-V declares a fragment-stage vec4 input (likely `mpos`, location 2, see
+  the fragment converter in generate_vulkan_static_brush_shaders.ps1) that the vertex stage
+  never writes. Benign in practice (left eye is pixel-perfect) but the fs may read
+  undefined values - check what `mpos` feeds when fixing. Fix needs glslangValidator
+  (Vulkan SDK - NOT installed on the Windows box) to regenerate the .inc SPIR-V.
+
+### Roadmap to "entirely working" (in order)
+
+1. In-headset confirmation (user): both eyes / upright / tracking.
+2. Command-buffer batching: one record->submit->fence per eye-frame instead of ~40
+   (~5800 submits/sec today). Biggest perf item; make cross-queue visibility spec-airtight
+   at the same time (today: same-family + CPU-fence ordering, works but informal).
+3. MSAA 4x (Store expectation), then alpha semantics of the composite and sRGB/gamma
+   parity vs GLES (offscreen RT is R8G8B8A8_SRGB, Unity-side ARGB32).
+4. Vulkan SDK install -> fix OpEntryPoint-08743 -> regenerate paint SPIR-V.
+5. Ship hygiene: gate/strip the probe logging (`ext begin/end`, `paint draw OK`, `paint
+   pipeline CREATE`, self-capped), remove VVL .so from Assets/Plugins/Android, flip the
+   committed Android gfx default GLES3 -> Vulkan after an extended soak (doff/don, Dash
+   overlay, long session).
+6. Optional dev-loop investment: Windows editor on Vulkan + Quest Link, and Meta's
+   RenderDoc fork for on-device captures.
+
+### New on-device debug levers (C# flag file)
+
+`IMM_UNITY_VK_EYE0_RT_BOTH_EYES` (route both eyes' native draws into RT0; pair with
+`IMM_UNITY_VK_BLIT_LEFT_RT_BOTH_EYES` for the composite side), `IMM_UNITY_VK_NO_COMPOSITE_VFLIP`
+(revert the V-flip), `IMM_UNITY_VK_NO_EXTERNAL_IMAGE_CACHE` (native; revert wrapper cache).
+
+---
+
+## STATUS 2026-07-16 (night, session end) - superseded
 
 **Vulkan on Quest renders the forest.** Verified by pulling the raw offscreen textures off the
 device (`IMM_UNITY_VK_DUMP_RTS` device flag -> `files/imm_rt_eye0/1.png`): the LEFT eye's texture
