@@ -465,7 +465,12 @@ namespace ImmPlayer
             if (!IsEnvFlagEnabled("IMM_UNITY_VK_DUMP_RTS"))
                 return;
             _rtDumpCounter++;
-            if (_rtDumpCounter != 300)
+            // Fire at ~frame 60 (<1s at 72fps) and re-dump every 60 frames so a
+            // short or interrupted (doff/don) session still captures a recent
+            // frame; the old "exactly frame 300" gate needed ~4.2s of
+            // uninterrupted rendering, which a flickering-mount session never
+            // reached (that is why on-device dumps came up empty).
+            if (_rtDumpCounter < 60 || _rtDumpCounter % 60 != 0)
                 return;
             for (int eye = 0; eye < 2; eye++)
             {
@@ -738,9 +743,23 @@ namespace ImmPlayer
                 _preCullCount++;
                 if (_preCullCount <= 12 || _preCullCount % 144 == 0)
                 {
-                    Matrix4x4 v = cam.worldToCameraMatrix;
                     Matrix4x4 l = cam.GetStereoViewMatrix(Camera.StereoscopicEye.Left);
-                    Debug.Log($"[IMM_PRECULL] n={_preCullCount} cam={cam.name} stereoEnabled={cam.stereoEnabled} eye={cam.stereoActiveEye} xrActive={UnityEngine.XR.XRSettings.isDeviceActive} view=[{v.m00:F3} {v.m02:F3} {v.m03:F3}] stereoL=[{l.m00:F3} {l.m02:F3} {l.m03:F3}] eq={(v == l)}");
+                    // Derive the camera's world pose from the view matrix IMM actually
+                    // uses (camera path). Turn your head slowly: fwd should point where
+                    // you look (and track the SAME way you turn), up should stay ~ +Y.
+                    // "behind me" => fwd ~ negated; "rotation opposite" => fwd turns the
+                    // wrong way; "upside down" => up ~ -Y.
+                    Matrix4x4 lInv = l.inverse;
+                    Vector3 camPos = lInv.GetColumn(3);
+                    Vector3 camFwd = lInv.MultiplyVector(new Vector3(0f, 0f, -1f));
+                    Vector3 camUp = lInv.MultiplyVector(new Vector3(0f, 1f, 0f));
+                    // Stereo/IPD probe: separation between the two eyes' world positions
+                    // should be ~0.06m (6cm) along the head's right axis. ~0 => no stereo
+                    // => "flat". Large => odd world-scale. This is the offscreen per-eye
+                    // matrices IMM actually renders with.
+                    Vector3 rPos = cam.GetStereoViewMatrix(Camera.StereoscopicEye.Right).inverse.GetColumn(3);
+                    Vector3 eyeSep = camPos - rPos;
+                    Debug.Log($"[IMM_PRECULL] n={_preCullCount} cam={cam.name} stereo={cam.stereoEnabled} xrActive={UnityEngine.XR.XRSettings.isDeviceActive} camPath pos=({camPos.x:F2},{camPos.y:F2},{camPos.z:F2}) fwd=({camFwd.x:F2},{camFwd.y:F2},{camFwd.z:F2}) up=({camUp.x:F2},{camUp.y:F2},{camUp.z:F2}) ipd={eyeSep.magnitude:F4} eyeSep=({eyeSep.x:F3},{eyeSep.y:F3},{eyeSep.z:F3})");
                 }
             }
             if (!_isInitialized || _renderEventFunc == IntPtr.Zero || cam == null)
@@ -813,7 +832,15 @@ namespace ImmPlayer
                     if (stereoMode == (int)StereoMode.Mono)
                         stereoMode = (int)StereoMode.TwoPass;
                     if (_preCullCount <= 12 || _preCullCount % 144 == 0)
-                        Debug.Log($"[IMM_XRPARAM] n={_preCullCount} L=[{leftView.m00:F3} {leftView.m02:F3} {leftView.m03:F3}] R=[{rightView.m00:F3} {rightView.m02:F3} {rightView.m03:F3}]");
+                    {
+                        // Same derivation as [IMM_PRECULL] but for the XR-render-params
+                        // path, so we can compare which one tracks correctly.
+                        Matrix4x4 xlInv = leftView.inverse;
+                        Vector3 xPos = xlInv.GetColumn(3);
+                        Vector3 xFwd = xlInv.MultiplyVector(new Vector3(0f, 0f, -1f));
+                        Vector3 xUp = xlInv.MultiplyVector(new Vector3(0f, 1f, 0f));
+                        Debug.Log($"[IMM_XRPARAM] n={_preCullCount} xrPath pos=({xPos.x:F2},{xPos.y:F2},{xPos.z:F2}) fwd=({xFwd.x:F2},{xFwd.y:F2},{xFwd.z:F2}) up=({xUp.x:F2},{xUp.y:F2},{xUp.z:F2})");
+                    }
                 }
                 else if (_preCullCount <= 12 || _preCullCount % 144 == 0)
                 {

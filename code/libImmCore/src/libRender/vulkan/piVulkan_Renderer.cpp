@@ -134,6 +134,7 @@ typedef uint32_t VkAccessFlags;
 typedef uint32_t VkImageLayout;
 typedef uint32_t VkImageAspectFlags;
 typedef uint32_t VkDependencyFlags;
+typedef uint32_t VkDescriptorPoolResetFlags;
 typedef uint32_t VkFenceCreateFlags;
 typedef uint32_t VkBufferUsageFlags;
 typedef uint32_t VkMemoryPropertyFlags;
@@ -1168,6 +1169,7 @@ typedef void (*PFN_vkDestroyDescriptorSetLayout)(VkDevice device, VkDescriptorSe
 typedef VkResult (*PFN_vkCreateDescriptorPool)(VkDevice device, const VkDescriptorPoolCreateInfo *createInfo, const void *allocator, VkDescriptorPool *descriptorPool);
 typedef void (*PFN_vkDestroyDescriptorPool)(VkDevice device, VkDescriptorPool descriptorPool, const void *allocator);
 typedef VkResult (*PFN_vkAllocateDescriptorSets)(VkDevice device, const VkDescriptorSetAllocateInfo *allocateInfo, VkDescriptorSet *descriptorSets);
+typedef VkResult (*PFN_vkResetDescriptorPool)(VkDevice device, VkDescriptorPool descriptorPool, VkDescriptorPoolResetFlags flags);
 typedef void (*PFN_vkUpdateDescriptorSets)(VkDevice device, uint32_t descriptorWriteCount, const VkWriteDescriptorSet *descriptorWrites, uint32_t descriptorCopyCount, const void *descriptorCopies);
 typedef VkResult (*PFN_vkCreatePipelineLayout)(VkDevice device, const VkPipelineLayoutCreateInfo *createInfo, const void *allocator, VkPipelineLayout *pipelineLayout);
 typedef void (*PFN_vkDestroyPipelineLayout)(VkDevice device, VkPipelineLayout pipelineLayout, const void *allocator);
@@ -1193,6 +1195,27 @@ typedef VkResult (*PFN_vkCreateWin32SurfaceKHR)(VkInstance instance, const VkWin
 #elif defined(ANDROID)
 typedef VkResult (*PFN_vkCreateAndroidSurfaceKHR)(VkInstance instance, const VkAndroidSurfaceCreateInfoKHR *createInfo, const void *allocator, VkSurfaceKHR *surface);
 #endif
+
+// One fully-specialized graphics pipeline for a shader, keyed by the render-state
+// combination it was built for. The player switches raster state (cull/front-face)
+// per chunk (4 variants) so a single cached pipeline slot thrashed - destroy+recreate
+// EVERY draw (~2ms each x37 = the old ~85ms/eye). Caching each variant makes the
+// per-draw cost a lookup.
+struct piShaderPipelineVariant
+{
+    VkPipeline pipeline = VK_NULL_PIPELINE;
+    VkRenderPass renderPass = VK_NULL_RENDER_PASS;
+    VkCullModeFlags cullMode = VK_CULL_MODE_NONE;
+    VkFrontFace frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
+    bool wireframe = false;
+    bool depthClamp = false;
+    bool depthTest = false;
+    bool depthWrite = false;
+    VkCompareOp depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    bool alphaToCoverage = false;
+    bool blendEnabled = false;
+};
 
 struct piShaderS
 {
@@ -1220,6 +1243,10 @@ struct piShaderS
     uint32_t pipelineHostDepthBackdropMode = 0;
     bool isPicture = false;
     bool isPicture2D = false;
+    static const int kPipelineVariantCacheSize = 16;
+    piShaderPipelineVariant pipelineVariants[kPipelineVariantCacheSize];
+    int pipelineVariantCount = 0;
+    uint32_t pipelineVariantNext = 0;                              // round-robin evict cursor when the cache is full
 };
 
 struct piTextureS
@@ -1387,6 +1414,24 @@ struct piVulkanState
     uint8_t *hostTransientUniformMapped = nullptr;
     VkDeviceSize hostTransientUniformSize = 0;
     VkDeviceSize hostTransientUniformOffset = 0;
+    // Eye-frame command-buffer batching (roadmap #2): the external-image /
+    // own-swapchain paths otherwise record+submit+fence-wait PER draw (~40
+    // submits/eye -> ~9fps). Batching keeps one command buffer + render pass
+    // open for the whole eye, records every draw into it (each with its own
+    // pooled descriptor set so the shared-uniform overwrite that the per-draw
+    // fence-wait used to serialize is captured per draw), then submits once.
+    // Disable with IMM_UNITY_VK_NO_BATCH_EYE_FRAME.
+    int batchEnabledResolved = -1;                                  // -1 unknown, 0 off, 1 on
+    bool batchRecording = false;                                    // command buffer + render pass currently open
+    piRTarget batchTarget = nullptr;                                // target the open batch renders into
+    VkDescriptorPool batchPaintDescriptorPool = VK_NULL_DESCRIPTOR_POOL;
+    VkDescriptorPool batchPictureDescriptorPool = VK_NULL_DESCRIPTOR_POOL;
+    uint32_t batchDrawCount = 0;                                    // draws recorded into the current batch
+    bool batchReported = false;
+    bool batchOverflowReported = false;
+    uint64_t batchOpenNs = 0;                                       // timestamp at batch open, for record-vs-wait perf probe
+    uint64_t batchDescNs = 0;                                       // accumulated per-draw descriptor alloc+update time this eye
+    uint32_t perfProbeCount = 0;
     uint32_t presentFrameIndex = 0;
     bool realPresentReported = false;
     bool texturePresentReported = false;
@@ -1479,6 +1524,7 @@ struct piVulkanState
     PFN_vkCreateDescriptorPool vkCreateDescriptorPool = nullptr;
     PFN_vkDestroyDescriptorPool vkDestroyDescriptorPool = nullptr;
     PFN_vkAllocateDescriptorSets vkAllocateDescriptorSets = nullptr;
+    PFN_vkResetDescriptorPool vkResetDescriptorPool = nullptr;
     PFN_vkUpdateDescriptorSets vkUpdateDescriptorSets = nullptr;
     PFN_vkCreatePipelineLayout vkCreatePipelineLayout = nullptr;
     PFN_vkDestroyPipelineLayout vkDestroyPipelineLayout = nullptr;
@@ -2112,6 +2158,7 @@ static bool iLoadVulkanSwapchainEntryPoints(piVulkanState *state, piRenderer::pi
     state->vkCreateDescriptorPool = (PFN_vkCreateDescriptorPool)state->vkGetDeviceProcAddr(state->device, "vkCreateDescriptorPool");
     state->vkDestroyDescriptorPool = (PFN_vkDestroyDescriptorPool)state->vkGetDeviceProcAddr(state->device, "vkDestroyDescriptorPool");
     state->vkAllocateDescriptorSets = (PFN_vkAllocateDescriptorSets)state->vkGetDeviceProcAddr(state->device, "vkAllocateDescriptorSets");
+    state->vkResetDescriptorPool = (PFN_vkResetDescriptorPool)state->vkGetDeviceProcAddr(state->device, "vkResetDescriptorPool");
     state->vkUpdateDescriptorSets = (PFN_vkUpdateDescriptorSets)state->vkGetDeviceProcAddr(state->device, "vkUpdateDescriptorSets");
     state->vkCreatePipelineLayout = (PFN_vkCreatePipelineLayout)state->vkGetDeviceProcAddr(state->device, "vkCreatePipelineLayout");
     state->vkDestroyPipelineLayout = (PFN_vkDestroyPipelineLayout)state->vkGetDeviceProcAddr(state->device, "vkDestroyPipelineLayout");
@@ -3130,12 +3177,37 @@ static bool iEnsureStaticPaintPipelineLayout(piVulkanState *state, piRenderer::p
         state->staticPaintDescriptorSetLayout = VK_NULL_DESCRIPTOR_SET_LAYOUT;
         return false;
     }
+
+    // Eye-frame batching pool: a fresh descriptor set is allocated per draw and
+    // the pool is reset per batch-open, so every recorded draw keeps its own
+    // snapshot of the per-chunk/per-layer uniforms + per-brush vertex buffer.
+    // Failure is non-fatal: the draw path falls back to the per-draw-submit path.
+    if (state->batchPaintDescriptorPool == VK_NULL_DESCRIPTOR_POOL)
+    {
+        const uint32_t kBatchSets = 1024;
+        VkDescriptorPoolSize batchPoolSizes[3] = {};
+        batchPoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        batchPoolSizes[0].descriptorCount = 5 * kBatchSets;
+        batchPoolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        batchPoolSizes[1].descriptorCount = 1 * kBatchSets;
+        batchPoolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        batchPoolSizes[2].descriptorCount = 1 * kBatchSets;
+        VkDescriptorPoolCreateInfo batchPoolInfo = {};
+        batchPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        batchPoolInfo.maxSets = kBatchSets;
+        batchPoolInfo.poolSizeCount = 3;
+        batchPoolInfo.pPoolSizes = batchPoolSizes;
+        if (state->vkCreateDescriptorPool(state->device, &batchPoolInfo, nullptr, &state->batchPaintDescriptorPool) != VK_SUCCESS)
+        {
+            state->batchPaintDescriptorPool = VK_NULL_DESCRIPTOR_POOL;
+        }
+    }
     return true;
 }
 
-static bool iUpdateStaticPaintDescriptorSet(piVulkanState *state, piRenderer::piReporter *reporter)
+static bool iUpdateStaticPaintDescriptorSet(piVulkanState *state, VkDescriptorSet set, piRenderer::piReporter *reporter)
 {
-    if (!state || state->staticPaintDescriptorSet == VK_NULL_DESCRIPTOR_SET || !state->vkUpdateDescriptorSets)
+    if (!state || set == VK_NULL_DESCRIPTOR_SET || !state->vkUpdateDescriptorSets)
     {
         return true;
     }
@@ -3172,43 +3244,43 @@ static bool iUpdateStaticPaintDescriptorSet(piVulkanState *state, piRenderer::pi
 
     VkWriteDescriptorSet writes[7] = {};
     writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[0].dstSet = state->staticPaintDescriptorSet;
+    writes[0].dstSet = set;
     writes[0].dstBinding = 0;
     writes[0].descriptorCount = 1;
     writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     writes[0].pBufferInfo = &bufferInfos[0];
     writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[1].dstSet = state->staticPaintDescriptorSet;
+    writes[1].dstSet = set;
     writes[1].dstBinding = 3;
     writes[1].descriptorCount = 1;
     writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     writes[1].pBufferInfo = &bufferInfos[1];
     writes[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[2].dstSet = state->staticPaintDescriptorSet;
+    writes[2].dstSet = set;
     writes[2].dstBinding = 4;
     writes[2].descriptorCount = 1;
     writes[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     writes[2].pBufferInfo = &bufferInfos[2];
     writes[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[3].dstSet = state->staticPaintDescriptorSet;
+    writes[3].dstSet = set;
     writes[3].dstBinding = 5;
     writes[3].descriptorCount = 1;
     writes[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     writes[3].pBufferInfo = &bufferInfos[3];
     writes[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[4].dstSet = state->staticPaintDescriptorSet;
+    writes[4].dstSet = set;
     writes[4].dstBinding = 7;
     writes[4].descriptorCount = 1;
     writes[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     writes[4].pImageInfo = &imageInfo;
     writes[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[5].dstSet = state->staticPaintDescriptorSet;
+    writes[5].dstSet = set;
     writes[5].dstBinding = 8;
     writes[5].descriptorCount = 1;
     writes[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     writes[5].pBufferInfo = &bufferInfos[4];
     writes[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[6].dstSet = state->staticPaintDescriptorSet;
+    writes[6].dstSet = set;
     writes[6].dstBinding = 9;
     writes[6].descriptorCount = 1;
     writes[6].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -3329,12 +3401,34 @@ static bool iEnsurePicturePipelineLayout(piVulkanState *state, piRenderer::piRep
         iReport(reporter, "Vulkan renderer created picture descriptor and pipeline layouts");
         state->pictureLayoutReported = true;
     }
+
+    // Eye-frame batching pool for pictures (see the paint equivalent). One 360
+    // backdrop is typical, but 2D picture layers each rewrite unit 9, so version
+    // per draw here too. Non-fatal on failure.
+    if (state->batchPictureDescriptorPool == VK_NULL_DESCRIPTOR_POOL)
+    {
+        const uint32_t kBatchSets = 256;
+        VkDescriptorPoolSize batchPoolSizes[2] = {};
+        batchPoolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        batchPoolSizes[0].descriptorCount = 1 * kBatchSets;
+        batchPoolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        batchPoolSizes[1].descriptorCount = 3 * kBatchSets;
+        VkDescriptorPoolCreateInfo batchPoolInfo = {};
+        batchPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        batchPoolInfo.maxSets = kBatchSets;
+        batchPoolInfo.poolSizeCount = 2;
+        batchPoolInfo.pPoolSizes = batchPoolSizes;
+        if (state->vkCreateDescriptorPool(state->device, &batchPoolInfo, nullptr, &state->batchPictureDescriptorPool) != VK_SUCCESS)
+        {
+            state->batchPictureDescriptorPool = VK_NULL_DESCRIPTOR_POOL;
+        }
+    }
     return true;
 }
 
-static bool iUpdatePictureDescriptorSet(piVulkanState *state, piRenderer::piReporter *reporter)
+static bool iUpdatePictureDescriptorSet(piVulkanState *state, VkDescriptorSet set, piRenderer::piReporter *reporter)
 {
-    if (!state || state->pictureDescriptorSet == VK_NULL_DESCRIPTOR_SET || !state->vkUpdateDescriptorSets)
+    if (!state || set == VK_NULL_DESCRIPTOR_SET || !state->vkUpdateDescriptorSets)
     {
         return true;
     }
@@ -3362,25 +3456,25 @@ static bool iUpdatePictureDescriptorSet(piVulkanState *state, piRenderer::piRepo
 
     VkWriteDescriptorSet writes[4] = {};
     writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[0].dstSet = state->pictureDescriptorSet;
+    writes[0].dstSet = set;
     writes[0].dstBinding = 0;
     writes[0].descriptorCount = 1;
     writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     writes[0].pImageInfo = &imageInfo;
     writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[1].dstSet = state->pictureDescriptorSet;
+    writes[1].dstSet = set;
     writes[1].dstBinding = 3;
     writes[1].descriptorCount = 1;
     writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     writes[1].pBufferInfo = &bufferInfos[0];
     writes[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[2].dstSet = state->pictureDescriptorSet;
+    writes[2].dstSet = set;
     writes[2].dstBinding = 4;
     writes[2].descriptorCount = 1;
     writes[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     writes[2].pBufferInfo = &bufferInfos[1];
     writes[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writes[3].dstSet = state->pictureDescriptorSet;
+    writes[3].dstSet = set;
     writes[3].dstBinding = 5;
     writes[3].descriptorCount = 1;
     writes[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -3775,11 +3869,32 @@ static bool iEnsureStaticPaintGraphicsPipeline(piVulkanState *state, piShader sh
     {
         return true;
     }
-    if (shader->pipeline != VK_NULL_PIPELINE && state->vkDestroyPipeline)
+    // Not the currently-bound variant: look it up in this shader's variant cache
+    // (built once per raster/blend/depth/renderPass combo) instead of destroying
+    // and rebuilding. This is the fix for the per-draw pipeline thrash.
+    for (int vi = 0; vi < shader->pipelineVariantCount; ++vi)
     {
-        state->vkDestroyPipeline(state->device, shader->pipeline, nullptr);
-        shader->pipeline = VK_NULL_PIPELINE;
-        shader->pipelineRenderPass = VK_NULL_RENDER_PASS;
+        const piShaderPipelineVariant &v = shader->pipelineVariants[vi];
+        if (v.pipeline != VK_NULL_PIPELINE &&
+            v.renderPass == target->renderPass && v.cullMode == cullMode && v.frontFace == frontFace &&
+            v.sampleCount == sampleCount && v.wireframe == wireframe && v.depthClamp == depthClamp &&
+            v.depthTest == depthTest && v.depthWrite == depthWrite && v.depthCompareOp == depthCompareOp &&
+            v.alphaToCoverage == alphaToCoverage && v.blendEnabled == blendEnabled)
+        {
+            shader->pipeline = v.pipeline;
+            shader->pipelineRenderPass = v.renderPass;
+            shader->pipelineCullMode = v.cullMode;
+            shader->pipelineFrontFace = v.frontFace;
+            shader->pipelineSampleCount = v.sampleCount;
+            shader->pipelineWireframe = v.wireframe;
+            shader->pipelineDepthClamp = v.depthClamp;
+            shader->pipelineDepthTest = v.depthTest;
+            shader->pipelineDepthWrite = v.depthWrite;
+            shader->pipelineDepthCompareOp = v.depthCompareOp;
+            shader->pipelineAlphaToCoverage = v.alphaToCoverage;
+            shader->pipelineBlendEnabled = v.blendEnabled;
+            return true;
+        }
     }
 
     VkPipelineRasterizationStateCreateInfo rasterization = {};
@@ -3858,6 +3973,33 @@ static bool iEnsureStaticPaintGraphicsPipeline(piVulkanState *state, piShader sh
     shader->pipelineDepthCompareOp = depthCompareOp;
     shader->pipelineAlphaToCoverage = alphaToCoverage;
     shader->pipelineBlendEnabled = blendEnabled;
+    // Register this newly-built pipeline in the shader's variant cache so the next
+    // draw with the same state reuses it (round-robin evict if the cache ever fills).
+    {
+        int slot;
+        if (shader->pipelineVariantCount < piShaderS::kPipelineVariantCacheSize)
+            slot = shader->pipelineVariantCount++;
+        else
+        {
+            slot = (int)(shader->pipelineVariantNext++ % (uint32_t)piShaderS::kPipelineVariantCacheSize);
+            VkPipeline old = shader->pipelineVariants[slot].pipeline;
+            if (old != VK_NULL_PIPELINE && old != shader->pipeline && state->vkDestroyPipeline)
+                state->vkDestroyPipeline(state->device, old, nullptr);
+        }
+        piShaderPipelineVariant &v = shader->pipelineVariants[slot];
+        v.pipeline = shader->pipeline;
+        v.renderPass = target->renderPass;
+        v.cullMode = cullMode;
+        v.frontFace = frontFace;
+        v.sampleCount = sampleCount;
+        v.wireframe = wireframe;
+        v.depthClamp = depthClamp;
+        v.depthTest = depthTest;
+        v.depthWrite = depthWrite;
+        v.depthCompareOp = depthCompareOp;
+        v.alphaToCoverage = alphaToCoverage;
+        v.blendEnabled = blendEnabled;
+    }
     if (state->handleProbeLogCount < 60)
     {
         ++state->handleProbeLogCount;
@@ -3876,6 +4018,144 @@ static bool iEnsureStaticPaintGraphicsPipeline(piVulkanState *state, piShader sh
         state->graphicsPipelineReported = true;
     }
     return true;
+}
+
+static bool iBatchEnabled(piVulkanState *state)
+{
+    if (!state)
+        return false;
+    if (state->batchEnabledResolved < 0)
+        state->batchEnabledResolved = iRendererFlagEnabled("IMM_UNITY_VK_NO_BATCH_EYE_FRAME") ? 0 : 1;
+    return state->batchEnabledResolved != 0;
+}
+
+// True when a draw into `target` should be recorded into one shared, batched
+// command buffer (external-image eye frame or the viewer's own-swapchain frame)
+// and submitted once at the eye boundary, rather than doing its own submit+fence.
+// The host-render-pass path (Unity owns the command buffer) and the kill-switch
+// both fall through to the legacy per-draw path.
+static bool iBatchActiveForTarget(piVulkanState *state, piRTarget target)
+{
+    return state && iBatchEnabled(state) && !state->hostRenderPassFrameActive &&
+           target && target->renderPass != VK_NULL_RENDER_PASS &&
+           target->framebuffer != VK_NULL_FRAMEBUFFER &&
+           state->commandBuffer != VK_NULL_COMMAND_BUFFER && state->frameFence != VK_NULL_FENCE &&
+           state->vkCmdBeginRenderPass && state->vkCmdEndRenderPass;
+}
+
+// Close the open batch: end the render pass + command buffer, submit ONCE, wait
+// once. Leaves the color attachment in COLOR_ATTACHMENT_OPTIMAL (its render-pass
+// final layout) so the caller's transition/present logic runs unchanged.
+static bool iFlushBatch(piVulkanState *state, piRenderer::piReporter *reporter)
+{
+    if (!state || !state->batchRecording)
+        return true;
+    std::unique_lock<std::recursive_mutex> submitLock(state->submitMutex);
+    state->batchRecording = false;
+    piRTarget target = state->batchTarget;
+    state->batchTarget = nullptr;
+    const uint64_t timeout = 5000000000ull;
+    // Perf probe: time spent RECORDING (draws + per-draw descriptor alloc/update,
+    // all CPU) vs the GPU submit+wait, to localize the ~97ms/eye cost.
+    const uint64_t recordDoneNs = iNowNanoseconds();
+    const uint64_t recordNs = state->batchOpenNs ? (recordDoneNs - state->batchOpenNs) : 0;
+    state->vkCmdEndRenderPass(state->commandBuffer);
+    VkResult result = state->vkEndCommandBuffer(state->commandBuffer);
+    if (result != VK_SUCCESS)
+        return false;
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &state->commandBuffer;
+    const uint64_t submitStartNs = iNowNanoseconds();
+    result = state->vkQueueSubmit(state->graphicsQueue, 1, &submitInfo, state->frameFence);
+    if (result != VK_SUCCESS)
+        return false;
+    result = state->vkWaitForFences(state->device, 1, &state->frameFence, 1, timeout);
+    if (result != VK_SUCCESS)
+        return false;
+    const uint64_t waitNs = iNowNanoseconds() - submitStartNs;
+    if (target && target->color[0])
+        target->color[0]->imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    if (!state->batchReported)
+    {
+        state->batchReported = true;
+        char message[128];
+        std::snprintf(message, sizeof(message), "Vulkan renderer batched eye-frame: %u draws in one submit", state->batchDrawCount);
+        iReport(reporter, message);
+    }
+    if ((++state->perfProbeCount % 30u) == 0u)
+    {
+        char m[192];
+        std::snprintf(m, sizeof(m), "IMM_PERF eye: record(cpu)=%.2fms [descAlloc+update=%.2fms] flushSubmitWait(gpu)=%.2fms draws=%u",
+                      (double)recordNs / 1.0e6, (double)state->batchDescNs / 1.0e6, (double)waitNs / 1.0e6, state->batchDrawCount);
+        iReport(reporter, m);
+    }
+    return true;
+}
+
+// Open a batch on `target` if one is not already open on it (flushing first if a
+// batch is open on a different target). Resets the transient-uniform ring and the
+// per-draw descriptor pools so this eye's draws get fresh slices/sets. The render
+// pass uses LOAD (the clears already ran in Begin), so draws accumulate as before.
+static bool iEnsureBatchOpen(piVulkanState *state, piRTarget target, piRenderer::piReporter *reporter)
+{
+    if (!state || !target)
+        return false;
+    if (state->batchRecording && state->batchTarget == target)
+        return true;
+    if (state->batchRecording && !iFlushBatch(state, reporter))
+        return false;
+    std::unique_lock<std::recursive_mutex> submitLock(state->submitMutex);
+    const uint64_t timeout = 5000000000ull;
+    VkResult result = state->vkWaitForFences(state->device, 1, &state->frameFence, 1, timeout);
+    if (result != VK_SUCCESS)
+        return false;
+    state->vkResetFences(state->device, 1, &state->frameFence);
+    state->vkResetCommandBuffer(state->commandBuffer, 0);
+    state->hostTransientUniformOffset = 0;
+    if (state->batchPaintDescriptorPool != VK_NULL_DESCRIPTOR_POOL && state->vkResetDescriptorPool)
+        state->vkResetDescriptorPool(state->device, state->batchPaintDescriptorPool, 0);
+    if (state->batchPictureDescriptorPool != VK_NULL_DESCRIPTOR_POOL && state->vkResetDescriptorPool)
+        state->vkResetDescriptorPool(state->device, state->batchPictureDescriptorPool, 0);
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    result = state->vkBeginCommandBuffer(state->commandBuffer, &beginInfo);
+    if (result != VK_SUCCESS)
+        return false;
+    VkRenderPassBeginInfo renderPassBegin = {};
+    renderPassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassBegin.renderPass = target->renderPass;
+    renderPassBegin.framebuffer = target->framebuffer;
+    renderPassBegin.renderArea.offset.x = 0;
+    renderPassBegin.renderArea.offset.y = 0;
+    renderPassBegin.renderArea.extent.width = target->width;
+    renderPassBegin.renderArea.extent.height = target->height;
+    state->vkCmdBeginRenderPass(state->commandBuffer, &renderPassBegin, VK_SUBPASS_CONTENTS_INLINE);
+    state->batchRecording = true;
+    state->batchTarget = target;
+    state->batchDrawCount = 0;
+    state->batchDescNs = 0;
+    state->batchOpenNs = iNowNanoseconds();
+    return true;
+}
+
+// Allocate one descriptor set from a batch pool. Returns VK_NULL on exhaustion,
+// which the caller handles by flushing (resets the pool) and reopening.
+static VkDescriptorSet iAllocateBatchDescriptorSet(piVulkanState *state, VkDescriptorPool pool, VkDescriptorSetLayout layout)
+{
+    if (!state || pool == VK_NULL_DESCRIPTOR_POOL || layout == VK_NULL_DESCRIPTOR_SET_LAYOUT || !state->vkAllocateDescriptorSets)
+        return VK_NULL_DESCRIPTOR_SET;
+    VkDescriptorSetAllocateInfo allocateInfo = {};
+    allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocateInfo.descriptorPool = pool;
+    allocateInfo.descriptorSetCount = 1;
+    allocateInfo.pSetLayouts = &layout;
+    VkDescriptorSet set = VK_NULL_DESCRIPTOR_SET;
+    if (state->vkAllocateDescriptorSets(state->device, &allocateInfo, &set) != VK_SUCCESS)
+        return VK_NULL_DESCRIPTOR_SET;
+    return set;
 }
 
 static bool iSubmitStaticPaintDraw(piVulkanState *state, piShader shader, piRTarget target, piVertexArray vertexArray, uint32_t num, uint32_t numInstances, uint32_t baseVertex, uint32_t baseInstance, uint32_t baseIndex, piRenderer::piReporter *reporter)
@@ -3925,9 +4205,30 @@ static bool iSubmitStaticPaintDraw(piVulkanState *state, piShader shader, piRTar
         iReport(reporter, message);
     }
 
+    const bool batchActive = iBatchActiveForTarget(state, target);
+    VkDescriptorSet paintSet = state->staticPaintDescriptorSet;
     const uint64_t timeout = 5000000000ull;
     VkResult result = VK_SUCCESS;
-    if (!hostRenderPass)
+    if (batchActive)
+    {
+        if (!iEnsureBatchOpen(state, target, reporter))
+            return false;
+        // Fresh per-draw descriptor set: the shared paint set gets re-pointed at
+        // this chunk/layer's ring slice + this brush's vertex buffer, and all
+        // batched draws execute at a single submit, so each needs its own set.
+        const uint64_t descStartNs = iNowNanoseconds();
+        paintSet = iAllocateBatchDescriptorSet(state, state->batchPaintDescriptorPool, state->staticPaintDescriptorSetLayout);
+        if (paintSet == VK_NULL_DESCRIPTOR_SET)
+        {
+            if (!iFlushBatch(state, reporter) || !iEnsureBatchOpen(state, target, reporter))
+                return false;
+            paintSet = iAllocateBatchDescriptorSet(state, state->batchPaintDescriptorPool, state->staticPaintDescriptorSetLayout);
+        }
+        if (paintSet == VK_NULL_DESCRIPTOR_SET || !iUpdateStaticPaintDescriptorSet(state, paintSet, reporter))
+            return false;
+        state->batchDescNs += iNowNanoseconds() - descStartNs;
+    }
+    else if (!hostRenderPass)
     {
         result = state->vkWaitForFences(state->device, 1, &state->frameFence, 1, timeout);
         if (result != VK_SUCCESS)
@@ -3973,12 +4274,23 @@ static bool iSubmitStaticPaintDraw(piVulkanState *state, piShader shader, piRTar
     state->vkCmdSetViewport(state->commandBuffer, 0, 1, &viewport);
     state->vkCmdSetScissor(state->commandBuffer, 0, 1, &scissor);
     state->vkCmdBindPipeline(state->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shader->pipeline);
-    state->vkCmdBindDescriptorSets(state->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shader->pipelineLayout, 0, 1, &state->staticPaintDescriptorSet, 0, nullptr);
+    state->vkCmdBindDescriptorSets(state->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shader->pipelineLayout, 0, 1, &paintSet, 0, nullptr);
     const VkIndexType indexType = vertexArray->indexFormat == piRenderer::IndexArrayFormat::UINT_32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16;
     state->vkCmdBindIndexBuffer(state->commandBuffer, vertexArray->indexBuffer->buffer, 0, indexType);
     state->vkCmdDrawIndexed(state->commandBuffer, num, numInstances, baseIndex, (int32_t)baseVertex, baseInstance);
-    if (hostRenderPass)
+    if (hostRenderPass || batchActive)
     {
+        if (batchActive)
+        {
+            ++state->batchDrawCount;
+            if (!state->drawSubmittedReported)
+            {
+                // Recorded now, submitted once at eye-frame flush. Emitted here so
+                // the submit-evidence gate (viewer smoke) still sees paint activity.
+                iReport(reporter, "Vulkan renderer submitted static paint draw commands");
+                state->drawSubmittedReported = true;
+            }
+        }
         return true;
     }
 
@@ -4284,9 +4596,25 @@ static bool iSubmitPictureDraw(piVulkanState *state, piShader shader, piRTarget 
         return false;
     }
 
+    const bool batchActive = iBatchActiveForTarget(state, target);
+    VkDescriptorSet pictureSet = state->pictureDescriptorSet;
     const uint64_t timeout = 5000000000ull;
     VkResult result = VK_SUCCESS;
-    if (!hostRenderPass)
+    if (batchActive)
+    {
+        if (!iEnsureBatchOpen(state, target, reporter))
+            return false;
+        pictureSet = iAllocateBatchDescriptorSet(state, state->batchPictureDescriptorPool, state->pictureDescriptorSetLayout);
+        if (pictureSet == VK_NULL_DESCRIPTOR_SET)
+        {
+            if (!iFlushBatch(state, reporter) || !iEnsureBatchOpen(state, target, reporter))
+                return false;
+            pictureSet = iAllocateBatchDescriptorSet(state, state->batchPictureDescriptorPool, state->pictureDescriptorSetLayout);
+        }
+        if (pictureSet == VK_NULL_DESCRIPTOR_SET || !iUpdatePictureDescriptorSet(state, pictureSet, reporter))
+            return false;
+    }
+    else if (!hostRenderPass)
     {
         result = state->vkWaitForFences(state->device, 1, &state->frameFence, 1, timeout);
         if (result != VK_SUCCESS)
@@ -4353,7 +4681,7 @@ static bool iSubmitPictureDraw(piVulkanState *state, piShader shader, piRTarget 
     state->vkCmdSetViewport(state->commandBuffer, 0, 1, &viewport);
     state->vkCmdSetScissor(state->commandBuffer, 0, 1, &scissor);
     state->vkCmdBindPipeline(state->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shader->pipeline);
-    state->vkCmdBindDescriptorSets(state->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shader->pipelineLayout, 0, 1, &state->pictureDescriptorSet, 0, nullptr);
+    state->vkCmdBindDescriptorSets(state->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shader->pipelineLayout, 0, 1, &pictureSet, 0, nullptr);
     VkDeviceSize vertexOffset = 0;
     state->vkCmdBindVertexBuffers(state->commandBuffer, 0, 1, &vertexArray->vertexBuffer[0]->buffer, &vertexOffset);
     const VkIndexType indexType = vertexArray->indexFormat == piRenderer::IndexArrayFormat::UINT_32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16;
@@ -4365,8 +4693,18 @@ static bool iSubmitPictureDraw(piVulkanState *state, piShader shader, piRTarget 
         return true;
     }
     state->vkCmdDrawIndexed(state->commandBuffer, num, numInstances, baseIndex, 0, 0);
-    if (hostRenderPass)
+    if (hostRenderPass || batchActive)
     {
+        if (batchActive)
+        {
+            ++state->batchDrawCount;
+            if (!state->pictureDrawReported)
+            {
+                // Recorded now, submitted once at eye-frame flush (see paint note).
+                iReport(reporter, "Vulkan renderer submitted picture draw commands");
+                state->pictureDrawReported = true;
+            }
+        }
         return true;
     }
 
@@ -4412,6 +4750,13 @@ static bool iSubmitPictureQuadDraw(piVulkanState *state, piShader shader, piRTar
         state->pictureDescriptorSet == VK_NULL_DESCRIPTOR_SET)
     {
         return false;
+    }
+
+    // This quad path is not batched; if a batched eye-frame is open, flush it so
+    // this draw's own submit does not corrupt the shared command buffer.
+    if (!hostRenderPass && state->batchRecording)
+    {
+        iFlushBatch(state, reporter);
     }
 
     const uint64_t timeout = 5000000000ull;
@@ -6122,6 +6467,16 @@ void piRendererVulkan::Deinitialize(void)
             mState->presentDescriptorPool = VK_NULL_DESCRIPTOR_POOL;
             mState->presentDescriptorSet = VK_NULL_DESCRIPTOR_SET;
         }
+        if (mState->batchPaintDescriptorPool != VK_NULL_DESCRIPTOR_POOL && mState->vkDestroyDescriptorPool)
+        {
+            mState->vkDestroyDescriptorPool(mState->device, mState->batchPaintDescriptorPool, nullptr);
+            mState->batchPaintDescriptorPool = VK_NULL_DESCRIPTOR_POOL;
+        }
+        if (mState->batchPictureDescriptorPool != VK_NULL_DESCRIPTOR_POOL && mState->vkDestroyDescriptorPool)
+        {
+            mState->vkDestroyDescriptorPool(mState->device, mState->batchPictureDescriptorPool, nullptr);
+            mState->batchPictureDescriptorPool = VK_NULL_DESCRIPTOR_POOL;
+        }
         if (mState->staticPaintDescriptorSetLayout != VK_NULL_DESCRIPTOR_SET_LAYOUT && mState->vkDestroyDescriptorSetLayout)
         {
             mState->vkDestroyDescriptorSetLayout(mState->device, mState->staticPaintDescriptorSetLayout, nullptr);
@@ -6417,6 +6772,12 @@ static void iDestroyPresentScratch(piVulkanState *state, VkImage image, VkImageV
 
 void piRendererVulkan::SwapBuffers(void)
 {
+    // The standalone-viewer / own-swapchain path records its frame into a batch
+    // (SetRenderTarget(nullptr) usually flushed it already; this is the backstop).
+    if (mState && mState->batchRecording)
+    {
+        iFlushBatch(mState, mReporter);
+    }
     if (!mState || mState->swapchain == VK_NULL_SWAPCHAIN_KHR || mState->commandBuffer == VK_NULL_COMMAND_BUFFER ||
         mState->imageAvailableSemaphore == VK_NULL_SEMAPHORE || mState->renderFinishedSemaphore == VK_NULL_SEMAPHORE ||
         mState->frameFence == VK_NULL_FENCE)
@@ -7032,6 +7393,14 @@ void piRendererVulkan::EndExternalImageFrame(void)
         return;
     }
 
+    // Flush the batched eye-frame (one submit for all draws) before the color
+    // image is transitioned to shader-read for compositing. iFlushBatch leaves
+    // it in COLOR_ATTACHMENT_OPTIMAL, which the transition below expects.
+    if (mState->batchRecording)
+    {
+        iFlushBatch(mState, mReporter);
+    }
+
     const bool wasHostRenderPassFrame = mState->hostRenderPassFrameActive;
     if (mState->externalFrameColorTexture && mState->handleProbeLogCount < 60)
     {
@@ -7565,6 +7934,13 @@ void piRendererVulkan::DestroyRenderTarget(piRTarget obj)
 
 bool piRendererVulkan::SetRenderTarget(piRTarget obj)
 {
+    // A batched eye-frame is bracketed by the render target it draws into, so a
+    // target switch (including ->nullptr at end-of-frame, e.g. the standalone
+    // viewer before SwapBuffers) flushes the open batch's single submit.
+    if (mState && mState->batchRecording && obj != mState->batchTarget)
+    {
+        iFlushBatch(mState, mReporter);
+    }
     if (mState) mState->currentRenderTarget = obj;
     return obj == nullptr || obj->framebuffer != VK_NULL_FRAMEBUFFER;
 }
@@ -7579,6 +7955,12 @@ void piRendererVulkan::Clear(const float *color0, const float *color1, const flo
     (void)color1;
     (void)color2;
     (void)color3;
+    // Clears submit their own command buffer outside a render pass; a batch that
+    // is somehow open must be flushed first (normally clears precede all draws).
+    if (mState && mState->batchRecording)
+    {
+        iFlushBatch(mState, mReporter);
+    }
     if (!mState || !mState->currentRenderTarget)
     {
         return;
@@ -7783,6 +8165,12 @@ void piRendererVulkan::GetTextureContent(piTexture me, void *data, const Format 
     {
         return;
     }
+    // A GPU readback (RT dump / PPM capture) must see submitted work: flush any
+    // batch still recording so we never read a texture mid-batch.
+    if (mState && mState->batchRecording)
+    {
+        iFlushBatch(mState, mReporter);
+    }
     if (me->image != 0 && mState && mState->gpuPaintDrawCount > 0 && !iReadBackTextureImage(mState, me, mReporter))
     {
         iUnsupported(mState, mReporter, piVulkanUnsupportedFeature::TextureReadback, "Vulkan texture GPU readback failed");
@@ -7928,6 +8316,21 @@ void piRendererVulkan::DestroyShader(piShader obj)
     if (!obj) return;
     if (mState && mState->device != VK_NULL_DEVICE)
     {
+        // Destroy all cached pipeline variants (paint). obj->pipeline aliases one of
+        // them, so clear it after to avoid a double-free below; picture shaders keep
+        // no variants and destroy obj->pipeline directly.
+        for (int vi = 0; vi < obj->pipelineVariantCount; ++vi)
+        {
+            if (obj->pipelineVariants[vi].pipeline != VK_NULL_PIPELINE && mState->vkDestroyPipeline)
+                mState->vkDestroyPipeline(mState->device, obj->pipelineVariants[vi].pipeline, nullptr);
+            obj->pipelineVariants[vi].pipeline = VK_NULL_PIPELINE;
+        }
+        if (obj->pipelineVariantCount > 0)
+        {
+            obj->pipeline = VK_NULL_PIPELINE;
+            obj->pipelineRenderPass = VK_NULL_RENDER_PASS;
+        }
+        obj->pipelineVariantCount = 0;
         if (obj->pipeline != VK_NULL_PIPELINE && mState->vkDestroyPipeline)
         {
             mState->vkDestroyPipeline(mState->device, obj->pipeline, nullptr);
@@ -8025,7 +8428,14 @@ void piRendererVulkan::UpdateBuffer(piBuffer obj, const void *data, int offset, 
     (void)invalidate;
     if (!obj || !data || offset < 0 || len < 0 || (unsigned int)(offset + len) > obj->size) return;
     std::memcpy(obj->data + offset, data, (size_t)len);
-    if (mState && mState->hostRenderPassFrameActive && obj->use == BufferUse::Constant && offset == 0)
+    // While a batched eye-frame is open (or the host owns the command buffer),
+    // route constant-buffer writes into the per-frame transient ring so each
+    // per-chunk / per-layer update lands in its own GPU slice. Every batched
+    // draw records its own descriptor set pointing at that slice, so a single
+    // end-of-frame submit still sees each draw's own uniforms instead of the
+    // last write. (The first draw's pre-open uniforms stay in the buffer's own
+    // storage, which nothing overwrites once later writes divert to the ring.)
+    if (mState && (mState->hostRenderPassFrameActive || mState->batchRecording) && obj->use == BufferUse::Constant && offset == 0)
     {
         if (iAllocateHostTransientUniformSlice(mState, obj, obj->data, obj->size, mReporter))
         {
@@ -8151,7 +8561,7 @@ void piRendererVulkan::DrawPrimitiveIndexed(PrimitiveType pt, uint32_t num, uint
         mState->currentVertexArray && mState->currentVertexArray->indexBuffer && mState->textures[0])
     {
         piTexture target = mState->currentRenderTarget->color[0];
-        if (iUpdatePictureDescriptorSet(mState, mReporter) &&
+        if (iUpdatePictureDescriptorSet(mState, mState->pictureDescriptorSet, mReporter) &&
             iEnsurePictureGraphicsPipeline(mState, mState->currentShader, mState->currentRenderTarget, mState->currentVertexArray, mReporter) &&
             iSubmitPictureDraw(mState, mState->currentShader, mState->currentRenderTarget, mState->currentVertexArray, num, numInstances, baseIndex, mReporter))
         {
@@ -8268,7 +8678,7 @@ void piRendererVulkan::DrawPrimitiveIndexed(PrimitiveType pt, uint32_t num, uint
     }
 
     piTexture target = mState->currentRenderTarget->color[0];
-    if (!iUpdateStaticPaintDescriptorSet(mState, mReporter) && !mState->descriptorSetFailureReported)
+    if (!iUpdateStaticPaintDescriptorSet(mState, mState->staticPaintDescriptorSet, mReporter) && !mState->descriptorSetFailureReported)
     {
         mState->descriptorSetFailureReported = true;
         iError(mReporter, "Vulkan renderer failed to update static paint descriptor set");
@@ -8488,7 +8898,7 @@ void piRendererVulkan::DrawUnitQuad_XY(int numInstanced)
         }
         piTexture target = mState->currentRenderTarget->color[0];
         const uint32_t instanceCount = numInstanced > 0 ? (uint32_t)numInstanced : 1u;
-        if (iUpdatePictureDescriptorSet(mState, mReporter) &&
+        if (iUpdatePictureDescriptorSet(mState, mState->pictureDescriptorSet, mReporter) &&
             iEnsurePictureGraphicsPipeline(mState, mState->currentShader, mState->currentRenderTarget, nullptr, mReporter) &&
             iSubmitPictureQuadDraw(mState, mState->currentShader, mState->currentRenderTarget, instanceCount, mReporter))
         {

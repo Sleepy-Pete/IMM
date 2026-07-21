@@ -169,3 +169,21 @@ full Vulkan root-cause history. Short version: Unity's command buffer is NOT rec
 plugin-event time on Quest (crash root cause); Unity's queue must not be touched mid-frame;
 IMM therefore renders on its own second graphics queue, and content must be composited back
 through Unity (offscreen RT + material blit) rather than written into the eye buffer directly.
+
+## 7. Editor non-VR reference capture (headless ground-truth for comparison)
+
+The on-device RT dump is NOT trustworthy for orientation: it goes through `Texture2D.ReadPixels`,
+which itself Y-flips, so "dump looks upright" != "headset looks upright" (this misled a whole
+debugging pass). Use the editor's non-VR render as the orientation/content/depth ground truth:
+
+1. Open the non-VR scene `Assets/Scenes/SampleScene.unity` (no `XrSceneBootstrap` component ->
+   flat D3D11; Main Camera renders IMM via the Windows `ImmUnityPlugin.dll` in Plugins/x86_64).
+2. Enter play mode (MCP `editor-application-set-state isPlaying=true`); wait for IMM to load
+   (`[IMM_HEARTBEAT]` / `[IMM_PRECULL]` logs, ~1-2s).
+3. Capture MCP `screenshot-game-view`. This is the CORRECT scene: character upright and FACING
+   the viewer, real front-to-back depth, butterfly by its head, light upper-right.
+4. Compare every Quest RT dump (`imm_rt_eye{0,1}.png`) against it: content complete? depth
+   present (not flat)? orientation consistent (remembering the ReadPixels flip)?
+
+Judge orientation/content/depth headlessly against this reference; only final headset
+confirmation (stereo separation, tracking feel, recenter/placement) needs the device.
