@@ -490,6 +490,61 @@ namespace ImmPlayer
             }
         }
 
+        // World->tracking-space matrix published by the free-fly rig (Assets/
+        // Scripts/ImmFreeFly.cs). Identity when the rig hasn't moved. Folded
+        // into the XR-params eye views under IMM_UNITY_VK_FREEFLY_COMPOSE.
+        public static Matrix4x4 ExternalWorldToTracking = Matrix4x4.identity;
+
+        private GameObject _compositeQuad;
+        private Material _compositeQuadMaterial;
+        private bool _compositeQuadFailed;
+
+        // In-pass composite: a fullscreen quad in Unity's own camera pass
+        // replaces the per-eye CommandBuffer.Blit (the blit's render-target
+        // switch broke Unity's pass and measured ~9ms/frame on Quest 3).
+        // Kill-switch IMM_UNITY_VK_NO_COMPOSITE_QUAD restores the blit.
+        private Material EnsureCompositeQuad(Camera cam, PerCameraInfo info)
+        {
+            if (_compositeQuadFailed || cam == null)
+                return null;
+            if (_compositeQuadMaterial == null)
+            {
+                Shader shader = Resources.Load<Shader>("ImmVulkanCompositeQuad");
+                if (shader == null)
+                {
+                    _compositeQuadFailed = true;
+                    Debug.LogWarning("[IMM_QUAD] ImmVulkanCompositeQuad shader missing from Resources; falling back to Blit composite");
+                    return null;
+                }
+                _compositeQuadMaterial = new Material(shader);
+                _compositeQuadMaterial.SetFloat("_FlipY", IsEnvFlagEnabled("IMM_UNITY_VK_QUAD_FLIPY") ? 1f : 0f);
+                Debug.Log("[IMM_QUAD] composite quad material created (in-pass composite active)");
+            }
+            if (_compositeQuad == null)
+            {
+                _compositeQuad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                _compositeQuad.name = "ImmVulkanCompositeQuad";
+                var collider = _compositeQuad.GetComponent<Collider>();
+                if (collider != null)
+                    Destroy(collider);
+                var renderer = _compositeQuad.GetComponent<MeshRenderer>();
+                renderer.sharedMaterial = _compositeQuadMaterial;
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+                renderer.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+                // Parent in front of the camera purely to defeat frustum culling;
+                // the shader emits fullscreen clip-space coordinates regardless.
+                _compositeQuad.transform.SetParent(cam.transform, false);
+                _compositeQuad.transform.localPosition = new Vector3(0f, 0f, 0.5f);
+                Debug.Log("[IMM_QUAD] composite quad created under camera");
+            }
+            if (info.VulkanEyeTargets[0] != null)
+                _compositeQuadMaterial.SetTexture("_EyeTex0", info.VulkanEyeTargets[0]);
+            if (info.VulkanEyeTargets[1] != null)
+                _compositeQuadMaterial.SetTexture("_EyeTex1", info.VulkanEyeTargets[1]);
+            return _compositeQuadMaterial;
+        }
+
         private Material GetVulkanCompositeMaterial()
         {
             if (_vulkanCompositeMaterial == null)
@@ -506,13 +561,26 @@ namespace ImmPlayer
                         _vulkanCompositeMaterial = new Material(shader);
                     Debug.LogWarning("[IMM_UNITY_VK_OFFSCREEN_20260716] ImmVulkanComposite material missing from Resources; Shader.Find fallback " + (_vulkanCompositeMaterial != null ? "succeeded" : "FAILED"));
                 }
-                if (_vulkanCompositeMaterial != null && !IsEnvFlagEnabled("IMM_UNITY_VK_NO_COMPOSITE_VFLIP"))
+                if (_vulkanCompositeMaterial != null)
                 {
-                    // IMM renders the offscreen RT bottom-up relative to Unity's
-                    // sampling convention (headset showed the scene upside down);
-                    // flip V in the composite sample. Flag reverts without rebuild.
-                    _vulkanCompositeMaterial.SetTextureScale("_MainTex", new Vector2(1f, -1f));
-                    _vulkanCompositeMaterial.SetTextureOffset("_MainTex", new Vector2(0f, 1f));
+                    // Parity has ONE owner: the native Vulkan renderer draws with a
+                    // negative-viewport-height (GL-convention projection in, top-down
+                    // image out), and C# sends the BACKBUFFER-convention projection on
+                    // this path (UseRenderIntoTextureProjection returns false for the
+                    // stereo Quest camera). The offscreen RT is therefore already
+                    // display-oriented and the composite must NOT flip. The old (1,-1)
+                    // flip was calibrated against a texture-convention projection
+                    // default that no longer exists; with today's parity it inverted
+                    // the headset view (look-up-goes-down + broken stereo fusion on
+                    // Quest's vertically-asymmetric frusta = "no depth").
+                    // A/B without rebuild: IMM_UNITY_VK_COMPOSITE_VFLIP restores the flip.
+                    // Always write ST explicitly - the loaded asset may carry a stale
+                    // serialized flip from earlier sessions.
+                    bool flip = IsEnvFlagEnabled("IMM_UNITY_VK_COMPOSITE_VFLIP") &&
+                                !IsEnvFlagEnabled("IMM_UNITY_VK_NO_COMPOSITE_VFLIP");
+                    _vulkanCompositeMaterial.SetTextureScale("_MainTex", new Vector2(1f, flip ? -1f : 1f));
+                    _vulkanCompositeMaterial.SetTextureOffset("_MainTex", new Vector2(0f, flip ? 1f : 0f));
+                    Debug.Log($"[IMM_VK_PARITY] compositeVFlip={flip} projectionOwner=native-negative-viewport (composite samples RT unflipped by default)");
                 }
             }
             return _vulkanCompositeMaterial;
@@ -702,6 +770,21 @@ namespace ImmPlayer
                 !cam.stereoEnabled)
                 return true;
 
+            // Quest Vulkan offscreen-composite path (stereo XR camera): use the
+            // TEXTURE-convention GPU projection (Y-flipped). In-headset A/B
+            // 2026-07-26: with the backbuffer convention the pitch response was
+            // inverted (look up -> world goes down) regardless of the composite
+            // V-flip setting, and the 07-21 session independently noted forcing
+            // texture-projection "improved look-around/tracking". The projection
+            // is the flip owner that provably reaches the render; the composite
+            // stays unflipped (see GetVulkanCompositeMaterial). Override for A/B
+            // with IMM_UNITY_FORCE_BACKBUFFER_PROJECTION (checked above).
+            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Vulkan &&
+                Application.platform == RuntimePlatform.Android &&
+                cam != null &&
+                cam.stereoEnabled)
+                return true;
+
             // Unity can mark Game cameras as stereo/XR-active even when we are
             // validating the editor Game view. Do not use stereoEnabled as a
             // proxy for render-into-texture projection. SceneView is the other
@@ -824,6 +907,16 @@ namespace ImmPlayer
                 if (TryGetXrEyeViewProjection(cam, 0, out Matrix4x4 leftView, out Matrix4x4 leftProj) &&
                     TryGetXrEyeViewProjection(cam, 1, out Matrix4x4 rightView, out Matrix4x4 rightProj))
                 {
+                    // Free-fly locomotion (ImmFreeFly moves a rig above the tracked
+                    // camera). If the XR render-parameter views turn out to be
+                    // TRACKING-space (rig ignored), fold the rig in here; if they
+                    // are already world-space this would double-apply - hence the
+                    // runtime flag for the on-device A/B.
+                    if (IsEnvFlagEnabled("IMM_UNITY_VK_FREEFLY_COMPOSE"))
+                    {
+                        leftView = leftView * ExternalWorldToTracking;
+                        rightView = rightView * ExternalWorldToTracking;
+                    }
                     ConvertMatrixToArray(info.WorldToLeft, leftView);
                     ConvertMatrixToArray(info.LeftProj, GL.GetGPUProjectionMatrix(leftProj, renderIntoTexture));
                     ConvertMatrixToArray(info.WorldToRight, rightView);
@@ -998,16 +1091,41 @@ namespace ImmPlayer
                     // right RT was empty (native render side); still dark -> the right
                     // pass composite itself is broken (Unity side).
                     int blitEye = IsEnvFlagEnabled("IMM_UNITY_VK_BLIT_LEFT_RT_BOTH_EYES") ? 0 : (eyeIndex & 1);
-                    RenderTexture eyeTarget = info.VulkanEyeTargets[blitEye];
-                    Material composite = GetVulkanCompositeMaterial();
-                    if (eyeTarget != null && composite != null)
+                    // Composite path: the Blit is the validated default. The in-pass
+                    // overlay quad (opt-in IMM_UNITY_VK_COMPOSITE_QUAD) measured NO
+                    // win over the blit (27.8 vs 29.6 fps stereo, 2026-07-26) and
+                    // showed intermittent per-eye oddness/flicker - the ~9ms
+                    // composite cost is intrinsic fullscreen-alpha work, not blit
+                    // pass-break overhead. Kept for future experiments only.
+                    bool useQuad = IsEnvFlagEnabled("IMM_UNITY_VK_COMPOSITE_QUAD") &&
+                                   !IsEnvFlagEnabled("IMM_UNITY_VK_NO_COMPOSITE_QUAD") &&
+                                   EnsureCompositeQuad(cam, info) != null;
+                    if (useQuad)
                     {
-                        // The plugin event above renders IMM into the offscreen texture
-                        // (fence-completed on IMM's own queue before the callback returns);
-                        // composite it into the eye buffer inside Unity's own pass.
-                        info.CommandBuffer.Blit(eyeTarget, cameraTarget, composite);
+                        // In-pass composite: bind this pass's eye RT through the command
+                        // buffer, which executes INSIDE the eye's pass - immune to the
+                        // cull-both-then-render-both ordering that made a PreCull-time
+                        // Shader.SetGlobalFloat eye index race (both eyes sampled the
+                        // same RT - "vision feels odd").
+                        RenderTexture quadTarget = info.VulkanEyeTargets[blitEye];
+                        if (quadTarget != null)
+                            info.CommandBuffer.SetGlobalTexture("_ImmEyeTex", quadTarget);
                         if (_preCullCount <= 12)
-                            Debug.Log($"[IMM_UNITY_VK_BLIT] n={_preCullCount} eye={eyeIndex} blitEye={blitEye} rt={eyeTarget.GetInstanceID()} colorPtr=0x{eyeTarget.colorBuffer.GetNativeRenderBufferPtr().ToInt64():X}");
+                            Debug.Log($"[IMM_UNITY_VK_QUADEYE] n={_preCullCount} eye={eyeIndex} quadEye={blitEye} viaCB=1");
+                    }
+                    else
+                    {
+                        RenderTexture eyeTarget = info.VulkanEyeTargets[blitEye];
+                        Material composite = GetVulkanCompositeMaterial();
+                        if (eyeTarget != null && composite != null)
+                        {
+                            // The plugin event above renders IMM into the offscreen texture
+                            // (fence-completed on IMM's own queue before the callback returns);
+                            // composite it into the eye buffer inside Unity's own pass.
+                            info.CommandBuffer.Blit(eyeTarget, cameraTarget, composite);
+                            if (_preCullCount <= 12)
+                                Debug.Log($"[IMM_UNITY_VK_BLIT] n={_preCullCount} eye={eyeIndex} blitEye={blitEye} rt={eyeTarget.GetInstanceID()} colorPtr=0x{eyeTarget.colorBuffer.GetNativeRenderBufferPtr().ToInt64():X}");
+                        }
                     }
                 }
                 AppendVulkanOverlayFixtureDraw(info.CommandBuffer, cam);
