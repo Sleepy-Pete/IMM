@@ -1296,6 +1296,10 @@ struct piRTargetS
     piTexture color[4] = { nullptr, nullptr, nullptr, nullptr };
     piTexture depth = nullptr;
     VkRenderPass renderPass = VK_NULL_RENDER_PASS;
+    // CLEAR-variant of renderPass (loadOp=CLEAR, initialLayout=UNDEFINED) for
+    // in-pass eye-frame clears. Load/store ops and layouts do not affect render
+    // pass compatibility, so it shares this target's framebuffer and pipelines.
+    VkRenderPass clearRenderPass = VK_NULL_RENDER_PASS;
     VkFramebuffer framebuffer = VK_NULL_FRAMEBUFFER;
     uint32_t subpass = 0;
     uint32_t width = 0;
@@ -1432,6 +1436,27 @@ struct piVulkanState
     uint64_t batchOpenNs = 0;                                       // timestamp at batch open, for record-vs-wait perf probe
     uint64_t batchDescNs = 0;                                       // accumulated per-draw descriptor alloc+update time this eye
     uint32_t perfProbeCount = 0;
+    // In-pass clears: fold the external eye-frame's color+depth clears into the
+    // batch render pass (LOAD_OP_CLEAR variant) instead of two standalone fenced
+    // submits per eye in BeginExternalImageFrame. On a tiler the render pass
+    // clears tile memory directly (no external traffic), and each removed
+    // submit+vkWaitForFences saves a full CPU-blocking GPU round-trip on Unity's
+    // render thread. Disable with IMM_UNITY_VK_NO_INPASS_CLEAR.
+    int inPassClearResolved = -1;                                   // -1 unknown, 0 off, 1 on
+    bool externalFramePendingInPassClear = false;                   // clears deferred to the batch's first render-pass begin
+    bool inPassClearReported = false;
+    // Batched end-of-eye transition: record the color->SHADER_READ_ONLY barrier
+    // into the batch command buffer itself (after vkCmdEndRenderPass) so it
+    // rides the batch's single fenced submit, replacing the standalone
+    // iTransitionColorTextureToShaderRead submit+wait round-trip in
+    // EndExternalImageFrame. Disable with IMM_UNITY_VK_NO_BATCHED_TRANSITION.
+    int batchedTransitionResolved = -1;                             // -1 unknown, 0 off, 1 on
+    bool batchAppendShaderReadTransition = false;                   // set by EndExternalImageFrame for its (end-of-eye) flush only
+    bool batchedTransitionReported = false;
+    // Reverse-Z on the external eye path (Unity Vulkan projections are always
+    // reversed-Z): GREATER compare + 0.0 depth clear. See iExternalReverseZEnabled.
+    int externalReverseZResolved = -1;                              // -1 unknown, 0 off, 1 on
+    bool externalReverseZReported = false;
     uint32_t presentFrameIndex = 0;
     bool realPresentReported = false;
     bool texturePresentReported = false;
@@ -3788,6 +3813,9 @@ static VkCullModeFlags iToVulkanCullMode(piRenderer::CullMode mode)
     }
 }
 
+static bool iExternalReverseZEnabled(piVulkanState *state);
+static bool iExternalReverseZActiveForTarget(piVulkanState *state, piRTarget target);
+
 static bool iEnsureStaticPaintGraphicsPipeline(piVulkanState *state, piShader shader, piRTarget target, piRenderer::piReporter *reporter)
 {
     if (!state || !shader || !target || state->device == VK_NULL_DEVICE)
@@ -3849,8 +3877,14 @@ static bool iEnsureStaticPaintGraphicsPipeline(piVulkanState *state, piShader sh
     const bool useHostReverseZCompare = state->externalFrameUsesHostDepth &&
                                         state->externalFrameHostDepthReverseZ &&
                                         target == state->externalFrameRenderTarget;
+    const bool useExternalReverseZ = iExternalReverseZActiveForTarget(state, target);
+    if (useExternalReverseZ && !state->externalReverseZReported)
+    {
+        state->externalReverseZReported = true;
+        iReport(reporter, "Vulkan renderer external reverse-Z ACTIVE: depth compare GREATER, clear 0.0");
+    }
     const bool depthWrite = depthTest && state->depthWriteEnabled;
-    const VkCompareOp depthCompareOp = useHostReverseZCompare || (state->currentDepthState && !state->currentDepthState->lessEqual) ? VK_COMPARE_OP_GREATER_OR_EQUAL : VK_COMPARE_OP_LESS_OR_EQUAL;
+    const VkCompareOp depthCompareOp = useHostReverseZCompare || useExternalReverseZ || (state->currentDepthState && !state->currentDepthState->lessEqual) ? VK_COMPARE_OP_GREATER_OR_EQUAL : VK_COMPARE_OP_LESS_OR_EQUAL;
     piBlendState blendState = state->currentBlendState;
     const bool alphaToCoverage = blendState && blendState->alphaToCoverage;
     const bool blendEnabled = blendState && blendState->enabled0;
@@ -4029,6 +4063,52 @@ static bool iBatchEnabled(piVulkanState *state)
     return state->batchEnabledResolved != 0;
 }
 
+// In-pass eye-frame clears (see piVulkanState declaration). Only meaningful when
+// batching is on: the clear rides the batch's render-pass begin.
+static bool iInPassClearEnabled(piVulkanState *state)
+{
+    if (!state)
+        return false;
+    if (state->inPassClearResolved < 0)
+        state->inPassClearResolved = iRendererFlagEnabled("IMM_UNITY_VK_NO_INPASS_CLEAR") ? 0 : 1;
+    return state->inPassClearResolved != 0;
+}
+
+// Batched end-of-eye shader-read transition (see piVulkanState declaration).
+static bool iBatchedTransitionEnabled(piVulkanState *state)
+{
+    if (!state)
+        return false;
+    if (state->batchedTransitionResolved < 0)
+        state->batchedTransitionResolved = iRendererFlagEnabled("IMM_UNITY_VK_NO_BATCHED_TRANSITION") ? 0 : 1;
+    return state->batchedTransitionResolved != 0;
+}
+
+// External-frame reverse-Z: Unity's Vulkan GPU projections are ALWAYS
+// reversed-Z (near maps to 1, far to 0 - confirmed on-device via the
+// [IMMDBG_NEAR] probe: gpu m22=0.0003, m23=0.30009). The offscreen eye path
+// therefore needs depth compare GREATER_OR_EQUAL and a 0.0 depth clear;
+// LESS + clear-1.0 makes far fragments beat near ones (inverted occlusion).
+// The host-depth path already handles this via IMM_UNITY_VK_HOST_DEPTH_REVERSE_Z.
+// Disable with IMM_UNITY_VK_NO_EXTERNAL_REVERSE_Z.
+static bool iExternalReverseZEnabled(piVulkanState *state)
+{
+    if (!state)
+        return false;
+    if (state->externalReverseZResolved < 0)
+        state->externalReverseZResolved = iRendererFlagEnabled("IMM_UNITY_VK_NO_EXTERNAL_REVERSE_Z") ? 0 : 1;
+    return state->externalReverseZResolved != 0;
+}
+
+// True when draws into `target` are the external offscreen eye frame fed by
+// Unity's reversed-Z projections (host-depth path excluded - it has its own flag).
+static bool iExternalReverseZActiveForTarget(piVulkanState *state, piRTarget target)
+{
+    return state && !state->hostRenderPassFrameActive &&
+           state->externalFrameRenderTarget != nullptr && target == state->externalFrameRenderTarget &&
+           !state->externalFrameUsesHostDepth && iExternalReverseZEnabled(state);
+}
+
 // True when a draw into `target` should be recorded into one shared, batched
 // command buffer (external-image eye frame or the viewer's own-swapchain frame)
 // and submitted once at the eye boundary, rather than doing its own submit+fence.
@@ -4060,6 +4140,43 @@ static bool iFlushBatch(piVulkanState *state, piRenderer::piReporter *reporter)
     const uint64_t recordDoneNs = iNowNanoseconds();
     const uint64_t recordNs = state->batchOpenNs ? (recordDoneNs - state->batchOpenNs) : 0;
     state->vkCmdEndRenderPass(state->commandBuffer);
+    // End-of-eye flush (flag set only by EndExternalImageFrame): ride the
+    // color->shader-read transition on this already-fenced submit instead of a
+    // standalone submit+wait round-trip. Same barrier
+    // iTransitionColorTextureToShaderRead records; oldLayout is the render
+    // pass's finalLayout (COLOR_ATTACHMENT_OPTIMAL) by definition here.
+    const bool appendTransition = state->batchAppendShaderReadTransition &&
+                                  target && target->color[0] && target->color[0]->image != 0 &&
+                                  state->vkCmdPipelineBarrier != nullptr;
+    state->batchAppendShaderReadTransition = false;
+    if (appendTransition)
+    {
+        VkImageSubresourceRange range = {};
+        range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        range.baseMipLevel = 0;
+        range.levelCount = 1;
+        range.baseArrayLayer = 0;
+        range.layerCount = 1;
+        VkImageMemoryBarrier toShader = {};
+        toShader.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        toShader.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        toShader.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        toShader.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        toShader.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        toShader.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toShader.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        toShader.image = target->color[0]->image;
+        toShader.subresourceRange = range;
+        state->vkCmdPipelineBarrier(state->commandBuffer,
+                                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                    0, 0, nullptr, 0, nullptr, 1, &toShader);
+        if (!state->batchedTransitionReported)
+        {
+            state->batchedTransitionReported = true;
+            iReport(reporter, "Vulkan renderer batched transition ACTIVE: shader-read barrier rides the eye submit");
+        }
+    }
     VkResult result = state->vkEndCommandBuffer(state->commandBuffer);
     if (result != VK_SUCCESS)
         return false;
@@ -4076,7 +4193,8 @@ static bool iFlushBatch(piVulkanState *state, piRenderer::piReporter *reporter)
         return false;
     const uint64_t waitNs = iNowNanoseconds() - submitStartNs;
     if (target && target->color[0])
-        target->color[0]->imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        target->color[0]->imageLayout = appendTransition ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                                                         : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     if (!state->batchReported)
     {
         state->batchReported = true;
@@ -4124,14 +4242,45 @@ static bool iEnsureBatchOpen(piVulkanState *state, piRTarget target, piRenderer:
     result = state->vkBeginCommandBuffer(state->commandBuffer, &beginInfo);
     if (result != VK_SUCCESS)
         return false;
+    // First batch open of an eye with a pending in-pass clear uses the CLEAR
+    // render-pass variant (tile memory is initialized directly; no barrier
+    // needed thanks to initialLayout=UNDEFINED). Mid-eye reopens (descriptor
+    // pool exhaustion flush) find the flag consumed and take the LOAD pass,
+    // preserving already-drawn content.
+    const bool inPassClear = state->externalFramePendingInPassClear &&
+                             target == state->externalFrameRenderTarget &&
+                             target->clearRenderPass != VK_NULL_RENDER_PASS;
+    VkClearValue batchClearValues[5] = {};
     VkRenderPassBeginInfo renderPassBegin = {};
     renderPassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassBegin.renderPass = target->renderPass;
+    renderPassBegin.renderPass = inPassClear ? target->clearRenderPass : target->renderPass;
     renderPassBegin.framebuffer = target->framebuffer;
     renderPassBegin.renderArea.offset.x = 0;
     renderPassBegin.renderArea.offset.y = 0;
     renderPassBegin.renderArea.extent.width = target->width;
     renderPassBegin.renderArea.extent.height = target->height;
+    if (inPassClear)
+    {
+        // Colors: transparent black (zero-init). Depth: far plane - 0.0 under
+        // reverse-Z (Unity Vulkan projections), 1.0 under standard Z.
+        if (target->hasDepth)
+            batchClearValues[target->colorAttachmentCount].depthStencil[0] =
+                iExternalReverseZActiveForTarget(state, target) ? 0.0f : 1.0f;
+        renderPassBegin.clearValueCount = target->colorAttachmentCount + (target->hasDepth ? 1u : 0u);
+        renderPassBegin.pClearValues = batchClearValues;
+        state->externalFramePendingInPassClear = false;
+        // The pass leaves attachments in the same ATTACHMENT_OPTIMAL layouts the
+        // legacy clears did; keep the CPU-side tracking consistent.
+        if (target->color[0])
+            target->color[0]->imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        if (target->depth)
+            target->depth->imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        if (!state->inPassClearReported)
+        {
+            state->inPassClearReported = true;
+            iReport(reporter, "Vulkan renderer in-pass clear ACTIVE: eye clears folded into batch render pass");
+        }
+    }
     state->vkCmdBeginRenderPass(state->commandBuffer, &renderPassBegin, VK_SUBPASS_CONTENTS_INLINE);
     state->batchRecording = true;
     state->batchTarget = target;
@@ -4426,7 +4575,7 @@ static bool iEnsurePictureGraphicsPipeline(piVulkanState *state, piShader shader
     const bool mayUseDepth = target->hasDepth &&
                              (!state->hostRenderPassFrameActive || state->externalFrameUsesHostDepth);
     const bool depthTest = mayUseDepth && state->depthTestEnabled && state->currentDepthState && state->currentDepthState->depthEnable;
-    const VkCompareOp depthCompareOp = useHostDepthTarget && state->externalFrameHostDepthReverseZ ? VK_COMPARE_OP_GREATER_OR_EQUAL : VK_COMPARE_OP_LESS_OR_EQUAL;
+    const VkCompareOp depthCompareOp = (useHostDepthTarget && state->externalFrameHostDepthReverseZ) || iExternalReverseZActiveForTarget(state, target) ? VK_COMPARE_OP_GREATER_OR_EQUAL : VK_COMPARE_OP_LESS_OR_EQUAL;
     if (shader->pipeline != VK_NULL_PIPELINE &&
         shader->pipelineRenderPass == target->renderPass &&
         shader->pipelineSampleCount == sampleCount &&
@@ -5271,7 +5420,7 @@ static bool iClearColorTextureImage(piVulkanState *state, piTexture texture, con
     return true;
 }
 
-static bool iClearDepthTextureImage(piVulkanState *state, piTexture texture, piRenderer::piReporter *reporter)
+static bool iClearDepthTextureImage(piVulkanState *state, piTexture texture, piRenderer::piReporter *reporter, float clearDepthValue = 1.0f)
 {
     std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
     if (!state || !texture || texture->image == 0 ||
@@ -5339,7 +5488,7 @@ static bool iClearDepthTextureImage(piVulkanState *state, piTexture texture, piR
                                 &toTransfer);
 
     VkClearDepthStencilValue clearDepth = {};
-    clearDepth.depth = 1.0f;
+    clearDepth.depth = clearDepthValue;
     clearDepth.stencil = 0;
     state->vkCmdClearDepthStencilImage(state->commandBuffer, texture->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearDepth, 1, &range);
 
@@ -5885,6 +6034,27 @@ static bool iCreateRenderTargetObjects(piVulkanState *state, piRTarget target, p
         state->vkDestroyRenderPass(state->device, target->renderPass, nullptr);
         target->renderPass = VK_NULL_RENDER_PASS;
         return false;
+    }
+
+    // CLEAR-variant render pass for in-pass eye-frame clears: same attachments,
+    // but loadOp=CLEAR with initialLayout=UNDEFINED (contents are discarded, so
+    // the pass is legal from ANY prior layout - including first-frame UNDEFINED
+    // and post-composite SHADER_READ_ONLY - with no barrier). Compatibility with
+    // the framebuffer and cached pipelines is preserved (ops/layouts are ignored
+    // by render-pass compatibility). Failure is non-fatal: VK_NULL falls back to
+    // the legacy standalone clear submits.
+    {
+        for (uint32_t i = 0; i < attachmentCount; ++i)
+        {
+            attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            attachments[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        }
+        VkResult clearResult = state->vkCreateRenderPass(state->device, &renderPassInfo, nullptr, &target->clearRenderPass);
+        if (clearResult != VK_SUCCESS)
+        {
+            target->clearRenderPass = VK_NULL_RENDER_PASS;
+            iReport(reporter, "Vulkan renderer could not create CLEAR render pass variant; using legacy clear submits");
+        }
     }
 
     target->width = width;
@@ -7393,12 +7563,31 @@ void piRendererVulkan::EndExternalImageFrame(void)
         return;
     }
 
-    // Flush the batched eye-frame (one submit for all draws) before the color
-    // image is transitioned to shader-read for compositing. iFlushBatch leaves
-    // it in COLOR_ATTACHMENT_OPTIMAL, which the transition below expects.
+    // Flush the batched eye-frame (one submit for all draws). With batched
+    // transition enabled this flush also carries the color->shader-read
+    // barrier, making the standalone transition below unnecessary (its skip is
+    // keyed off the tracked SHADER_READ_ONLY layout).
     if (mState->batchRecording)
     {
+        mState->batchAppendShaderReadTransition =
+            iBatchedTransitionEnabled(mState) &&
+            !mState->externalFramePreservesHostColor &&
+            mState->externalFrameColorTexture != nullptr;
         iFlushBatch(mState, mReporter);
+    }
+
+    if (mState->externalFramePendingInPassClear)
+    {
+        // No draw opened a batch this eye, so the deferred in-pass clear never
+        // ran. Fall back to the legacy fenced clears so the composite samples a
+        // cleared image rather than stale or undefined contents.
+        mState->externalFramePendingInPassClear = false;
+        const float transparentBlack[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        if (mState->externalFrameColorTexture)
+            iClearColorTextureImage(mState, mState->externalFrameColorTexture, transparentBlack, mReporter);
+        if (mState->externalFrameDepthTexture && !mState->externalFrameUsesHostDepth)
+            iClearDepthTextureImage(mState, mState->externalFrameDepthTexture, mReporter,
+                                    iExternalReverseZEnabled(mState) ? 0.0f : 1.0f);
     }
 
     const bool wasHostRenderPassFrame = mState->hostRenderPassFrameActive;
@@ -7413,6 +7602,7 @@ void piRendererVulkan::EndExternalImageFrame(void)
     }
     if (mState->externalFrameColorTexture &&
         !mState->externalFramePreservesHostColor &&
+        mState->externalFrameColorTexture->imageLayout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL &&
         !iTransitionColorTextureToShaderRead(mState, mState->externalFrameColorTexture))
     {
         iError(mReporter, "Vulkan renderer failed to transition external image frame for host sampling");
@@ -7561,10 +7751,17 @@ bool piRendererVulkan::BeginExternalImageFrame(void *image, uint32_t vkFormat, i
                 continue;
             }
             entry.lastUseSerial = ++mState->externalImageCacheSerial;
+            // With batching + in-pass clears, defer BOTH clears to the batch's
+            // render-pass begin (LOAD_OP_CLEAR variant): saves two standalone
+            // submit+fence GPU round-trips per eye on the hot path.
+            const bool deferClears = iBatchEnabled(mState) && iInPassClearEnabled(mState) &&
+                                     entry.renderTarget->clearRenderPass != VK_NULL_RENDER_PASS;
             const float transparentBlack[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
             if (!SetRenderTarget(entry.renderTarget) ||
-                !iClearColorTextureImage(mState, entry.colorTexture, transparentBlack, mReporter) ||
-                !iClearDepthTextureImage(mState, entry.depthTexture, mReporter))
+                (!deferClears &&
+                 (!iClearColorTextureImage(mState, entry.colorTexture, transparentBlack, mReporter) ||
+                  !iClearDepthTextureImage(mState, entry.depthTexture, mReporter,
+                                           iExternalReverseZEnabled(mState) ? 0.0f : 1.0f))))
             {
                 // Entry unusable - drop it and rebuild through the create path.
                 DestroyRenderTarget(entry.renderTarget);
@@ -7573,6 +7770,7 @@ bool piRendererVulkan::BeginExternalImageFrame(void *image, uint32_t vkFormat, i
                 entry = piVulkanState::ExternalImageCacheEntry();
                 break;
             }
+            mState->externalFramePendingInPassClear = deferClears;
             mState->externalFrameColorTexture = entry.colorTexture;
             mState->externalFrameDepthTexture = entry.depthTexture;
             mState->externalFrameRenderTarget = entry.renderTarget;
@@ -7832,7 +8030,9 @@ bool piRendererVulkan::BeginExternalImageFrameWithView(void *image, void *imageV
         DestroyTexture(colorTexture);
         return false;
     }
-    if ((!hasExternalDepth || clearExternalDepth) && !iClearDepthTextureImage(mState, depthTexture, mReporter))
+    if ((!hasExternalDepth || clearExternalDepth) &&
+        !iClearDepthTextureImage(mState, depthTexture, mReporter,
+                                 iExternalReverseZEnabled(mState) ? 0.0f : 1.0f))
     {
         DestroyRenderTarget(renderTarget);
         DestroyTexture(depthTexture);
@@ -7926,6 +8126,11 @@ void piRendererVulkan::DestroyRenderTarget(piRTarget obj)
         {
             mState->vkDestroyRenderPass(mState->device, obj->renderPass, nullptr);
             obj->renderPass = VK_NULL_RENDER_PASS;
+        }
+        if (obj->clearRenderPass != VK_NULL_RENDER_PASS && mState->vkDestroyRenderPass)
+        {
+            mState->vkDestroyRenderPass(mState->device, obj->clearRenderPass, nullptr);
+            obj->clearRenderPass = VK_NULL_RENDER_PASS;
         }
     }
     if (mState && mState->liveRenderTargets > 0) --mState->liveRenderTargets;
