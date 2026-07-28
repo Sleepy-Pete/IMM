@@ -136,13 +136,39 @@ Each entry: symptom → root cause → fix (commit).
   Vulkan-only, and the device debug flag file is EMPTY — every verified behavior is
   the code default.
 
+## TheQuantumRace.imm — second document, state as of 2026-07-28 night
+
+The user's second document (221 MB, authored scale 0.839x — smaller-than-life, the
+opposite regime from Art of Change's 9x) is selectable via the new
+`IMM_UNITY_DOC_FILE=<name>.imm` flag-file override (`c51c997`).
+
+- **First contact found and killed the renderer's last legacy draw path**: the
+  fullscreen picture quad (360 backdrops) re-began the eye pass with no clear
+  values — fatal on the always-CLEAR MSAA target (driver null-deref in
+  `vkCmdBeginRenderPass`). Fixed by batching the quad like every other picture
+  draw (`c51c997`); headlessly verified — QR loads (~62 s decode), plays, chapters
+  advance, 90 s+ past the old crash point. Art of Change regression-checked clean
+  on the same build. **The batch architecture now covers every draw path.**
+- **In-headset session did not complete**: after several rapid doc-switch
+  launch/stop cycles, the OS degraded — launcher intents parked on
+  `ClearActivity`, one app start froze pre-boot (zero log output, `App=0.00ms`)
+  under system memory pressure (cached-process sweeps, a VrShell service crash),
+  and the headset needed a manual power-cycle. No evidence of an app bug beyond
+  the (fixed) quad crash; the freeze pattern points at OS state worn down by the
+  day's ~30 launch cycles plus three 221 MB loads.
+
+**Next session opener:** fresh-boot headset → single clean Quantum Race launch
+(`IMM_UNITY_DOC_FILE=TheQuantumRace.imm`, direct `am start` — launcher-intent
+wedges bypassed) → the in-headset pass that tonight's freeze pre-empted.
+
 ## Next work
 
-1. Two one-press in-headset verifies: A-at-stop continues, and (with
-   `IMM_UNITY_VK_HOST_DEPTH`) the white cube occluding/occluded by strokes; flip
-   host-depth default-on after it passes. Confirm the deepest scenes hold 72.
+1. Quantum Race in-headset verify on a fresh boot (above), then the two one-press
+   checks: A-at-stop continues; host-depth occlusion with `IMM_UNITY_VK_HOST_DEPTH`
+   (white cube vs strokes) — flip host-depth default-on after it passes. Confirm
+   the deepest scenes hold 72.
 2. **UI panel/volume/browse** (Meta Quill player parity) — the remaining
-   product-scale feature.
+   product-scale feature; the doc-override flag is its seed.
 3. Workflow docs (WiFi-adb + stream + VrApi capture recipes) as they stabilize.
 
 ## Open bugs (parked, non-blocking)
