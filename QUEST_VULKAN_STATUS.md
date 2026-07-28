@@ -94,25 +94,34 @@ Each entry: symptom → root cause → fix (commit).
   minute; always stream, never rely on post-hoc dumps). VrApi 1 Hz lines are the OVR
   metrics feed.
 
+## Completed since first writing (same day, 2026-07-28 afternoon)
+
+- **Semaphore bridge shipped** (`0dae826`): the composite blit is GPU-ordered against
+  the second-queue eye render via a wait-only submission on Unity's queue;
+  single-buffer same-frame eye RTs are the code default (`94515a2`), triple-buffer
+  is opt-in for A/B. User-verified planted world on pure defaults.
+- **MSAA 4×** (`284508a`): transient tile-memory attachments, in-pass resolve into
+  Unity's 1× image, stroke A2C via the player's blend state. User: "looks great";
+  GPU peaks 68%, fps profile unchanged.
+- **Native FFR** (`fa0a54a`): FFR-2 fragment-density map riding the MSAA pass.
+  Quality visually unchanged (the correct FFR outcome); GPU no worse (65% peak).
+- **Auto first-stop** at load verified working; A-button play-from-title variant
+  parked (its `GetCurrentChapter()==0` title detection doesn't match the native
+  chapter model after a skip-back — fix with chapter-state logging).
+- **Gap verdict:** upl/lock/api brackets prove the renderer costs 0.30 ms of the
+  ~4.5 ms per-eye gap; the rest is the player's own loop → simpleperf next.
+
 ## Next work (priority order)
 
-1. **Permanent same-frame composite.** Semaphore bridge: the end-of-eye batch submit
-   signals a `VkSemaphore`; a tiny wait-only submission slipped onto Unity's queue
-   from the render thread (externally synchronized, Unity's state machine untouched)
-   ahead of Unity's frame submission makes the composite blit GPU-ordered against the
-   second-queue eye render. Then single-buffer becomes the default and the triple-
-   buffer path is deleted. Kill-switch per house rules; watch for the queue-pacing
-   regression the second-queue comment warns about.
-2. **Per-draw gap optimization.** Upload chunk/uniform data once per frame instead of
-   per eye + dirty-track unchanged chunks. Target: 72 fps sustained at 74 draws/eye.
-   Profile the player's per-draw dispatch path with the existing gap counter.
-3. **Spawn height tune.** User reports "a bit low" post-Floor (was "a little high"
-   pre-Floor). Calibrate per spawn-area type against authored intent.
-4. **Quality block** (native-viewer parity standard): MSAA 4× (in-pass resolve;
-   stroke A2C designed for it), native FFR (fragment-density map on our render
-   passes; extension already requested in boot.config), color-space audit
-   (Gamma-vs-Linear decision), host-depth interleave (activates real PTW depth +
-   proper Unity-object occlusion), UI panel/volume/browse (Meta Quill player parity).
+1. **simpleperf the player loop.** The ~4 ms/eye of player-side CPU (duplicated per
+   eye) is the 72-sustained store-gate blocker. Record the render thread in a heavy
+   scene, read hot symbols, fix (upload-once-per-frame / dirty tracking are the
+   leading candidates).
+2. **Color-space audit** (Gamma-vs-Linear decision) and **host-depth interleave**
+   (activates real compositor PTW depth — depth submission is already enabled and
+   waiting — plus proper Unity-object occlusion).
+3. **Play-from-title guard fix** (parked by user; diagnosis captured above).
+4. **UI panel/volume/browse** (Meta Quill player parity).
 5. **Ship hygiene.** Strip probes/BATCHTRACE/piLog spam, remove the validation-layer
    .so, composite default decision, GLES→Vulkan manifest default after soak, push
    `vr-main`, document the WiFi-adb + stream + VrApi workflow.
