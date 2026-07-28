@@ -161,6 +161,75 @@ opposite regime from Art of Change's 9x) is selectable via the new
 (`IMM_UNITY_DOC_FILE=TheQuantumRace.imm`, direct `am start` — launcher-intent
 wedges bypassed) → the in-headset pass that tonight's freeze pre-empted.
 
+## Animated viewpoint driver (Quill parity) — 2026-07-28, headless-verified
+
+QuantumRace's viewer spot is a first-class animated camera: ONE spawn area whose
+layer transform (position, orientation, scale) is keyframed through the whole
+piece. The Unity side previously sampled it once per chapter and flattened
+rotation to yaw; now it follows it every frame, mirroring appImmViewer's
+GlobalWork loop (`viewer.cpp:286-309`).
+
+- **Native bridge** (`appImmUnity/src/main.cpp`): exported
+  `GetSpawnAreaNeedsUpdate`/`SetSpawnAreaNeedsUpdate` (the MakeDefault-keyframe
+  jump signal, previously unsurfaced) and added `GetSpawnAreaPose` — a
+  pose-only, allocation-free query safe at 72 Hz (live evaluated transform +
+  animated/floor/locomotion flags). Also fixed a per-call `piws2str` malloc
+  leak in `GetSpawnAreaInfo` (static buffer; the C# marshaller copies during
+  the call).
+- **Driver** (`ImmFeatureExamples`): `[DefaultExecutionOrder(-100)]`; Update
+  lays down `authoredPose ∘ savedOffset` (scale-solved), LateUpdate re-captures
+  the offset in spawn space — fly input, snap turns and recenters are absorbed
+  automatically, and the head is NEVER re-compensated per frame (look/lean
+  stays free; only one-shot re-anchors solve against the head). Needs-update →
+  hard re-anchor on `GetInitialSpawnAreaId` (the authored jump target; the old
+  chapter-sync path re-applied the stale ACTIVE id). Follows while Playing OR
+  Waiting; paused = hold. Static spawn areas: zero per-frame writes (AoC
+  unchanged).
+- **Full authored orientation is the code default** (pitch/roll included —
+  QR's camera banks); `IMM_UNITY_VIEWPOINT_YAW_ONLY` is the comfort A/B, kill
+  `IMM_UNITY_NO_ANIMATED_VIEWPOINT` restores pre-driver behavior exactly.
+  Fingerprints: `[IMM_VIEWPOINT] ... ARMED` at boot, `ACTIVE: following spawn N`
+  on first follow, sampled `anim` line ~2 s.
+- **Headless verify on QR** (1716 animvp build): driver follows the authored
+  camera through 100s-of-meters travel and a **1000x live scale range**
+  (0.012 → 13.5) at 72 fps where content allows; rig tracks the anchor within
+  head-solve tolerance; memory FLAT (~1485 MB free) over the soak = leak fix +
+  72 Hz polling clean; zero crashes/exceptions.
+- **Auto-first-stop deadline fix**: chapters appear only after the async decode
+  (~55 s for QR's 221 MB); the old 20 s deadline expired mid-decode and every
+  headless QR run parked on the title. Now 120 s.
+- **Android native build repaired** (was latently broken; any fresh CMake
+  configure failed): guarded the IMPORTED-target declarations in
+  libImmImporter/libImmPlayer CMakeLists (`if(NOT TARGET ...)` — superbuild vs
+  standalone), scoped `-std=c++17`/`-frtti` to CXX (vorbis C sources
+  hard-error), added `appImmShared/imm_engine_bridge.cpp` to the plugin
+  sources, fixed stale `ImmCore/ImmImporter/ImmPlayer` link names to the real
+  `libImm*` targets. The committed android-build ninja graph had been masking
+  all of this since the target rename.
+- **QR fps note**: heavy travel segments sag (34/24/28 fps, Stale 40-58,
+  headless soak) with App CPU only 3-8 ms — the known deep-scene content cost,
+  pre-existing and unrelated to the driver (title scene holds 72/72 with the
+  driver following). Extreme-scale segments (0.012-0.075) are fill-rate
+  suspects for the quality roadmap (eyeBufferScale knob).
+
+**Donned verdict (same day): "viewer position was doing well this round" — the
+driver works in-headset.** Three follow-ups from that ride:
+
+1. **Load freeze (pre-existing, now instrumented)**: the app renders ~zero
+   frames for the entire ~57 s decode (VrApi `App=70588ms, FPS=1/72`) — reads
+   as a crash. `[IMM_LOADBEAT]` heartbeat added (1/s on the main thread while
+   loading): gaps → main thread blocked; steady beats → render/plugin-event
+   side. Next launch's log decides the fix direction.
+2. **Strokes vanishing at distance / "render distance" (root-caused + fixed,
+   eyeball pending)**: scene camera was `near=0.3, far=1000` while QR's
+   authored travel passes 1100 m — everything beyond 1 km clipped. Set to the
+   native viewer contract `0.01/20000`.
+3. **Left-eye glitches at travel speed**: streaming-churn race class under
+   QR's fast authored travel — needs a BATCHTRACE-style evidence session, no
+   blind fix.
+
+Device: `1725_farplane_loadbeat` build installed+stopped (all of the above).
+
 ## Next work
 
 1. Quantum Race in-headset verify on a fresh boot (above), then the two one-press
