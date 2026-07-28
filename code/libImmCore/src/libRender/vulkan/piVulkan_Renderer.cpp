@@ -1266,6 +1266,11 @@ struct piTextureS
     VkSampler sampler = VK_NULL_SAMPLER;
     VkImageLayout imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
+    // Ring stamp of the last batch submission that recorded a reference to this
+    // texture (attachment at batch open, or sampled via a descriptor write).
+    // 0 = never referenced: utility helpers can mutate it without draining any
+    // in-flight batch slot (the streaming-upload hot path).
+    uint64_t lastBatchUseStamp = 0;
 };
 
 struct piBufferS
@@ -1420,6 +1425,17 @@ struct piVulkanState
     DeferredVkDestroy deferredDestroys[kMaxDeferredDestroys] = {};
     int deferredDestroyCount = 0;
     uint64_t batchRingStampCounter = 0;         // ++ per ring-slot acquisition
+    // Acquisition stamp per ring slot. Together with piTextureS::lastBatchUseStamp
+    // this lets utility helpers wait only the slots that can actually reference
+    // the texture they mutate: a slot (re)acquired after the texture's last use
+    // provably does not reference it (re-acquisition waited out the older
+    // submission). Kill-switch IMM_UNITY_VK_NO_UTILITY_DRAIN_SKIP restores the
+    // unconditional drain-everything behavior.
+    uint64_t batchRingSlotStamp[kBatchRingSize] = {};
+    int utilityDrainSkipResolved = -1;          // -1 unknown, 0 off (full drains), 1 on
+    bool utilityDrainSkipReported = false;
+    uint32_t utilityDrainWaitCount = 0;         // utility scopes that waited >=1 pending slot
+    uint32_t utilityDrainSkipCount = 0;         // utility scopes that skipped every pending slot
     VkBuffer stagingBuffer = VK_NULL_BUFFER;
     VkDeviceMemory stagingMemory = VK_NULL_DEVICE_MEMORY;
     VkDeviceSize stagingSize = 0;
@@ -1484,6 +1500,7 @@ struct piVulkanState
     bool batchOverflowReported = false;
     uint64_t batchOpenNs = 0;                                       // timestamp at batch open, for record-vs-wait perf probe
     uint64_t batchDescNs = 0;                                       // accumulated per-draw descriptor alloc+update time this eye
+    uint64_t batchDrawNs = 0;                                       // accumulated time INSIDE draw-record calls this eye; record minus this = inter-draw gap (player/Unity-side per-draw overhead)
     uint32_t perfProbeCount = 0;
     // In-pass clears: fold the external eye-frame's color+depth clears into the
     // batch render pass (LOAD_OP_CLEAR variant) instead of two standalone fenced
@@ -3373,6 +3390,7 @@ static bool iUpdateStaticPaintDescriptorSet(piVulkanState *state, VkDescriptorSe
     imageInfo.sampler = blueNoise->sampler;
     imageInfo.imageView = blueNoise->imageView;
     imageInfo.imageLayout = blueNoise->imageLayout;
+    blueNoise->lastBatchUseStamp = state->batchRingStampCounter;
 
     VkWriteDescriptorSet writes[7] = {};
     writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -3594,6 +3612,7 @@ static bool iUpdatePictureDescriptorSet(piVulkanState *state, VkDescriptorSet se
     imageInfo.sampler = picture->sampler;
     imageInfo.imageView = picture->imageView;
     imageInfo.imageLayout = picture->imageLayout;
+    picture->lastBatchUseStamp = state->batchRingStampCounter;
 
     VkDescriptorBufferInfo bufferInfos[3] = {};
     bufferInfos[0] = iDescriptorBufferInfo(layerBuffer);
@@ -3810,6 +3829,7 @@ static bool iUpdateSrgbPresentDescriptorSet(piVulkanState *state, piTexture sour
     imageInfo.sampler = state->presentSampler;
     imageInfo.imageView = source->imageView;
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    source->lastBatchUseStamp = state->batchRingStampCounter;
 
     VkWriteDescriptorSet write = {};
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -4288,6 +4308,42 @@ static void iWaitAllBatchFences(piVulkanState *state)
     }
 }
 
+// Wait only the pending pipelined slots that can reference a resource whose last
+// batch-recorded use happened at `stamp` (slot acquisition stamps are monotonic;
+// a slot acquired after that use provably does not reference the resource).
+// stamp==0 = never batch-referenced, i.e. a freshly created resource -> nothing
+// to wait. This is the streaming-upload hot path: draining the whole pipeline on
+// every chunk upload was the look-around stutter. ~0ull = unknown -> full drain.
+static void iWaitBatchFencesForStamp(piVulkanState *state, uint64_t stamp)
+{
+    if (!state || !state->batchRingReady)
+        return;
+    if (state->utilityDrainSkipResolved < 0)
+        state->utilityDrainSkipResolved = iRendererFlagEnabled("IMM_UNITY_VK_NO_UTILITY_DRAIN_SKIP") ? 0 : 1;
+    if (state->utilityDrainSkipResolved == 0)
+        stamp = ~0ull;
+    const uint64_t timeout = 5000000000ull;
+    bool waited = false;
+    bool skipped = false;
+    for (int i = 0; i < piVulkanState::kBatchRingSize; ++i)
+    {
+        if (!state->batchRingFencePending[i])
+            continue;
+        if (state->batchRingSlotStamp[i] > stamp)
+        {
+            skipped = true;
+            continue;
+        }
+        state->vkWaitForFences(state->device, 1, &state->batchRingFences[i], 1, timeout);
+        state->batchRingFencePending[i] = false;
+        waited = true;
+    }
+    if (waited)
+        ++state->utilityDrainWaitCount;
+    else if (skipped)
+        ++state->utilityDrainSkipCount;
+}
+
 static void iDestroyDeferredEntry(piVulkanState *state, const piVulkanState::DeferredVkDestroy &e)
 {
     if (e.sampler != VK_NULL_SAMPLER && state->vkDestroySampler)
@@ -4345,6 +4401,9 @@ static void iEnqueueDeferredDestroy(piVulkanState *state, VkSampler sampler, VkI
 // resetting the batch's command buffer. Restores on scope exit (nest-safe:
 // each level restores what it saw). Falls back to a no-op when resource
 // separation is unavailable (legacy behavior preserved).
+// `resourceLastUseStamp` = lastBatchUseStamp of the texture the helper mutates:
+// only the slots that can reference it are waited (fresh resource -> none).
+// Omit it (readback, unknown targets) for the full legacy drain.
 struct iUtilityScope
 {
     piVulkanState *state;
@@ -4352,12 +4411,12 @@ struct iUtilityScope
     VkFence savedFrameFence;
     bool swapped;
 
-    explicit iUtilityScope(piVulkanState *s)
+    explicit iUtilityScope(piVulkanState *s, uint64_t resourceLastUseStamp = ~0ull)
         : state(s), savedCommandBuffer(VK_NULL_COMMAND_BUFFER), savedFrameFence(VK_NULL_FENCE), swapped(false)
     {
         if (!state || !state->batchRingReady || state->utilityCommandBuffer == VK_NULL_COMMAND_BUFFER)
             return;
-        iWaitAllBatchFences(state);
+        iWaitBatchFencesForStamp(state, resourceLastUseStamp);
         savedCommandBuffer = state->commandBuffer;
         savedFrameFence = state->frameFence;
         state->commandBuffer = state->utilityCommandBuffer;
@@ -4505,11 +4564,22 @@ static bool iFlushBatch(piVulkanState *state, piRenderer::piReporter *reporter, 
         std::snprintf(message, sizeof(message), "Vulkan renderer batched eye-frame: %u draws in one submit", state->batchDrawCount);
         iReport(reporter, message);
     }
+    if (state->utilityDrainSkipResolved == 1 && !state->utilityDrainSkipReported)
+    {
+        state->utilityDrainSkipReported = true;
+        iReport(reporter, "Vulkan renderer utility drain skip ACTIVE: helpers wait only referencing slots, fresh resources wait none");
+    }
     if ((++state->perfProbeCount % 30u) == 0u)
     {
-        char m[192];
-        std::snprintf(m, sizeof(m), "IMM_PERF eye: record(cpu)=%.2fms [descAlloc+update=%.2fms] flushSubmitWait(gpu)=%.2fms draws=%u",
-                      (double)recordNs / 1.0e6, (double)state->batchDescNs / 1.0e6, (double)waitNs / 1.0e6, state->batchDrawCount);
+        // gap = record wall time spent OUTSIDE the draw-record calls: the player /
+        // Unity per-draw dispatch + uniform uploads between draws. drawRec vs gap
+        // decides which side of the plugin boundary the heavy-scene CPU cost is on.
+        const double gapMs = (double)(recordNs > state->batchDrawNs ? recordNs - state->batchDrawNs : 0) / 1.0e6;
+        char m[256];
+        std::snprintf(m, sizeof(m), "IMM_PERF eye: record(cpu)=%.2fms [drawRec=%.2fms descAlloc=%.2fms gap=%.2fms] flushSubmitWait(gpu)=%.2fms draws=%u utilWait=%u utilSkip=%u",
+                      (double)recordNs / 1.0e6, (double)state->batchDrawNs / 1.0e6, (double)state->batchDescNs / 1.0e6, gapMs,
+                      (double)waitNs / 1.0e6, state->batchDrawCount,
+                      state->utilityDrainWaitCount, state->utilityDrainSkipCount);
         iReport(reporter, m);
     }
     return true;
@@ -4548,6 +4618,7 @@ static bool iEnsureBatchOpen(piVulkanState *state, piRTarget target, piRenderer:
         state->vkResetFences(state->device, 1, &state->batchRingFences[slot]);
         state->vkResetCommandBuffer(state->batchRingCommandBuffers[slot], 0);
         ++state->batchRingStampCounter;
+        state->batchRingSlotStamp[slot] = state->batchRingStampCounter;
         iProcessDeferredDestroys(state, false);
         state->batchPreviousCommandBuffer2 = state->commandBuffer;
         state->commandBuffer = state->batchRingCommandBuffers[slot];
@@ -4643,7 +4714,15 @@ static bool iEnsureBatchOpen(piVulkanState *state, piRTarget target, piRenderer:
     state->batchTarget = target;
     state->batchDrawCount = 0;
     state->batchDescNs = 0;
+    state->batchDrawNs = 0;
     state->batchOpenNs = iNowNanoseconds();
+    // Attachment references: a utility helper touching these images must wait
+    // out this slot's submission (and only it).
+    for (uint32_t i = 0; i < target->colorAttachmentCount; ++i)
+        if (target->color[i])
+            target->color[i]->lastBatchUseStamp = state->batchRingStampCounter;
+    if (target->depth)
+        target->depth->lastBatchUseStamp = state->batchRingStampCounter;
     return true;
 }
 
@@ -4714,6 +4793,7 @@ static bool iSubmitStaticPaintDraw(piVulkanState *state, piShader shader, piRTar
     const bool batchActive = iBatchActiveForTarget(state, target);
     VkDescriptorSet paintSet = state->staticPaintDescriptorSet;
     const uint64_t timeout = 5000000000ull;
+    const uint64_t drawRecStartNs = iNowNanoseconds();
     VkResult result = VK_SUCCESS;
     if (batchActive)
     {
@@ -4789,6 +4869,7 @@ static bool iSubmitStaticPaintDraw(piVulkanState *state, piShader shader, piRTar
         if (batchActive)
         {
             ++state->batchDrawCount;
+            state->batchDrawNs += iNowNanoseconds() - drawRecStartNs;
             if (!state->drawSubmittedReported)
             {
                 // Recorded now, submitted once at eye-frame flush. Emitted here so
@@ -4836,7 +4917,7 @@ static bool iSubmitStaticPaintDraw(piVulkanState *state, piShader shader, piRTar
 static bool iTransitionColorTextureToShaderRead(piVulkanState *state, piTexture texture)
 {
     std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
-    iUtilityScope utilityScope(state);
+    iUtilityScope utilityScope(state, texture ? texture->lastBatchUseStamp : ~0ull);
     if (!state || !texture || texture->image == 0 ||
         state->commandBuffer == VK_NULL_COMMAND_BUFFER || state->frameFence == VK_NULL_FENCE ||
         !state->vkCmdPipelineBarrier)
@@ -5106,6 +5187,7 @@ static bool iSubmitPictureDraw(piVulkanState *state, piShader shader, piRTarget 
     const bool batchActive = iBatchActiveForTarget(state, target);
     VkDescriptorSet pictureSet = state->pictureDescriptorSet;
     const uint64_t timeout = 5000000000ull;
+    const uint64_t drawRecStartNs = iNowNanoseconds();
     VkResult result = VK_SUCCESS;
     if (batchActive)
     {
@@ -5205,6 +5287,7 @@ static bool iSubmitPictureDraw(piVulkanState *state, piShader shader, piRTarget 
         if (batchActive)
         {
             ++state->batchDrawCount;
+            state->batchDrawNs += iNowNanoseconds() - drawRecStartNs;
             if (!state->pictureDrawReported)
             {
                 // Recorded now, submitted once at eye-frame flush (see paint note).
@@ -5667,7 +5750,7 @@ static bool iReadBackTextureImage(piVulkanState *state, piTexture texture, piRen
 static bool iClearColorTextureImage(piVulkanState *state, piTexture texture, const float *color, piRenderer::piReporter *reporter)
 {
     std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
-    iUtilityScope utilityScope(state);
+    iUtilityScope utilityScope(state, texture ? texture->lastBatchUseStamp : ~0ull);
     if (!state || !texture || texture->image == 0 || texture->info.mFormat == piRenderer::Format::D1_32_FLOAT ||
         texture->info.mFormat == piRenderer::Format::D1_16_UNORM || texture->info.mFormat == piRenderer::Format::DS_24_8_UINT ||
         texture->info.mFormat == piRenderer::Format::DS_32_8_UINT || state->commandBuffer == VK_NULL_COMMAND_BUFFER ||
@@ -5783,7 +5866,7 @@ static bool iClearColorTextureImage(piVulkanState *state, piTexture texture, con
 static bool iClearDepthTextureImage(piVulkanState *state, piTexture texture, piRenderer::piReporter *reporter, float clearDepthValue = 1.0f)
 {
     std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
-    iUtilityScope utilityScope(state);
+    iUtilityScope utilityScope(state, texture ? texture->lastBatchUseStamp : ~0ull);
     if (!state || !texture || texture->image == 0 ||
         (texture->info.mFormat != piRenderer::Format::D1_32_FLOAT &&
          texture->info.mFormat != piRenderer::Format::D1_16_UNORM &&
@@ -5901,7 +5984,7 @@ static bool iClearDepthTextureImage(piVulkanState *state, piTexture texture, piR
 static bool iUploadCpuColorToGpuColorAttachment(piVulkanState *state, piTexture texture, piRenderer::piReporter *reporter)
 {
     std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
-    iUtilityScope utilityScope(state);
+    iUtilityScope utilityScope(state, texture ? texture->lastBatchUseStamp : ~0ull);
     if (!state || !texture || !texture->data || texture->dataSize == 0 || texture->image == 0 ||
         state->commandBuffer == VK_NULL_COMMAND_BUFFER || state->frameFence == VK_NULL_FENCE)
     {
@@ -6535,7 +6618,7 @@ static bool iUploadTextureToStaging(piVulkanState *state, piTexture texture, piR
 static bool iUploadTextureImageData(piVulkanState *state, piTexture texture, piRenderer::piReporter *reporter)
 {
     std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
-    iUtilityScope utilityScope(state);
+    iUtilityScope utilityScope(state, texture ? texture->lastBatchUseStamp : ~0ull);
     if (!state || !texture || !texture->data || texture->dataSize == 0 || texture->image == 0 ||
         state->commandBuffer == VK_NULL_COMMAND_BUFFER || state->frameFence == VK_NULL_FENCE)
     {
