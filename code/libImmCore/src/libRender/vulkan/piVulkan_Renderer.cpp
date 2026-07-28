@@ -9000,8 +9000,11 @@ bool piRendererVulkan::BeginExternalImageFrameWithView(void *image, void *imageV
     }
 
     // External eye targets opt into the MSAA 4x contract (iCreateRenderTargetObjects
-    // falls back to 1x non-fatally if attachments cannot be built).
-    mState->nextRenderTargetWantsMsaa = true;
+    // falls back to 1x non-fatally if attachments cannot be built). Host depth is
+    // a 1x attachment and cannot join a 4x pass - until the depth-prime draw
+    // exists (sample host 1x depth into the transient 4x depth at batch open),
+    // host-depth mode runs single-sampled.
+    mState->nextRenderTargetWantsMsaa = !hasExternalDepth;
     piRTarget renderTarget = CreateRenderTarget(colorTexture, nullptr, nullptr, nullptr, depthTexture);
     mState->nextRenderTargetWantsMsaa = false;
     if (!renderTarget || !SetRenderTarget(renderTarget))

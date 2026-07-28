@@ -1083,11 +1083,23 @@ namespace ImmPlayer
                     // (still a single stroke set).
                     int rtEye = IsEnvFlagEnabled("IMM_UNITY_VK_EYE0_RT_BOTH_EYES") ? 0 : vulkanEye;
                     RenderTexture eyeTarget = EnsureVulkanEyeTarget(info, rtEye, cam.pixelWidth, cam.pixelHeight);
+                    // Host-depth interleave groundwork (opt-in): hand the XR
+                    // swapchain's depth surface to the plugin so IMM strokes can
+                    // depth-test against Unity geometry. Off by default until the
+                    // native 4x depth-prime draw lands (attaching 1x host depth
+                    // today forces the pass back to single-sampled).
+                    IntPtr hostDepthPtr = IntPtr.Zero;
+                    if (IsEnvFlagEnabled("IMM_UNITY_VK_HOST_DEPTH"))
+                    {
+                        RenderTexture xrRt = GetXrEyeRenderTexture(cam, (int)StereoMode.TwoPass);
+                        if (xrRt != null)
+                            hostDepthPtr = xrRt.depthBuffer.GetNativeRenderBufferPtr();
+                    }
                     ImmNativePlugin.SetVulkanCameraEyeRenderBuffers(
                         info.CameraId,
                         vulkanEye,
                         eyeTarget.colorBuffer.GetNativeRenderBufferPtr(),
-                        IntPtr.Zero,
+                        hostDepthPtr,
                         eyeTarget.width,
                         eyeTarget.height,
                         1);
