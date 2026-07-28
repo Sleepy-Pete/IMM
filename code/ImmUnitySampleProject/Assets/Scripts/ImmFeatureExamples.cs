@@ -153,6 +153,25 @@ namespace ImmPlayer
         private int _viewpointFrameCounter;
         private int _loadBeatFrames;
         private float _nextLoadBeatTime;
+        // Pose prediction: the native pose we read was evaluated by the
+        // player's PREVIOUS render, so the rig trails the authored camera by
+        // ~a frame - visible as viewer lag during QR's fast travel. Linear
+        // extrapolation from the last two samples closes it; a teleport guard
+        // keeps chapter cuts as hard snaps.
+        private bool _viewpointPredict;
+        private bool _hasPoseHistory;
+        private Vector3 _prevSpawnPos;
+        private Quaternion _prevSpawnRot = Quaternion.identity;
+        private float _prevSpawnScale = 1f;
+        private float _prevPoseTime;
+        // The pose actually applied this frame (post-prediction). LateUpdate's
+        // offset capture MUST use this same pose - capturing against the raw
+        // native pose would fold the prediction delta into the user offset and
+        // compound it every frame.
+        private int _appliedPoseFrame = -1;
+        private Vector3 _appliedSpawnPos;
+        private Quaternion _appliedSpawnRotEffective = Quaternion.identity;
+        private float _appliedSpawnScale = 1f;
 
         private static bool IsDebugFlagSet(string name)
         {
@@ -173,7 +192,8 @@ namespace ImmPlayer
                 // (Quill parity - QR's viewer spot banks and pitches).
                 // IMM_UNITY_VIEWPOINT_YAW_ONLY is the comfort A/B.
                 constrainViewpointRotationToYawInXR = IsDebugFlagSet("IMM_UNITY_VIEWPOINT_YAW_ONLY");
-                Debug.Log($"{ViewpointLogPrefix}animated viewpoint driver ARMED (yawOnly={constrainViewpointRotationToYawInXR}, kill IMM_UNITY_NO_ANIMATED_VIEWPOINT)");
+                _viewpointPredict = !IsDebugFlagSet("IMM_UNITY_NO_VIEWPOINT_PREDICT");
+                Debug.Log($"{ViewpointLogPrefix}animated viewpoint driver ARMED (yawOnly={constrainViewpointRotationToYawInXR}, predict={_viewpointPredict}, kill IMM_UNITY_NO_ANIMATED_VIEWPOINT)");
             }
             else
             {
@@ -313,11 +333,51 @@ namespace ImmPlayer
             if (!animated)
                 return; // static spawn areas keep the one-shot behavior, zero per-frame writes
 
+            // One-frame extrapolation against the native evaluation latency
+            // (rig otherwise trails the authored camera at travel speed).
+            Vector3 rawPos = spawnPose.position;
+            Quaternion rawRot = spawnPose.rotation;
+            float rawScale = spawnScale;
+            if (_viewpointPredict)
+            {
+                float now = Time.realtimeSinceStartup;
+                if (_hasPoseHistory)
+                {
+                    float sampleDt = now - _prevPoseTime;
+                    Vector3 delta = rawPos - _prevSpawnPos;
+                    // Teleport guard: chapter cuts must stay hard snaps -
+                    // extrapolating across one overshoots into the void.
+                    bool teleport = delta.sqrMagnitude > 25.0f ||
+                                    Quaternion.Angle(_prevSpawnRot, rawRot) > 30.0f ||
+                                    Mathf.Abs(rawScale - _prevSpawnScale) > 0.5f * Mathf.Max(rawScale, _prevSpawnScale);
+                    if (!teleport && sampleDt > 0.0005f && sampleDt < 0.1f)
+                    {
+                        float ahead = Mathf.Clamp(Time.deltaTime, 0.0f, 2.0f * sampleDt);
+                        float t = ahead / sampleDt;
+                        spawnPose.position = rawPos + delta * t;
+                        spawnPose.rotation = Quaternion.SlerpUnclamped(_prevSpawnRot, rawRot, 1.0f + t);
+                        spawnScale = Mathf.Max(0.0001f, rawScale + (rawScale - _prevSpawnScale) * t);
+                    }
+                }
+                _prevSpawnPos = rawPos;
+                _prevSpawnRot = rawRot;
+                _prevSpawnScale = rawScale;
+                _prevPoseTime = now;
+                _hasPoseHistory = true;
+            }
+
             Quaternion spawnRot = EffectiveViewpointRotation(spawnPose.rotation);
             Vector3 rigPos = spawnPose.position + spawnRot * (_rigOffsetInSpawnSpacePos * spawnScale);
             Quaternion rigRot = spawnRot * _rigOffsetInSpawnSpaceRot;
             target.localScale = Vector3.one * spawnScale;
             target.SetPositionAndRotation(rigPos, rigRot);
+
+            // LateUpdate's offset capture must mirror THIS pose, not a fresh
+            // native read - else the prediction delta leaks into the offset.
+            _appliedPoseFrame = Time.frameCount;
+            _appliedSpawnPos = spawnPose.position;
+            _appliedSpawnRotEffective = spawnRot;
+            _appliedSpawnScale = spawnScale;
 
             if (!_viewpointDriverActiveLogged)
             {
@@ -340,23 +400,38 @@ namespace ImmPlayer
             if (!_viewpointDriverEnabled || !_viewpointAnchored || _doc == null || !_doc.IsLoaded)
                 return;
 
-            int active = _doc.GetActiveSpawnAreaId();
-            if (active < 0)
-                return;
-
             Transform target = ResolveSpawnAreaTargetTransform();
             if (target == null)
                 return;
 
-            Transform documentRoot = documentTransform != null ? documentTransform : transform;
-            if (!_doc.TryGetSpawnAreaWorldPoseAndScale(active, documentRoot, out Pose spawnPose, out float spawnScale, out bool animated))
-                return;
-            if (!animated)
-                return;
+            Vector3 spawnPos;
+            Quaternion spawnRot;
+            float spawnScale;
+            if (Time.frameCount == _appliedPoseFrame)
+            {
+                // Mirror the pose Update actually applied (post-prediction) so
+                // apply/capture stay symmetric and only EXTERNAL rig movement
+                // (fly, snap turn, recenter) lands in the offset.
+                spawnPos = _appliedSpawnPos;
+                spawnRot = _appliedSpawnRotEffective;
+                spawnScale = _appliedSpawnScale;
+            }
+            else
+            {
+                int active = _doc.GetActiveSpawnAreaId();
+                if (active < 0)
+                    return;
+                Transform documentRoot = documentTransform != null ? documentTransform : transform;
+                if (!_doc.TryGetSpawnAreaWorldPoseAndScale(active, documentRoot, out Pose rawPose, out spawnScale, out bool animated))
+                    return;
+                if (!animated)
+                    return;
+                spawnPos = rawPose.position;
+                spawnRot = EffectiveViewpointRotation(rawPose.rotation);
+            }
 
-            Quaternion spawnRot = EffectiveViewpointRotation(spawnPose.rotation);
             Quaternion invSpawnRot = Quaternion.Inverse(spawnRot);
-            _rigOffsetInSpawnSpacePos = (invSpawnRot * (target.position - spawnPose.position)) / spawnScale;
+            _rigOffsetInSpawnSpacePos = (invSpawnRot * (target.position - spawnPos)) / spawnScale;
             _rigOffsetInSpawnSpaceRot = invSpawnRot * target.rotation;
             _hasRigOffset = true;
         }
@@ -447,6 +522,8 @@ namespace ImmPlayer
             // Fresh document, fresh anchor state for the viewpoint driver.
             _viewpointAnchored = false;
             _hasRigOffset = false;
+            _hasPoseHistory = false;
+            _appliedPoseFrame = -1;
             _viewpointDriverActiveLogged = false;
 
             // Per-device document override: IMM_UNITY_DOC_FILE=<name>.imm in
@@ -1199,9 +1276,13 @@ namespace ImmPlayer
                 Debug.Log($"[IMM_SCALE] spawn viewpoint applied: scale={spawnScale:F3} anchor={worldHeadAnchor:F2} rigPos={finalPose.position:F2}");
 
                 // Anchor established: the animated viewpoint driver may follow
-                // from here. Offset is recaptured fresh this LateUpdate.
+                // from here. Offset is recaptured fresh this LateUpdate, and
+                // pose history resets so prediction never extrapolates across
+                // the re-anchor.
                 _viewpointAnchored = true;
                 _hasRigOffset = false;
+                _hasPoseHistory = false;
+                _appliedPoseFrame = -1;
             }
         }
 

@@ -705,7 +705,7 @@ static void UNITY_INTERFACE_API iUnityVulkanQueueRenderCallback(int event_id, vo
     if (logThisEye)
         iLog().Printf(
             LT_MESSAGE,
-            L"Unity Vulkan render: camera=%d viewport=%dx%d rendered=%d drawCalls=%d paintDrawCalls=%d pictureDrawCalls=%d picture360DrawCalls=%d",
+            L"Unity Vulkan render: camera=%d viewport=%dx%d rendered=%d drawCalls=%d paintDrawCalls=%d pictureDrawCalls=%d picture360DrawCalls=%d culled=%d trisCulled=%d",
             context->cameraID,
             context->width,
             context->height,
@@ -713,7 +713,9 @@ static void UNITY_INTERFACE_API iUnityVulkanQueueRenderCallback(int event_id, vo
             perf.numDrawCalls,
             perf.numPaintDrawCalls,
             perf.numPictureDrawCalls,
-            perf.numPicture360DrawCalls);
+            perf.numPicture360DrawCalls,
+            perf.numDrawCallsCulled,
+            perf.numTrianglesCulled);
 }
 
 static bool iRenderUnityVulkanCamera(int cameraID, int event_id, piRenderer *renderer, UnityRenderBuffer colorOverride = nullptr)
