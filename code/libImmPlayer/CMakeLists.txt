@@ -56,18 +56,23 @@ include_directories(
     ${core-dir}/..
 )
 
-add_library(libImmCore STATIC IMPORTED)
-set_target_properties(libImmCore PROPERTIES IMPORTED_LOCATION
-    ${core-build-dir}/libs/${ANDROID_ABI}/liblibImmCore.a)
+# Guarded like libImmImporter's: superbuilds define the real target.
+if(NOT TARGET libImmCore)
+    add_library(libImmCore STATIC IMPORTED)
+    set_target_properties(libImmCore PROPERTIES IMPORTED_LOCATION
+        ${core-build-dir}/libs/${ANDROID_ABI}/liblibImmCore.a)
+endif()
 
 # Add libImmImporter dependency
 set(imm-importer-dir ${CMAKE_CURRENT_SOURCE_DIR}/../libImmImporter)
 set(imm-importer-build-dir ${imm-importer-dir}/build)
 file(MAKE_DIRECTORY ${imm-importer-build-dir})
 
-add_library(libImmImporter STATIC IMPORTED)
-set_target_properties(libImmImporter PROPERTIES IMPORTED_LOCATION
-    ${imm-importer-build-dir}/libs/${ANDROID_ABI}/liblibImmImporter.a)
+if(NOT TARGET libImmImporter)
+    add_library(libImmImporter STATIC IMPORTED)
+    set_target_properties(libImmImporter PROPERTIES IMPORTED_LOCATION
+        ${imm-importer-build-dir}/libs/${ANDROID_ABI}/liblibImmImporter.a)
+endif()
 
 # Android system libraries
 find_library(android-lib android)

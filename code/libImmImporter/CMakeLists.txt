@@ -39,9 +39,14 @@ include_directories(
     ${core-dir}/..
 )
 
-add_library(libImmCore STATIC IMPORTED)
-set_target_properties(libImmCore PROPERTIES IMPORTED_LOCATION
-    ${core-build-dir}/libs/${ANDROID_ABI}/liblibImmCore.a)
+# Standalone builds import the prebuilt archive; superbuilds (appImmUnity
+# add_subdirectory's every lib) already define the real target - importing
+# again is a hard CMake error, so guard it.
+if(NOT TARGET libImmCore)
+    add_library(libImmCore STATIC IMPORTED)
+    set_target_properties(libImmCore PROPERTIES IMPORTED_LOCATION
+        ${core-build-dir}/libs/${ANDROID_ABI}/liblibImmCore.a)
+endif()
 
 # Android system libraries
 find_library(android-lib android)

@@ -7,11 +7,13 @@ project(ImmUnityPlugin)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Compiler flags
+# Compiler flags. C++-only flags must be scoped: these directory-level
+# options are inherited by the C sources of the vorbis/ogg subbuilds, and
+# clang hard-errors on -std=c++17/-frtti for C. The C++ standard itself is
+# covered by CMAKE_CXX_STANDARD above.
 add_compile_options(
-    -std=c++17
     -fexceptions
-    -frtti
+    "$<$<COMPILE_LANGUAGE:CXX>:-frtti>"
     -Wall
     -Wno-unused-variable
     -Wno-unused-function
@@ -56,6 +58,7 @@ add_subdirectory(${CODE_ROOT}/libImmPlayer ${CMAKE_CURRENT_BINARY_DIR}/libImmPla
 # Unity plugin source files
 set(UNITY_PLUGIN_SOURCES
     ${SRC_ROOT}/main.cpp
+    ${CODE_ROOT}/appImmShared/src/imm_engine_bridge.cpp
 )
 
 # Create the Unity plugin shared library
@@ -74,12 +77,14 @@ set(VORBISENC_LIB ${THIRDPARTY_LIB_DIR}/libvorbisenc.a)
 set(VORBISFILE_LIB ${THIRDPARTY_LIB_DIR}/libvorbisfile.a)
 set(OPUS_LIB ${THIRDPARTY_LIB_DIR}/libopus.a)
 
-# Link against IMM libraries
+# Link against IMM libraries (real subdirectory target names - the old
+# ImmCore/ImmImporter/ImmPlayer names predate the libImm* rename and only
+# kept linking because the committed ninja graph was never regenerated)
 target_link_libraries(ImmUnityPlugin
     # IMM libraries
-    ImmCore
-    ImmImporter
-    ImmPlayer
+    libImmCore
+    libImmImporter
+    libImmPlayer
 
     # Third-party libraries
     ${JPEG_LIB}
