@@ -178,7 +178,10 @@ namespace ImmPlayer
             if (Time.frameCount % 72 == 0)
                 Debug.Log($"[IMM_HEARTBEAT] frame={Time.frameCount} t={Time.realtimeSinceStartup:F1}s");
             foreach (var kvp in _cameras)
+            {
                 MaybeDumpVulkanEyeTargets(kvp.Value);
+                MaybeCaptureEyeBurst(kvp.Value);
+            }
             if (_isInitialized)
             {
                 ImmNativePlugin.GlobalWork(1);
@@ -428,14 +431,38 @@ namespace ImmPlayer
             public readonly float[] RightProj = new float[16];
             // Quest Vulkan: IMM renders each eye into its own offscreen texture on its
             // dedicated queue; Unity composites it back with a material blit.
+            // TRIPLE-buffered per eye: native WRITES buffers[eye, frame%3] while
+            // Unity SAMPLES buffers[eye, (frame+2)%3] (last frame's image). Unity's
+            // GPU runs 1-2 frames behind its CPU, so with only two buffers IMM's
+            // frame-N+1 write lands on the very buffer Unity's in-flight frame-N
+            // blit is still READING (no cross-queue semaphore exists) - seen as
+            // intermittent corruption biased to the LEFT eye, whose event has the
+            // least slack after a frame boundary. With three buffers the read
+            // target stays untouched by IMM for two full frames.
+            // Kill: IMM_UNITY_VK_NO_DOUBLE_BUFFER (write==read, parity locked 0).
             public readonly RenderTexture[] VulkanEyeTargets = new RenderTexture[2];
+            public readonly RenderTexture[,] VulkanEyeBuffers = new RenderTexture[2, 3];
         }
 
         private Material _vulkanCompositeMaterial;
 
+        // Returns the WRITE buffer for this frame (handed to the native renderer)
+        // and updates VulkanEyeTargets[eye] to the READ buffer Unity samples
+        // (previous frame's image; two frames from being rewritten).
         private RenderTexture EnsureVulkanEyeTarget(PerCameraInfo info, int eye, int width, int height)
         {
-            RenderTexture rt = info.VulkanEyeTargets[eye];
+            bool buffered = !IsEnvFlagEnabled("IMM_UNITY_VK_NO_DOUBLE_BUFFER");
+            int writeSlot = buffered ? Time.frameCount % 3 : 0;
+            int readSlot = buffered ? (Time.frameCount + 2) % 3 : 0;
+            RenderTexture write = EnsureVulkanEyeBuffer(info, eye, writeSlot, width, height);
+            RenderTexture read = buffered ? EnsureVulkanEyeBuffer(info, eye, readSlot, width, height) : write;
+            info.VulkanEyeTargets[eye] = read;
+            return write;
+        }
+
+        private RenderTexture EnsureVulkanEyeBuffer(PerCameraInfo info, int eye, int parity, int width, int height)
+        {
+            RenderTexture rt = info.VulkanEyeBuffers[eye, parity];
             if (rt != null && (rt.width != width || rt.height != height))
             {
                 rt.Release();
@@ -446,19 +473,69 @@ namespace ImmPlayer
             {
                 rt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32)
                 {
-                    name = $"IMM Vulkan Eye {eye} (cam {info.CameraId})",
+                    name = $"IMM Vulkan Eye {eye}.{parity} (cam {info.CameraId})",
                     antiAliasing = 1,
                     useMipMap = false,
                     autoGenerateMips = false
                 };
                 rt.Create();
-                info.VulkanEyeTargets[eye] = rt;
-                Debug.Log($"[IMM_UNITY_VK_OFFSCREEN_20260716] created eye target cam={info.CameraId} eye={eye} {width}x{height}");
+                Debug.Log($"[IMM_UNITY_VK_OFFSCREEN_20260716] created eye buffer cam={info.CameraId} eye={eye} parity={parity} {width}x{height}");
             }
+            info.VulkanEyeBuffers[eye, parity] = rt;
             return rt;
         }
 
         private int _rtDumpCounter;
+
+        // On-demand stereo-pair burst (glitch forensics): captures BOTH eyes'
+        // READ buffers within the same frame for N consecutive frames, so a
+        // user-triggered capture at the moment of a perceived glitch yields
+        // true simultaneous stereo pairs (the periodic dump writes the eyes
+        // ~200ms apart and cannot be compared as a pair).
+        private static int _burstFramesRemaining;
+        private static int _burstId;
+
+        public static void RequestEyeBurst(int frames = 8)
+        {
+            // 16 full-res ReadPixels = a deliberate multi-frame hitch. Armed only
+            // via flag so a stray stick-click can't tank a session (user hit
+            // this: "pressing the right analog stick killed performance").
+            if (Instance == null || !IsEnvFlagEnabled("IMM_UNITY_VK_ENABLE_BURST"))
+            {
+                Debug.Log("[IMM_BURST] ignored (arm with IMM_UNITY_VK_ENABLE_BURST)");
+                return;
+            }
+            _burstId++;
+            _burstFramesRemaining = frames;
+            Debug.Log($"[IMM_BURST] capture burst {_burstId} requested ({frames} frames)");
+        }
+
+        private void MaybeCaptureEyeBurst(PerCameraInfo info)
+        {
+            if (_burstFramesRemaining <= 0)
+                return;
+            RenderTexture left = info.VulkanEyeTargets[0];
+            RenderTexture right = info.VulkanEyeTargets[1];
+            if (left == null || right == null)
+                return;
+            int frame = _burstFramesRemaining--;
+            for (int eye = 0; eye < 2; eye++)
+            {
+                RenderTexture rt = eye == 0 ? left : right;
+                RenderTexture prev = RenderTexture.active;
+                var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false);
+                RenderTexture.active = rt;
+                tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+                tex.Apply(false);
+                RenderTexture.active = prev;
+                string path = System.IO.Path.Combine(Application.persistentDataPath,
+                    $"imm_burst{_burstId}_f{frame}_eye{eye}.png");
+                System.IO.File.WriteAllBytes(path, tex.EncodeToPNG());
+                Destroy(tex);
+            }
+            if (_burstFramesRemaining == 0)
+                Debug.Log($"[IMM_BURST] burst {_burstId} complete");
+        }
 
         private void MaybeDumpVulkanEyeTargets(PerCameraInfo info)
         {
@@ -498,6 +575,7 @@ namespace ImmPlayer
         private GameObject _compositeQuad;
         private Material _compositeQuadMaterial;
         private bool _compositeQuadFailed;
+        private int _lastMatrixSetFrame = -1;
 
         // In-pass composite: a fullscreen quad in Unity's own camera pass
         // replaces the per-eye CommandBuffer.Blit (the blit's render-target
@@ -549,17 +627,30 @@ namespace ImmPlayer
         {
             if (_vulkanCompositeMaterial == null)
             {
-                Material loaded = Resources.Load<Material>("ImmVulkanComposite");
-                if (loaded != null)
+                // Opaque composite by default: the 360 backdrop covers the whole
+                // view, so alpha blending only costs an eye-buffer read on the
+                // tiler. Kill: IMM_UNITY_VK_NO_OPAQUE_COMPOSITE (restores the
+                // alpha-blended ImmVulkanComposite material).
+                if (!IsEnvFlagEnabled("IMM_UNITY_VK_NO_OPAQUE_COMPOSITE"))
                 {
-                    _vulkanCompositeMaterial = loaded;
+                    Shader opaque = Resources.Load<Shader>("ImmVulkanCompositeOpaque");
+                    if (opaque != null)
+                        _vulkanCompositeMaterial = new Material(opaque);
                 }
-                else
+                if (_vulkanCompositeMaterial == null)
                 {
-                    Shader shader = Shader.Find("Unlit/Transparent");
-                    if (shader != null)
-                        _vulkanCompositeMaterial = new Material(shader);
-                    Debug.LogWarning("[IMM_UNITY_VK_OFFSCREEN_20260716] ImmVulkanComposite material missing from Resources; Shader.Find fallback " + (_vulkanCompositeMaterial != null ? "succeeded" : "FAILED"));
+                    Material loaded = Resources.Load<Material>("ImmVulkanComposite");
+                    if (loaded != null)
+                    {
+                        _vulkanCompositeMaterial = loaded;
+                    }
+                    else
+                    {
+                        Shader shader = Shader.Find("Unlit/Transparent");
+                        if (shader != null)
+                            _vulkanCompositeMaterial = new Material(shader);
+                        Debug.LogWarning("[IMM_UNITY_VK_OFFSCREEN_20260716] ImmVulkanComposite material missing from Resources; Shader.Find fallback " + (_vulkanCompositeMaterial != null ? "succeeded" : "FAILED"));
+                    }
                 }
                 if (_vulkanCompositeMaterial != null)
                 {
@@ -580,7 +671,7 @@ namespace ImmPlayer
                                 !IsEnvFlagEnabled("IMM_UNITY_VK_NO_COMPOSITE_VFLIP");
                     _vulkanCompositeMaterial.SetTextureScale("_MainTex", new Vector2(1f, flip ? -1f : 1f));
                     _vulkanCompositeMaterial.SetTextureOffset("_MainTex", new Vector2(0f, flip ? 1f : 0f));
-                    Debug.Log($"[IMM_VK_PARITY] compositeVFlip={flip} projectionOwner=native-negative-viewport (composite samples RT unflipped by default)");
+                    Debug.Log($"[IMM_VK_PARITY] compositeVFlip={flip} composite={(_vulkanCompositeMaterial.shader != null ? _vulkanCompositeMaterial.shader.name : "?")} projectionOwner=native-negative-viewport");
                 }
             }
             return _vulkanCompositeMaterial;
@@ -877,6 +968,18 @@ namespace ImmPlayer
 
             int stereoMode = ResolveStereoMode(cam);
 
+            // Single pose sample per frame: multipass runs this per eye pass with
+            // poses ~half a frame apart, but the compositor timewarps BOTH eyes
+            // from ONE frame pose - so the first-rendered (left) eye is warped
+            // from the wrong reference during head motion ("renders from a
+            // different position", left-eye judder). Upload matrices only on the
+            // frame's first eye pass so both eyes share one pose sample.
+            // Kill: IMM_UNITY_VK_NO_SINGLE_POSE.
+            bool updateMatrices = _lastMatrixSetFrame != Time.frameCount ||
+                                  !cam.stereoEnabled ||
+                                  IsEnvFlagEnabled("IMM_UNITY_VK_NO_SINGLE_POSE");
+            if (updateMatrices)
+            {
             ConvertMatrixToArray(info.WorldToHead, cam.worldToCameraMatrix);
             bool renderIntoTexture = UseRenderIntoTextureProjection(cam);
             Matrix4x4 headProjection = cam.nonJitteredProjectionMatrix;
@@ -952,6 +1055,8 @@ namespace ImmPlayer
                 hasStereoMatrices ? info.WorldToRight : null,
                 hasStereoMatrices ? info.RightProj : null);
             ImmNativePlugin.SetCameraViewport(info.CameraId, cam.pixelWidth, cam.pixelHeight);
+            _lastMatrixSetFrame = Time.frameCount;
+            }
             if (IsVulkanRuntime())
             {
                 if (IsEnvFlagEnabled("IMM_UNITY_VK_BLUE_CANARY") && cam.clearFlags != CameraClearFlags.SolidColor)

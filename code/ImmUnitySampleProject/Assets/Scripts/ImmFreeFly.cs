@@ -25,6 +25,10 @@ public class ImmFreeFly : MonoBehaviour
     Camera _cam;
     bool _resetLatch;
 
+    // The locomotion rig above the tracked camera, shared with ImmSceneControls
+    // (grip-grab world manipulation). Null until the camera is found.
+    public static Transform Origin { get; private set; }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Bootstrap()
     {
@@ -60,14 +64,14 @@ public class ImmFreeFly : MonoBehaviour
 
         Vector2 left = ReadStick(XRNode.LeftHand, out bool leftClick);
         Vector2 right = ReadStick(XRNode.RightHand, out bool rightClick);
+        _ = rightClick; // right stick click belongs to ImmSceneControls' capture burst
 
-        if (leftClick || rightClick)
+        if (leftClick)
         {
             if (!_resetLatch)
             {
                 _resetLatch = true;
-                _origin.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-                Debug.Log("[IMM_FREEFLY] origin reset");
+                RecenterToView();
             }
         }
         else
@@ -88,6 +92,31 @@ public class ImmFreeFly : MonoBehaviour
             _origin.RotateAround(head.position, Vector3.up, right.x * YawSpeed * dt);
 
         ImmPlayer.ImmPlayerManager.ExternalWorldToTracking = _origin.worldToLocalMatrix;
+        Origin = _origin;
+    }
+
+    // Left stick click: RECENTER. Preferred behavior snaps back to the ACTIVE
+    // authored Quill spawn viewpoint (position, yaw, and authored scale) - the
+    // anchors baked into the document. Falls back to re-fronting the content to
+    // the current gaze when no document/spawn machinery is present.
+    void RecenterToView()
+    {
+        var features = FindFirstObjectByType<ImmPlayer.ImmFeatureExamples>();
+        if (features != null)
+        {
+            features.ReapplyActiveSpawnAreaViewpoint();
+            Debug.Log("[IMM_FREEFLY] recentered to authored spawn viewpoint");
+            return;
+        }
+        Transform head = _cam.transform;
+        float yaw = head.localEulerAngles.y;
+        Quaternion r = Quaternion.Euler(0f, -yaw, 0f);
+        float s = _origin.localScale.x;
+        Vector3 p = head.localPosition;
+        Vector3 flat = new Vector3(p.x, 0f, p.z);
+        _origin.rotation = r;
+        _origin.position = -(r * flat) * s;
+        Debug.Log("[IMM_FREEFLY] recentered to current view (no document)");
     }
 
     static readonly List<InputDevice> _devices = new List<InputDevice>();

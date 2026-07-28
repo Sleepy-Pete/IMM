@@ -417,7 +417,35 @@ namespace ImmPlayer
 
             layers = _doc.GetLayersManaged();
             spawnAreas = _doc.GetSpawnAreas();
+
+            // Scale forensics: a document authored at unexpected scale (or a
+            // mis-applied spawn transform scale) makes stereo disparity huge and
+            // unfusable in-headset. One log line answers it objectively.
+            if (spawnAreas != null && spawnAreas.Length > 0)
+            {
+                var sa = spawnAreas[0];
+                Debug.Log($"[IMM_DOC] file={selectedFileName} bounds(c={documentBounds.center:F2} s={documentBounds.size:F2}) spawnAreas={spawnAreas.Length} spawn0(pos={sa.Transform.GetPosition():F2} scale={sa.Transform.GetScale():F3} type={sa.Type})");
+            }
+            else
+            {
+                Debug.Log($"[IMM_DOC] file={selectedFileName} bounds(c={documentBounds.center:F2} s={documentBounds.size:F2}) spawnAreas=0");
+            }
             RefreshLayerList();
+        }
+
+        // Re-apply the ACTIVE authored spawn viewpoint (position, yaw, scale) -
+        // the recenter button snaps here: Quill documents bake their intended
+        // viewing anchors as spawn areas.
+        public void ReapplyActiveSpawnAreaViewpoint()
+        {
+            if (_doc == null)
+                return;
+            SyncSpawnAreaSelection();
+            int id = _doc.GetActiveSpawnAreaId();
+            if (id < 0 && _spawnAreaIds.Length > 0)
+                id = _spawnAreaIds[0];
+            if (id >= 0)
+                StartSpawnAreaViewpointApply(id);
         }
 
         public void NextSpawnArea()
@@ -822,6 +850,21 @@ namespace ImmPlayer
 
             Transform head = ResolveViewpointHeadTransform(target);
             Transform documentRoot = documentTransform != null ? documentTransform : transform;
+            // The spawn transform carries the authored VIEWER scale (Quill bakes
+            // its intended viewing anchors + scale into spawn areas). The rig
+            // pose below must be solved WITH that scale: at rig scale s the head
+            // sits at rigPos + rigRot*(s*headLocal), so placing the rig with the
+            // unscaled offset flings the user (s-1)*headLocal away from the
+            // authored anchor (user report: "center point is off").
+            float spawnScale = 1f;
+            var spawnScaleInfo = _doc.GetSpawnAreaInfoManaged(spawnAreaId);
+            if (spawnScaleInfo.HasValue)
+            {
+                float authored = spawnScaleInfo.Value.Transform.GetScale();
+                if (authored > 0.0001f)
+                    spawnScale = authored;
+            }
+
             if (_doc.TryGetSpawnAreaViewTargetPose(
                 spawnAreaId,
                 documentRoot,
@@ -831,19 +874,30 @@ namespace ImmPlayer
                 out Pose targetPose))
             {
                 Pose finalPose = targetPose;
+                Quaternion finalRotation = targetPose.rotation;
+                Vector3 headLocalPosition = target.InverseTransformPoint(head.position);
+                // Zero the head's local height ONLY for floor-level spawns (the
+                // anchor is a floor point; physical height stays yours, scaled).
+                // For EYE-level spawns the anchor IS the intended head position:
+                // keeping y lets the scaled solve land the head exactly on it.
+                // Zeroing unconditionally left the head scale×headHeight (~15m at
+                // 9x) above eye-level anchors - user: "felt a little high up".
+                bool floorSpawn = spawnScaleInfo.HasValue &&
+                                  spawnScaleInfo.Value.Type == SerializedSpawnArea.Type.FloorLevel;
+                if (keepCurrentViewHeightForFloorAreas && floorSpawn)
+                    headLocalPosition.y = 0.0f;
                 if (constrainViewpointRotationToYawInXR && XRSettings.enabled)
-                {
-                    Quaternion yawOnlyRotation = Quaternion.Euler(0.0f, targetPose.rotation.eulerAngles.y, 0.0f);
-                    Vector3 headLocalPosition = target.InverseTransformPoint(head.position);
-                    if (keepCurrentViewHeightForFloorAreas)
-                        headLocalPosition.y = 0.0f;
+                    finalRotation = Quaternion.Euler(0.0f, targetPose.rotation.eulerAngles.y, 0.0f);
 
-                    Vector3 worldHeadAnchor = targetPose.position + (targetPose.rotation * headLocalPosition);
-                    Vector3 yawOnlyPosition = worldHeadAnchor - (yawOnlyRotation * headLocalPosition);
-                    finalPose = new Pose(yawOnlyPosition, yawOnlyRotation);
-                }
+                // World anchor the head should land on (from the unscaled pose),
+                // then re-solve the rig position with the SCALED head offset.
+                Vector3 worldHeadAnchor = targetPose.position + (targetPose.rotation * headLocalPosition);
+                Vector3 scaledPosition = worldHeadAnchor - (finalRotation * (headLocalPosition * spawnScale));
+                finalPose = new Pose(scaledPosition, finalRotation);
 
+                target.localScale = Vector3.one * spawnScale;
                 target.SetPositionAndRotation(finalPose.position, finalPose.rotation);
+                Debug.Log($"[IMM_SCALE] spawn viewpoint applied: scale={spawnScale:F3} anchor={worldHeadAnchor:F2} rigPos={finalPose.position:F2}");
             }
         }
 
