@@ -52,17 +52,23 @@ public class ImmSceneControls : MonoBehaviour
     {
         if (Pressed(right, CommonUsages.primaryButton, ref _aLatch))
         {
-            _paused = !_paused;
-            if (_paused) ImmNativePlugin.Pause(DocId); else ImmNativePlugin.Resume(DocId);
-            // Quill-player parity: play from the title card carries the doc to
-            // its first stop, same as the load-time auto-advance (user: pressing
-            // play alone should trigger the first stop).
-            if (!_paused && ImmNativePlugin.GetChapterCount(DocId) > 1 && ImmNativePlugin.GetCurrentChapter(DocId) == 0)
+            // Quill-player parity: when the story is WAITING at a stop (title
+            // card included), play means "continue past the stop" - the doc's
+            // own state, not a chapter-number heuristic (the previous
+            // GetCurrentChapter()==0 guard never matched after a skip-back).
+            ImmNativePlugin.GetDocumentState(out DocumentState docState, DocId);
+            if (docState.playbackState == 3 /* PlaybackState::Waiting */)
             {
-                ImmNativePlugin.SkipForward(DocId);
-                Debug.Log("[IMM_CONTROLS] resume from title -> first stop");
+                ImmNativePlugin.Continue(DocId);
+                _paused = false;
+                Debug.Log("[IMM_CONTROLS] continue past stop");
             }
-            Debug.Log($"[IMM_CONTROLS] {( _paused ? "paused" : "resumed")}");
+            else
+            {
+                _paused = !_paused;
+                if (_paused) ImmNativePlugin.Pause(DocId); else ImmNativePlugin.Resume(DocId);
+                Debug.Log($"[IMM_CONTROLS] {( _paused ? "paused" : "resumed")}");
+            }
         }
         if (Pressed(right, CommonUsages.secondaryButton, ref _bLatch))
         {
