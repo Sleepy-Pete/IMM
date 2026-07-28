@@ -215,11 +215,21 @@ GlobalWork loop (`viewer.cpp:286-309`).
 **Donned verdict (same day): "viewer position was doing well this round" — the
 driver works in-headset.** Three follow-ups from that ride:
 
-1. **Load freeze (pre-existing, now instrumented)**: the app renders ~zero
-   frames for the entire ~57 s decode (VrApi `App=70588ms, FPS=1/72`) — reads
-   as a crash. `[IMM_LOADBEAT]` heartbeat added (1/s on the main thread while
-   loading): gaps → main thread blocked; steady beats → render/plugin-event
-   side. Next launch's log decides the fix direction.
+1. **Load freeze — ROOT-CAUSED AND FIXED (`2a9a1e4`, device-verified)**: the
+   SPU stage (opus decode of every sound layer, 40-60 s for QR's 221 MB) ran
+   synchronously inside the loading state machine, which Unity drives under
+   `Player::GlobalWork`'s mutex on the MAIN thread — zero frames submitted
+   for the whole decode (LOADBEAT: no beats; VrApi `App=70s, FPS=1/72`).
+   Moved onto the existing detached loader thread, sequential after the CPU
+   stage. Verified: 72/72 fps, Stale=0 through the full 53 s decode, then
+   GPU-stage → 79 chapters → auto-advance → anchor → driver ACTIVE, all
+   within 200 ms. A loading indicator is now buildable (the app renders
+   during load). Follow-on fix in the same commit: the initial spawn anchor
+   waited 120 FRAMES for spawn areas (which exist only at LoadingComplete) —
+   now a realtime deadline, or the viewpoint driver never engaged.
+   Headless-workflow lesson: the device sleeps ~90 s after a doffed launch
+   and freezes everything mid-load — arm the prox_close keep-alive loop for
+   headless runs.
 2. **Strokes vanishing at distance / "render distance" (root-caused + fixed,
    eyeball pending)**: scene camera was `near=0.3, far=1000` while QR's
    authored travel passes 1100 m — everything beyond 1 km clipped. Set to the
