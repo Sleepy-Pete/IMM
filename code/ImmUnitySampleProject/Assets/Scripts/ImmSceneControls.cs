@@ -54,6 +54,14 @@ public class ImmSceneControls : MonoBehaviour
         {
             _paused = !_paused;
             if (_paused) ImmNativePlugin.Pause(DocId); else ImmNativePlugin.Resume(DocId);
+            // Quill-player parity: play from the title card carries the doc to
+            // its first stop, same as the load-time auto-advance (user: pressing
+            // play alone should trigger the first stop).
+            if (!_paused && ImmNativePlugin.GetChapterCount(DocId) > 1 && ImmNativePlugin.GetCurrentChapter(DocId) == 0)
+            {
+                ImmNativePlugin.SkipForward(DocId);
+                Debug.Log("[IMM_CONTROLS] resume from title -> first stop");
+            }
             Debug.Log($"[IMM_CONTROLS] {( _paused ? "paused" : "resumed")}");
         }
         if (Pressed(right, CommonUsages.secondaryButton, ref _bLatch))

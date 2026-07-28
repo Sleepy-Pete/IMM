@@ -431,15 +431,14 @@ namespace ImmPlayer
             public readonly float[] RightProj = new float[16];
             // Quest Vulkan: IMM renders each eye into its own offscreen texture on its
             // dedicated queue; Unity composites it back with a material blit.
-            // TRIPLE-buffered per eye: native WRITES buffers[eye, frame%3] while
-            // Unity SAMPLES buffers[eye, (frame+2)%3] (last frame's image). Unity's
-            // GPU runs 1-2 frames behind its CPU, so with only two buffers IMM's
-            // frame-N+1 write lands on the very buffer Unity's in-flight frame-N
-            // blit is still READING (no cross-queue semaphore exists) - seen as
-            // intermittent corruption biased to the LEFT eye, whose event has the
-            // least slack after a frame boundary. With three buffers the read
-            // target stays untouched by IMM for two full frames.
-            // Kill: IMM_UNITY_VK_NO_DOUBLE_BUFFER (write==read, parity locked 0).
+            // SINGLE-buffered per eye (write==read, same frame): the native composite
+            // bridge queues a wait-only submission on Unity's queue so the blit
+            // executes after the eye submit on the GPU - same-frame reads are
+            // ordered-correct. The old TRIPLE buffer sampled LAST frame's image;
+            // that one-frame-stale pose, re-warped by the compositor, was the
+            // world-locked-to-head artifact (root-caused + user-verified 2026-07-28).
+            // Opt-in: IMM_UNITY_VK_TRIPLE_BUFFER restores the stale-read scheme for
+            // A/B; IMM_UNITY_VK_NO_DOUBLE_BUFFER still forces single (now default).
             public readonly RenderTexture[] VulkanEyeTargets = new RenderTexture[2];
             public readonly RenderTexture[,] VulkanEyeBuffers = new RenderTexture[2, 3];
         }
@@ -451,7 +450,8 @@ namespace ImmPlayer
         // (previous frame's image; two frames from being rewritten).
         private RenderTexture EnsureVulkanEyeTarget(PerCameraInfo info, int eye, int width, int height)
         {
-            bool buffered = !IsEnvFlagEnabled("IMM_UNITY_VK_NO_DOUBLE_BUFFER");
+            bool buffered = IsEnvFlagEnabled("IMM_UNITY_VK_TRIPLE_BUFFER") &&
+                            !IsEnvFlagEnabled("IMM_UNITY_VK_NO_DOUBLE_BUFFER");
             int writeSlot = buffered ? Time.frameCount % 3 : 0;
             int readSlot = buffered ? (Time.frameCount + 2) % 3 : 0;
             RenderTexture write = EnsureVulkanEyeBuffer(info, eye, writeSlot, width, height);
