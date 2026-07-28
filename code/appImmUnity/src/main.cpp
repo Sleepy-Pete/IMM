@@ -694,23 +694,33 @@ static void UNITY_INTERFACE_API iUnityVulkanQueueRenderCallback(int event_id, vo
         0.0f, 0.0f, static_cast<float>(context->width), static_cast<float>(context->height), 0.0f, 1.0f, true
     };
     const int eyeID = context->eventID & 1;
-    iLog().Printf(LT_MESSAGE, L"Unity Vulkan frame stage: serial=%d target begun", frameSerial);
+    // Per-eye logging is ~180 logcat lines/s at full rate (3 lines x 60 eyes):
+    // it wraps the ring buffer and costs real time on the render thread. Keep
+    // the first frames for boot diagnostics, then sample every 60th eye-frame
+    // (fps can still be derived from the sampled cadence: 60 eyes/interval).
+    static uint32_t sRenderLogCounter = 0;
+    const bool logThisEye = sRenderLogCounter < 20 || (sRenderLogCounter % 60u) == 0u;
+    ++sRenderLogCounter;
+    if (logThisEye)
+        iLog().Printf(LT_MESSAGE, L"Unity Vulkan frame stage: serial=%d target begun", frameSerial);
     const bool rendered = gImmUnityPlugin.mBridge.RenderCamera(context->cameraID, viewport, eyeID, true);
-    iLog().Printf(LT_MESSAGE, L"Unity Vulkan frame stage: serial=%d camera rendered", frameSerial);
+    if (logThisEye)
+        iLog().Printf(LT_MESSAGE, L"Unity Vulkan frame stage: serial=%d camera rendered", frameSerial);
     vulkanRenderer->EndExternalImageFrame();
 
     const Player::PerformanceInfo &perf = iPlayer().GetPerformanceInfoForFrame();
-    iLog().Printf(
-        LT_MESSAGE,
-        L"Unity Vulkan render: camera=%d viewport=%dx%d rendered=%d drawCalls=%d paintDrawCalls=%d pictureDrawCalls=%d picture360DrawCalls=%d",
-        context->cameraID,
-        context->width,
-        context->height,
-        rendered ? 1 : 0,
-        perf.numDrawCalls,
-        perf.numPaintDrawCalls,
-        perf.numPictureDrawCalls,
-        perf.numPicture360DrawCalls);
+    if (logThisEye)
+        iLog().Printf(
+            LT_MESSAGE,
+            L"Unity Vulkan render: camera=%d viewport=%dx%d rendered=%d drawCalls=%d paintDrawCalls=%d pictureDrawCalls=%d picture360DrawCalls=%d",
+            context->cameraID,
+            context->width,
+            context->height,
+            rendered ? 1 : 0,
+            perf.numDrawCalls,
+            perf.numPaintDrawCalls,
+            perf.numPictureDrawCalls,
+            perf.numPicture360DrawCalls);
 }
 
 static bool iRenderUnityVulkanCamera(int cameraID, int event_id, piRenderer *renderer, UnityRenderBuffer colorOverride = nullptr)

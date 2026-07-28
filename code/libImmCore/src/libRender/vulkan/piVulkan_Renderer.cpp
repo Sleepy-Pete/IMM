@@ -1382,6 +1382,44 @@ struct piVulkanState
     VkSemaphore imageAvailableSemaphore = VK_NULL_SEMAPHORE;
     VkSemaphore renderFinishedSemaphore = VK_NULL_SEMAPHORE;
     VkFence frameFence = VK_NULL_FENCE;
+    // Resource separation: the single commandBuffer+frameFence pair used to be
+    // contended by every helper, the batch, and present, coordinated only by
+    // implicit timing conventions (source of the serialize-everything perf
+    // floor, the left-eye uniform race under the pipelined submit, and the
+    // streaming-upload mid-batch corruption). Utility work (uploads, clears,
+    // readbacks, transitions) and batched eye-frames now own their resources.
+    VkCommandBuffer utilityCommandBuffer = VK_NULL_COMMAND_BUFFER;
+    VkFence utilityFence = VK_NULL_FENCE;
+    static const int kBatchRingSize = 3;
+    VkCommandBuffer batchRingCommandBuffers[kBatchRingSize] = {};
+    VkFence batchRingFences[kBatchRingSize] = {};
+    bool batchRingFencePending[kBatchRingSize] = {};
+    int batchRingIndex = 0;
+    int batchCurrentSlot = -1;                  // ring slot of the OPEN batch (-1 = legacy shared buffer)
+    bool batchRingReady = false;
+    VkCommandBuffer batchPreviousCommandBuffer2 = VK_NULL_COMMAND_BUFFER; // commandBuffer to restore after a ring batch closes
+    int eagerBatchOpenResolved = -1;            // -1 unknown, 0 off, 1 on
+    int batchTraceResolved = -1;                // IMM_UNITY_VK_BATCH_TRACE: log batch lifecycle (first 200 events)
+    uint32_t batchTraceCount = 0;
+    bool transientExhaustReported = false;
+    // Deferred destruction: chapter transitions free the outgoing chapter's
+    // resources while pipelined eye slots may still reference them. Waiting at
+    // destroy time stalled the render thread every streaming frame (visible
+    // stutter); instead Vk handles queue here and are destroyed once the ring
+    // has advanced past every slot that could reference them.
+    struct DeferredVkDestroy
+    {
+        uint64_t ringStamp;
+        VkSampler sampler;
+        VkImageView imageView;
+        VkImage image;
+        VkBuffer buffer;
+        VkDeviceMemory memory;
+    };
+    static const int kMaxDeferredDestroys = 512;
+    DeferredVkDestroy deferredDestroys[kMaxDeferredDestroys] = {};
+    int deferredDestroyCount = 0;
+    uint64_t batchRingStampCounter = 0;         // ++ per ring-slot acquisition
     VkBuffer stagingBuffer = VK_NULL_BUFFER;
     VkDeviceMemory stagingMemory = VK_NULL_DEVICE_MEMORY;
     VkDeviceSize stagingSize = 0;
@@ -1407,7 +1445,9 @@ struct piVulkanState
         piRTarget renderTarget = nullptr;
         uint64_t lastUseSerial = 0;
     };
-    static const int kExternalImageCacheSize = 4;
+    // 2 eyes x 3 buffers (triple-buffered eye RTs) + slack; too small a cache
+    // would evict/recreate wrappers every frame.
+    static const int kExternalImageCacheSize = 8;
     ExternalImageCacheEntry externalImageCache[kExternalImageCacheSize];
     uint64_t externalImageCacheSerial = 0;
     bool externalFrameFromCache = false;
@@ -1418,6 +1458,7 @@ struct piVulkanState
     uint8_t *hostTransientUniformMapped = nullptr;
     VkDeviceSize hostTransientUniformSize = 0;
     VkDeviceSize hostTransientUniformOffset = 0;
+    VkDeviceSize hostTransientUniformLimit = 0;  // 0 = whole buffer; ring batches cap at their slot's partition
     // Eye-frame command-buffer batching (roadmap #2): the external-image /
     // own-swapchain paths otherwise record+submit+fence-wait PER draw (~40
     // submits/eye -> ~9fps). Batching keeps one command buffer + render pass
@@ -1428,8 +1469,16 @@ struct piVulkanState
     int batchEnabledResolved = -1;                                  // -1 unknown, 0 off, 1 on
     bool batchRecording = false;                                    // command buffer + render pass currently open
     piRTarget batchTarget = nullptr;                                // target the open batch renders into
+    // The plain-pool fields are the CURRENT pools (what reset/alloc sites use);
+    // with the batch ring active they point at the open slot's entry in the
+    // arrays below. Per-slot pools are REQUIRED under the pipelined submit:
+    // resetting a shared pool at batch-open destroys descriptor sets the
+    // previous slot's in-flight GPU work still references (instant UB/crash).
+    // The transient uniform buffer is partitioned per slot for the same reason.
     VkDescriptorPool batchPaintDescriptorPool = VK_NULL_DESCRIPTOR_POOL;
     VkDescriptorPool batchPictureDescriptorPool = VK_NULL_DESCRIPTOR_POOL;
+    VkDescriptorPool batchPaintDescriptorPools[3] = {};
+    VkDescriptorPool batchPictureDescriptorPools[3] = {};
     uint32_t batchDrawCount = 0;                                    // draws recorded into the current batch
     bool batchReported = false;
     bool batchOverflowReported = false;
@@ -1457,6 +1506,13 @@ struct piVulkanState
     // reversed-Z): GREATER compare + 0.0 depth clear. See iExternalReverseZEnabled.
     int externalReverseZResolved = -1;                              // -1 unknown, 0 off, 1 on
     bool externalReverseZReported = false;
+    // Pipelined submit: the external eye batch's end-of-eye vkWaitForFences is
+    // skipped; the pending fence is waited by the NEXT user of the shared
+    // command buffer (every helper pre-waits before reset). Safe because the
+    // host double-buffers the eye RTs, so Unity only samples last frame's
+    // completed buffer. Disable with IMM_UNITY_VK_NO_PIPELINED_SUBMIT.
+    int pipelinedSubmitResolved = -1;                               // -1 unknown, 0 off, 1 on
+    bool pipelinedSubmitReported = false;
     uint32_t presentFrameIndex = 0;
     bool realPresentReported = false;
     bool texturePresentReported = false;
@@ -2616,6 +2672,30 @@ static bool iCreateVulkanFrameResources(piVulkanState *state, piRenderer::piRepo
         iError(reporter, "Vulkan renderer failed to create frame fence");
         return false;
     }
+    // Resource separation: dedicated utility command buffer + fence, and a ring
+    // of batch command buffers each with its own fence. Failure is non-fatal -
+    // batchRingReady stays false and the legacy shared-buffer paths apply.
+    {
+        VkCommandBufferAllocateInfo sepAlloc = {};
+        sepAlloc.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        sepAlloc.commandPool = state->commandPool;
+        sepAlloc.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        sepAlloc.commandBufferCount = 1;
+        bool sepOk = state->vkAllocateCommandBuffers(state->device, &sepAlloc, &state->utilityCommandBuffer) == VK_SUCCESS &&
+                     state->utilityCommandBuffer != VK_NULL_COMMAND_BUFFER &&
+                     state->vkCreateFence(state->device, &fenceInfo, nullptr, &state->utilityFence) == VK_SUCCESS &&
+                     state->utilityFence != VK_NULL_FENCE;
+        for (int i = 0; sepOk && i < piVulkanState::kBatchRingSize; ++i)
+        {
+            sepOk = state->vkAllocateCommandBuffers(state->device, &sepAlloc, &state->batchRingCommandBuffers[i]) == VK_SUCCESS &&
+                    state->batchRingCommandBuffers[i] != VK_NULL_COMMAND_BUFFER &&
+                    state->vkCreateFence(state->device, &fenceInfo, nullptr, &state->batchRingFences[i]) == VK_SUCCESS &&
+                    state->batchRingFences[i] != VK_NULL_FENCE;
+        }
+        state->batchRingReady = sepOk;
+        iReport(reporter, sepOk ? "Vulkan renderer resource separation ACTIVE: utility cmdbuf + batch ring(3)"
+                                : "Vulkan renderer resource separation UNAVAILABLE: legacy shared command buffer in use");
+    }
     iReport(reporter, "Vulkan renderer created frame resources");
     return true;
 }
@@ -2945,7 +3025,10 @@ static VkDeviceSize iAlignVkDeviceSize(VkDeviceSize value, VkDeviceSize alignmen
 static bool iAllocateHostTransientUniformSlice(piVulkanState *state, piBuffer buffer, const void *data, unsigned int len, piRenderer::piReporter *reporter)
 {
     static const VkDeviceSize kAlignment = 256;
-    static const VkDeviceSize kHostTransientUniformSize = 8ull * 1024ull * 1024ull;
+    // 24MB / 3 ring slots = 8MB per eye-frame. Large streamed chapters exceeded
+    // the previous 8MB/3 partition, and the exhaustion fallback writes shared
+    // persistent storage - reopening the uniform race precisely in big scenes.
+    static const VkDeviceSize kHostTransientUniformSize = 24ull * 1024ull * 1024ull;
     if (!state || !buffer || !data || len == 0)
     {
         return false;
@@ -2955,9 +3038,18 @@ static bool iAllocateHostTransientUniformSlice(piVulkanState *state, piBuffer bu
         return false;
     }
     VkDeviceSize offset = iAlignVkDeviceSize(state->hostTransientUniformOffset, kAlignment);
-    if (offset + buffer->size > state->hostTransientUniformSize)
+    const VkDeviceSize capacity = state->hostTransientUniformLimit != 0 ? state->hostTransientUniformLimit
+                                                                        : state->hostTransientUniformSize;
+    if (offset + buffer->size > capacity)
     {
-        iError(reporter, "Vulkan renderer host transient uniform buffer exhausted");
+        // Once per session: the caller falls back to the shared persistent
+        // buffer, which reopens the cross-eye uniform race - if this fires,
+        // grow kHostTransientUniformSize.
+        if (!state->transientExhaustReported)
+        {
+            state->transientExhaustReported = true;
+            iError(reporter, "Vulkan renderer transient uniform partition EXHAUSTED - falling back to shared storage (uniform race window!)");
+        }
         return false;
     }
     std::memset(state->hostTransientUniformMapped + offset, 0, buffer->size);
@@ -3222,7 +3314,22 @@ static bool iEnsureStaticPaintPipelineLayout(piVulkanState *state, piRenderer::p
         batchPoolInfo.maxSets = kBatchSets;
         batchPoolInfo.poolSizeCount = 3;
         batchPoolInfo.pPoolSizes = batchPoolSizes;
-        if (state->vkCreateDescriptorPool(state->device, &batchPoolInfo, nullptr, &state->batchPaintDescriptorPool) != VK_SUCCESS)
+        if (state->batchRingReady)
+        {
+            // One pool per ring slot so a batch-open only ever resets a pool
+            // whose sets the GPU is guaranteed done with (that slot's fence).
+            for (int i = 0; i < piVulkanState::kBatchRingSize; ++i)
+            {
+                if (state->batchPaintDescriptorPools[i] == VK_NULL_DESCRIPTOR_POOL &&
+                    state->vkCreateDescriptorPool(state->device, &batchPoolInfo, nullptr, &state->batchPaintDescriptorPools[i]) != VK_SUCCESS)
+                {
+                    state->batchPaintDescriptorPools[i] = VK_NULL_DESCRIPTOR_POOL;
+                }
+            }
+            const int slot = state->batchCurrentSlot >= 0 ? state->batchCurrentSlot : 0;
+            state->batchPaintDescriptorPool = state->batchPaintDescriptorPools[slot];
+        }
+        else if (state->vkCreateDescriptorPool(state->device, &batchPoolInfo, nullptr, &state->batchPaintDescriptorPool) != VK_SUCCESS)
         {
             state->batchPaintDescriptorPool = VK_NULL_DESCRIPTOR_POOL;
         }
@@ -3443,7 +3550,21 @@ static bool iEnsurePicturePipelineLayout(piVulkanState *state, piRenderer::piRep
         batchPoolInfo.maxSets = kBatchSets;
         batchPoolInfo.poolSizeCount = 2;
         batchPoolInfo.pPoolSizes = batchPoolSizes;
-        if (state->vkCreateDescriptorPool(state->device, &batchPoolInfo, nullptr, &state->batchPictureDescriptorPool) != VK_SUCCESS)
+        if (state->batchRingReady)
+        {
+            // Per ring slot, mirroring the paint pools (see note there).
+            for (int i = 0; i < piVulkanState::kBatchRingSize; ++i)
+            {
+                if (state->batchPictureDescriptorPools[i] == VK_NULL_DESCRIPTOR_POOL &&
+                    state->vkCreateDescriptorPool(state->device, &batchPoolInfo, nullptr, &state->batchPictureDescriptorPools[i]) != VK_SUCCESS)
+                {
+                    state->batchPictureDescriptorPools[i] = VK_NULL_DESCRIPTOR_POOL;
+                }
+            }
+            const int slot = state->batchCurrentSlot >= 0 ? state->batchCurrentSlot : 0;
+            state->batchPictureDescriptorPool = state->batchPictureDescriptorPools[slot];
+        }
+        else if (state->vkCreateDescriptorPool(state->device, &batchPoolInfo, nullptr, &state->batchPictureDescriptorPool) != VK_SUCCESS)
         {
             state->batchPictureDescriptorPool = VK_NULL_DESCRIPTOR_POOL;
         }
@@ -4109,6 +4230,151 @@ static bool iExternalReverseZActiveForTarget(piVulkanState *state, piRTarget tar
            !state->externalFrameUsesHostDepth && iExternalReverseZEnabled(state);
 }
 
+// Pipelined external-eye submit (see piVulkanState declaration).
+static bool iPipelinedSubmitEnabled(piVulkanState *state)
+{
+    if (!state)
+        return false;
+    if (state->pipelinedSubmitResolved < 0)
+        state->pipelinedSubmitResolved = iRendererFlagEnabled("IMM_UNITY_VK_NO_PIPELINED_SUBMIT") ? 0 : 1;
+    return state->pipelinedSubmitResolved != 0;
+}
+
+// Eager batch open at BeginExternalImageFrame: isolates each eye's uniform
+// uploads into the transient ring (they otherwise hit shared persistent
+// storage the previous eye's in-flight draws are reading - the left-eye
+// "renders from a different position" race). REQUIRES resource separation:
+// with the legacy shared command buffer, mid-eye upload helpers would reset
+// the open batch (the streaming-document feedback corruption).
+static bool iEagerBatchOpenEnabled(piVulkanState *state)
+{
+    if (!state || !state->batchRingReady)
+        return false;
+    if (state->eagerBatchOpenResolved < 0)
+        state->eagerBatchOpenResolved = iRendererFlagEnabled("IMM_UNITY_VK_NO_EAGER_BATCH_OPEN") ? 0 : 1;
+    return state->eagerBatchOpenResolved != 0;
+}
+
+// Batch lifecycle trace (debug.imm.IMM_UNITY_VK_BATCH_TRACE): every open (slot +
+// CLEAR/LOAD variant), every flush (with its trigger), every target-switch that
+// kills a recording batch. Capped so it cannot wrap logcat.
+static void iBatchTrace(piVulkanState *state, piRenderer::piReporter *reporter, const char *message)
+{
+    if (!state)
+        return;
+    if (state->batchTraceResolved < 0)
+        state->batchTraceResolved = iRendererFlagEnabled("IMM_UNITY_VK_BATCH_TRACE") ? 1 : 0;
+    if (state->batchTraceResolved == 0 || state->batchTraceCount >= 200)
+        return;
+    ++state->batchTraceCount;
+    iReport(reporter, message);
+}
+
+// Wait out every in-flight (pipelined) batch slot. Utility helpers that mutate
+// or read GPU resources call this so they keep the old shared-fence semantics:
+// no upload/clear/readback ever races the eyes' executing draws.
+static void iWaitAllBatchFences(piVulkanState *state)
+{
+    if (!state || !state->batchRingReady)
+        return;
+    const uint64_t timeout = 5000000000ull;
+    for (int i = 0; i < piVulkanState::kBatchRingSize; ++i)
+    {
+        if (state->batchRingFencePending[i])
+        {
+            state->vkWaitForFences(state->device, 1, &state->batchRingFences[i], 1, timeout);
+            state->batchRingFencePending[i] = false;
+        }
+    }
+}
+
+static void iDestroyDeferredEntry(piVulkanState *state, const piVulkanState::DeferredVkDestroy &e)
+{
+    if (e.sampler != VK_NULL_SAMPLER && state->vkDestroySampler)
+        state->vkDestroySampler(state->device, e.sampler, nullptr);
+    if (e.imageView != VK_NULL_IMAGE_VIEW && state->vkDestroyImageView)
+        state->vkDestroyImageView(state->device, e.imageView, nullptr);
+    if (e.image != 0 && state->vkDestroyImage)
+        state->vkDestroyImage(state->device, e.image, nullptr);
+    if (e.buffer != VK_NULL_BUFFER && state->vkDestroyBuffer)
+        state->vkDestroyBuffer(state->device, e.buffer, nullptr);
+    if (e.memory != VK_NULL_DEVICE_MEMORY && state->vkFreeMemory)
+        state->vkFreeMemory(state->device, e.memory, nullptr);
+}
+
+// Destroy queued resources whose potential GPU references have provably
+// retired: once the ring has advanced kBatchRingSize acquisitions past the
+// enqueue stamp, every slot that was pending at enqueue time has been waited.
+static void iProcessDeferredDestroys(piVulkanState *state, bool force)
+{
+    if (!state || state->deferredDestroyCount == 0)
+        return;
+    int w = 0;
+    for (int i = 0; i < state->deferredDestroyCount; ++i)
+    {
+        const piVulkanState::DeferredVkDestroy &e = state->deferredDestroys[i];
+        if (force || state->batchRingStampCounter - e.ringStamp >= (uint64_t)piVulkanState::kBatchRingSize)
+            iDestroyDeferredEntry(state, e);
+        else
+            state->deferredDestroys[w++] = e;
+    }
+    state->deferredDestroyCount = w;
+}
+
+static void iEnqueueDeferredDestroy(piVulkanState *state, VkSampler sampler, VkImageView imageView, VkImage image, VkBuffer buffer, VkDeviceMemory memory)
+{
+    if (state->deferredDestroyCount >= piVulkanState::kMaxDeferredDestroys)
+    {
+        // Queue full (rare mass destruction): drain safely with one stall.
+        iWaitAllBatchFences(state);
+        iProcessDeferredDestroys(state, true);
+    }
+    piVulkanState::DeferredVkDestroy &e = state->deferredDestroys[state->deferredDestroyCount++];
+    e.ringStamp = state->batchRingStampCounter;
+    e.sampler = sampler;
+    e.imageView = imageView;
+    e.image = image;
+    e.buffer = buffer;
+    e.memory = memory;
+}
+
+// Scoped swap onto the dedicated utility command buffer + fence. The fenced
+// helper bodies keep referring to state->commandBuffer / state->frameFence;
+// inside this scope those point at the utility pair, so a helper can run at
+// ANY time - including while a batch ring slot is recording - without
+// resetting the batch's command buffer. Restores on scope exit (nest-safe:
+// each level restores what it saw). Falls back to a no-op when resource
+// separation is unavailable (legacy behavior preserved).
+struct iUtilityScope
+{
+    piVulkanState *state;
+    VkCommandBuffer savedCommandBuffer;
+    VkFence savedFrameFence;
+    bool swapped;
+
+    explicit iUtilityScope(piVulkanState *s)
+        : state(s), savedCommandBuffer(VK_NULL_COMMAND_BUFFER), savedFrameFence(VK_NULL_FENCE), swapped(false)
+    {
+        if (!state || !state->batchRingReady || state->utilityCommandBuffer == VK_NULL_COMMAND_BUFFER)
+            return;
+        iWaitAllBatchFences(state);
+        savedCommandBuffer = state->commandBuffer;
+        savedFrameFence = state->frameFence;
+        state->commandBuffer = state->utilityCommandBuffer;
+        state->frameFence = state->utilityFence;
+        swapped = true;
+    }
+
+    ~iUtilityScope()
+    {
+        if (swapped)
+        {
+            state->commandBuffer = savedCommandBuffer;
+            state->frameFence = savedFrameFence;
+        }
+    }
+};
+
 // True when a draw into `target` should be recorded into one shared, batched
 // command buffer (external-image eye frame or the viewer's own-swapchain frame)
 // and submitted once at the eye boundary, rather than doing its own submit+fence.
@@ -4126,11 +4392,17 @@ static bool iBatchActiveForTarget(piVulkanState *state, piRTarget target)
 // Close the open batch: end the render pass + command buffer, submit ONCE, wait
 // once. Leaves the color attachment in COLOR_ATTACHMENT_OPTIMAL (its render-pass
 // final layout) so the caller's transition/present logic runs unchanged.
-static bool iFlushBatch(piVulkanState *state, piRenderer::piReporter *reporter)
+static bool iFlushBatch(piVulkanState *state, piRenderer::piReporter *reporter, const char *traceReason = "end-of-eye")
 {
     if (!state || !state->batchRecording)
         return true;
     std::unique_lock<std::recursive_mutex> submitLock(state->submitMutex);
+    {
+        char traceMsg[128];
+        std::snprintf(traceMsg, sizeof(traceMsg), "BATCHTRACE flush slot=%d draws=%u reason=%s",
+                      state->batchCurrentSlot, state->batchDrawCount, traceReason);
+        iBatchTrace(state, reporter, traceMsg);
+    }
     state->batchRecording = false;
     piRTarget target = state->batchTarget;
     state->batchTarget = nullptr;
@@ -4185,12 +4457,43 @@ static bool iFlushBatch(piVulkanState *state, piRenderer::piReporter *reporter)
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &state->commandBuffer;
     const uint64_t submitStartNs = iNowNanoseconds();
-    result = state->vkQueueSubmit(state->graphicsQueue, 1, &submitInfo, state->frameFence);
+    const int ringSlot = state->batchCurrentSlot;
+    const VkFence batchFence = ringSlot >= 0 ? state->batchRingFences[ringSlot] : state->frameFence;
+    result = state->vkQueueSubmit(state->graphicsQueue, 1, &submitInfo, batchFence);
+    if (ringSlot >= 0)
+    {
+        // Ring batch closed: hand state->commandBuffer back to whatever owned
+        // it before this batch opened (legacy/utility work records there).
+        state->commandBuffer = state->batchPreviousCommandBuffer2;
+        state->batchPreviousCommandBuffer2 = VK_NULL_COMMAND_BUFFER;
+        state->batchCurrentSlot = -1;
+    }
     if (result != VK_SUCCESS)
         return false;
-    result = state->vkWaitForFences(state->device, 1, &state->frameFence, 1, timeout);
-    if (result != VK_SUCCESS)
-        return false;
+    // Pipelined: leave the slot's fence pending; it is waited when the ring
+    // wraps back to the slot (two eyes later) or by iWaitAllBatchFences before
+    // any mutating utility work.
+    const bool skipWait = iPipelinedSubmitEnabled(state) &&
+                          state->externalFrameRenderTarget != nullptr &&
+                          target == state->externalFrameRenderTarget;
+    if (!skipWait)
+    {
+        result = state->vkWaitForFences(state->device, 1, &batchFence, 1, timeout);
+        if (result != VK_SUCCESS)
+            return false;
+        if (ringSlot >= 0)
+            state->batchRingFencePending[ringSlot] = false;
+    }
+    else
+    {
+        if (ringSlot >= 0)
+            state->batchRingFencePending[ringSlot] = true;
+        if (!state->pipelinedSubmitReported)
+        {
+            state->pipelinedSubmitReported = true;
+            iReport(reporter, "Vulkan renderer pipelined submit ACTIVE: end-of-eye fence wait deferred to slot reuse");
+        }
+    }
     const uint64_t waitNs = iNowNanoseconds() - submitStartNs;
     if (target && target->color[0])
         target->color[0]->imageLayout = appendTransition ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
@@ -4222,16 +4525,64 @@ static bool iEnsureBatchOpen(piVulkanState *state, piRTarget target, piRenderer:
         return false;
     if (state->batchRecording && state->batchTarget == target)
         return true;
-    if (state->batchRecording && !iFlushBatch(state, reporter))
+    if (state->batchRecording && !iFlushBatch(state, reporter, "reopen-other-target"))
         return false;
     std::unique_lock<std::recursive_mutex> submitLock(state->submitMutex);
     const uint64_t timeout = 5000000000ull;
-    VkResult result = state->vkWaitForFences(state->device, 1, &state->frameFence, 1, timeout);
-    if (result != VK_SUCCESS)
-        return false;
-    state->vkResetFences(state->device, 1, &state->frameFence);
-    state->vkResetCommandBuffer(state->commandBuffer, 0);
-    state->hostTransientUniformOffset = 0;
+    VkResult result;
+    if (state->batchRingReady)
+    {
+        // Ring acquisition: this batch records into its OWN command buffer and
+        // is fenced by its OWN fence, so utility helpers and other eyes never
+        // touch it. Only the slot being reused is waited on (usually long
+        // signaled - two slots have come and gone since it was submitted).
+        state->batchRingIndex = (state->batchRingIndex + 1) % piVulkanState::kBatchRingSize;
+        const int slot = state->batchRingIndex;
+        if (state->batchRingFencePending[slot])
+        {
+            result = state->vkWaitForFences(state->device, 1, &state->batchRingFences[slot], 1, timeout);
+            if (result != VK_SUCCESS)
+                return false;
+            state->batchRingFencePending[slot] = false;
+        }
+        state->vkResetFences(state->device, 1, &state->batchRingFences[slot]);
+        state->vkResetCommandBuffer(state->batchRingCommandBuffers[slot], 0);
+        ++state->batchRingStampCounter;
+        iProcessDeferredDestroys(state, false);
+        state->batchPreviousCommandBuffer2 = state->commandBuffer;
+        state->commandBuffer = state->batchRingCommandBuffers[slot];
+        state->batchCurrentSlot = slot;
+        // This slot's own descriptor pools (created lazily by the pipeline
+        // ensure functions) - resetting them below cannot touch sets the
+        // in-flight slots' GPU work references.
+        if (state->batchPaintDescriptorPools[slot] != VK_NULL_DESCRIPTOR_POOL)
+            state->batchPaintDescriptorPool = state->batchPaintDescriptorPools[slot];
+        if (state->batchPictureDescriptorPools[slot] != VK_NULL_DESCRIPTOR_POOL)
+            state->batchPictureDescriptorPool = state->batchPictureDescriptorPools[slot];
+    }
+    else
+    {
+        result = state->vkWaitForFences(state->device, 1, &state->frameFence, 1, timeout);
+        if (result != VK_SUCCESS)
+            return false;
+        state->vkResetFences(state->device, 1, &state->frameFence);
+        state->vkResetCommandBuffer(state->commandBuffer, 0);
+        state->batchCurrentSlot = -1;
+    }
+    // Transient-uniform partition: each ring slot writes only its third of the
+    // buffer, so this eye's uploads never overwrite bytes an in-flight slot's
+    // draws are reading. Legacy path uses the whole buffer (limit 0).
+    if (state->batchCurrentSlot >= 0 && state->hostTransientUniformSize > 0)
+    {
+        const VkDeviceSize part = state->hostTransientUniformSize / (VkDeviceSize)piVulkanState::kBatchRingSize;
+        state->hostTransientUniformOffset = part * (VkDeviceSize)state->batchCurrentSlot;
+        state->hostTransientUniformLimit = part * (VkDeviceSize)(state->batchCurrentSlot + 1);
+    }
+    else
+    {
+        state->hostTransientUniformOffset = 0;
+        state->hostTransientUniformLimit = 0;
+    }
     if (state->batchPaintDescriptorPool != VK_NULL_DESCRIPTOR_POOL && state->vkResetDescriptorPool)
         state->vkResetDescriptorPool(state->device, state->batchPaintDescriptorPool, 0);
     if (state->batchPictureDescriptorPool != VK_NULL_DESCRIPTOR_POOL && state->vkResetDescriptorPool)
@@ -4280,6 +4631,12 @@ static bool iEnsureBatchOpen(piVulkanState *state, piRTarget target, piRenderer:
             state->inPassClearReported = true;
             iReport(reporter, "Vulkan renderer in-pass clear ACTIVE: eye clears folded into batch render pass");
         }
+    }
+    {
+        char traceMsg[128];
+        std::snprintf(traceMsg, sizeof(traceMsg), "BATCHTRACE open slot=%d pass=%s pendingWasConsumed=%d",
+                      state->batchCurrentSlot, inPassClear ? "CLEAR" : "LOAD", inPassClear ? 1 : 0);
+        iBatchTrace(state, reporter, traceMsg);
     }
     state->vkCmdBeginRenderPass(state->commandBuffer, &renderPassBegin, VK_SUBPASS_CONTENTS_INLINE);
     state->batchRecording = true;
@@ -4369,7 +4726,7 @@ static bool iSubmitStaticPaintDraw(piVulkanState *state, piShader shader, piRTar
         paintSet = iAllocateBatchDescriptorSet(state, state->batchPaintDescriptorPool, state->staticPaintDescriptorSetLayout);
         if (paintSet == VK_NULL_DESCRIPTOR_SET)
         {
-            if (!iFlushBatch(state, reporter) || !iEnsureBatchOpen(state, target, reporter))
+            if (!iFlushBatch(state, reporter, "pool-exhausted") || !iEnsureBatchOpen(state, target, reporter))
                 return false;
             paintSet = iAllocateBatchDescriptorSet(state, state->batchPaintDescriptorPool, state->staticPaintDescriptorSetLayout);
         }
@@ -4479,6 +4836,7 @@ static bool iSubmitStaticPaintDraw(piVulkanState *state, piShader shader, piRTar
 static bool iTransitionColorTextureToShaderRead(piVulkanState *state, piTexture texture)
 {
     std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
+    iUtilityScope utilityScope(state);
     if (!state || !texture || texture->image == 0 ||
         state->commandBuffer == VK_NULL_COMMAND_BUFFER || state->frameFence == VK_NULL_FENCE ||
         !state->vkCmdPipelineBarrier)
@@ -4756,7 +5114,7 @@ static bool iSubmitPictureDraw(piVulkanState *state, piShader shader, piRTarget 
         pictureSet = iAllocateBatchDescriptorSet(state, state->batchPictureDescriptorPool, state->pictureDescriptorSetLayout);
         if (pictureSet == VK_NULL_DESCRIPTOR_SET)
         {
-            if (!iFlushBatch(state, reporter) || !iEnsureBatchOpen(state, target, reporter))
+            if (!iFlushBatch(state, reporter, "pool-exhausted") || !iEnsureBatchOpen(state, target, reporter))
                 return false;
             pictureSet = iAllocateBatchDescriptorSet(state, state->batchPictureDescriptorPool, state->pictureDescriptorSetLayout);
         }
@@ -4997,6 +5355,7 @@ static bool iSubmitPictureQuadDraw(piVulkanState *state, piShader shader, piRTar
 static bool iReadBackTextureImage(piVulkanState *state, piTexture texture, piRenderer::piReporter *reporter)
 {
     std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
+    iUtilityScope utilityScope(state);
     if (!state || !texture || !texture->data || texture->dataSize == 0 || texture->image == 0 ||
         texture->info.mFormat != piRenderer::Format::C3_11_11_10_FLOAT ||
         state->commandBuffer == VK_NULL_COMMAND_BUFFER || state->frameFence == VK_NULL_FENCE || !state->vkCmdCopyImageToBuffer)
@@ -5308,6 +5667,7 @@ static bool iReadBackTextureImage(piVulkanState *state, piTexture texture, piRen
 static bool iClearColorTextureImage(piVulkanState *state, piTexture texture, const float *color, piRenderer::piReporter *reporter)
 {
     std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
+    iUtilityScope utilityScope(state);
     if (!state || !texture || texture->image == 0 || texture->info.mFormat == piRenderer::Format::D1_32_FLOAT ||
         texture->info.mFormat == piRenderer::Format::D1_16_UNORM || texture->info.mFormat == piRenderer::Format::DS_24_8_UINT ||
         texture->info.mFormat == piRenderer::Format::DS_32_8_UINT || state->commandBuffer == VK_NULL_COMMAND_BUFFER ||
@@ -5423,6 +5783,7 @@ static bool iClearColorTextureImage(piVulkanState *state, piTexture texture, con
 static bool iClearDepthTextureImage(piVulkanState *state, piTexture texture, piRenderer::piReporter *reporter, float clearDepthValue = 1.0f)
 {
     std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
+    iUtilityScope utilityScope(state);
     if (!state || !texture || texture->image == 0 ||
         (texture->info.mFormat != piRenderer::Format::D1_32_FLOAT &&
          texture->info.mFormat != piRenderer::Format::D1_16_UNORM &&
@@ -5540,6 +5901,7 @@ static bool iClearDepthTextureImage(piVulkanState *state, piTexture texture, piR
 static bool iUploadCpuColorToGpuColorAttachment(piVulkanState *state, piTexture texture, piRenderer::piReporter *reporter)
 {
     std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
+    iUtilityScope utilityScope(state);
     if (!state || !texture || !texture->data || texture->dataSize == 0 || texture->image == 0 ||
         state->commandBuffer == VK_NULL_COMMAND_BUFFER || state->frameFence == VK_NULL_FENCE)
     {
@@ -6173,6 +6535,7 @@ static bool iUploadTextureToStaging(piVulkanState *state, piTexture texture, piR
 static bool iUploadTextureImageData(piVulkanState *state, piTexture texture, piRenderer::piReporter *reporter)
 {
     std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
+    iUtilityScope utilityScope(state);
     if (!state || !texture || !texture->data || texture->dataSize == 0 || texture->image == 0 ||
         state->commandBuffer == VK_NULL_COMMAND_BUFFER || state->frameFence == VK_NULL_FENCE)
     {
@@ -6603,6 +6966,24 @@ void piRendererVulkan::Deinitialize(void)
             mState->vkDestroyFence(mState->device, mState->frameFence, nullptr);
             mState->frameFence = VK_NULL_FENCE;
         }
+        // Drain the deferred-destroy queue before tearing down fences/pools.
+        iWaitAllBatchFences(mState);
+        iProcessDeferredDestroys(mState, true);
+        if (mState->utilityFence != VK_NULL_FENCE && mState->vkDestroyFence)
+        {
+            mState->vkDestroyFence(mState->device, mState->utilityFence, nullptr);
+            mState->utilityFence = VK_NULL_FENCE;
+        }
+        for (int i = 0; i < piVulkanState::kBatchRingSize; ++i)
+        {
+            if (mState->batchRingFences[i] != VK_NULL_FENCE && mState->vkDestroyFence)
+            {
+                mState->vkDestroyFence(mState->device, mState->batchRingFences[i], nullptr);
+                mState->batchRingFences[i] = VK_NULL_FENCE;
+            }
+        }
+        // Command buffers are freed with the pool below.
+        mState->batchRingReady = false;
         if (mState->commandPool != VK_NULL_COMMAND_POOL && mState->vkDestroyCommandPool)
         {
             mState->vkDestroyCommandPool(mState->device, mState->commandPool, nullptr);
@@ -6640,12 +7021,34 @@ void piRendererVulkan::Deinitialize(void)
         if (mState->batchPaintDescriptorPool != VK_NULL_DESCRIPTOR_POOL && mState->vkDestroyDescriptorPool)
         {
             mState->vkDestroyDescriptorPool(mState->device, mState->batchPaintDescriptorPool, nullptr);
+            for (int i = 0; i < piVulkanState::kBatchRingSize; ++i)
+                if (mState->batchPaintDescriptorPools[i] == mState->batchPaintDescriptorPool)
+                    mState->batchPaintDescriptorPools[i] = VK_NULL_DESCRIPTOR_POOL;
             mState->batchPaintDescriptorPool = VK_NULL_DESCRIPTOR_POOL;
         }
         if (mState->batchPictureDescriptorPool != VK_NULL_DESCRIPTOR_POOL && mState->vkDestroyDescriptorPool)
         {
             mState->vkDestroyDescriptorPool(mState->device, mState->batchPictureDescriptorPool, nullptr);
+            for (int i = 0; i < piVulkanState::kBatchRingSize; ++i)
+                if (mState->batchPictureDescriptorPools[i] == mState->batchPictureDescriptorPool)
+                    mState->batchPictureDescriptorPools[i] = VK_NULL_DESCRIPTOR_POOL;
             mState->batchPictureDescriptorPool = VK_NULL_DESCRIPTOR_POOL;
+        }
+        for (int i = 0; i < piVulkanState::kBatchRingSize; ++i)
+        {
+            // The plain fields above alias one slot's pool - skip already-freed.
+            if (mState->batchPaintDescriptorPools[i] != VK_NULL_DESCRIPTOR_POOL && mState->vkDestroyDescriptorPool)
+            {
+                if (mState->batchPaintDescriptorPools[i] != mState->batchPaintDescriptorPool)
+                    mState->vkDestroyDescriptorPool(mState->device, mState->batchPaintDescriptorPools[i], nullptr);
+                mState->batchPaintDescriptorPools[i] = VK_NULL_DESCRIPTOR_POOL;
+            }
+            if (mState->batchPictureDescriptorPools[i] != VK_NULL_DESCRIPTOR_POOL && mState->vkDestroyDescriptorPool)
+            {
+                if (mState->batchPictureDescriptorPools[i] != mState->batchPictureDescriptorPool)
+                    mState->vkDestroyDescriptorPool(mState->device, mState->batchPictureDescriptorPools[i], nullptr);
+                mState->batchPictureDescriptorPools[i] = VK_NULL_DESCRIPTOR_POOL;
+            }
         }
         if (mState->staticPaintDescriptorSetLayout != VK_NULL_DESCRIPTOR_SET_LAYOUT && mState->vkDestroyDescriptorSetLayout)
         {
@@ -7578,16 +7981,23 @@ void piRendererVulkan::EndExternalImageFrame(void)
 
     if (mState->externalFramePendingInPassClear)
     {
-        // No draw opened a batch this eye, so the deferred in-pass clear never
-        // ran. Fall back to the legacy fenced clears so the composite samples a
-        // cleared image rather than stale or undefined contents.
+        // No draw opened a batch this eye (typical around pause/resume/chapter
+        // transitions, where the player's renderable state can flip BETWEEN the
+        // two sequential eye events). Do NOT clear: the wrapper still holds the
+        // eye's last completed image in a sampleable layout, and showing one
+        // slightly stale frame is invisible, whereas clearing produced a
+        // single-eye BLACK FLASH (user-visible flicker on the left eye). Only
+        // clear if the image has never been rendered at all (undefined layout).
         mState->externalFramePendingInPassClear = false;
-        const float transparentBlack[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-        if (mState->externalFrameColorTexture)
-            iClearColorTextureImage(mState, mState->externalFrameColorTexture, transparentBlack, mReporter);
-        if (mState->externalFrameDepthTexture && !mState->externalFrameUsesHostDepth)
-            iClearDepthTextureImage(mState, mState->externalFrameDepthTexture, mReporter,
-                                    iExternalReverseZEnabled(mState) ? 0.0f : 1.0f);
+        piTexture colorTex = mState->externalFrameColorTexture;
+        if (colorTex && colorTex->imageLayout == VK_IMAGE_LAYOUT_UNDEFINED)
+        {
+            const float transparentBlack[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            iClearColorTextureImage(mState, colorTex, transparentBlack, mReporter);
+            if (mState->externalFrameDepthTexture && !mState->externalFrameUsesHostDepth)
+                iClearDepthTextureImage(mState, mState->externalFrameDepthTexture, mReporter,
+                                        iExternalReverseZEnabled(mState) ? 0.0f : 1.0f);
+        }
     }
 
     const bool wasHostRenderPassFrame = mState->hostRenderPassFrameActive;
@@ -7778,6 +8188,16 @@ bool piRendererVulkan::BeginExternalImageFrame(void *image, uint32_t vkFormat, i
             mState->externalFrameHostDepthReverseZ = false;
             mState->externalFramePreservesHostColor = false;
             mState->externalFrameFromCache = true;
+            // Eager batch open - MUST come after the externalFrame* assignments
+            // above: the open's CLEAR-variant eligibility compares the target
+            // against externalFrameRenderTarget, and calling before the
+            // assignment made every eye open with the LOAD pass (clear silently
+            // skipped -> frame-over-frame trails, the "feedback" glitch; found
+            // via BATCHTRACE: every open was "pass=LOAD pendingWasConsumed=0").
+            // Isolates this eye's uniform uploads into the transient ring.
+            // Kill: IMM_UNITY_VK_NO_EAGER_BATCH_OPEN.
+            if (iEagerBatchOpenEnabled(mState) && iBatchActiveForTarget(mState, entry.renderTarget))
+                iEnsureBatchOpen(mState, entry.renderTarget, mReporter);
             if (mState->handleProbeLogCount < 60)
             {
                 ++mState->handleProbeLogCount;
@@ -8046,6 +8466,9 @@ bool piRendererVulkan::BeginExternalImageFrameWithView(void *image, void *imageV
     mState->externalFrameUsesHostDepth = hasExternalDepth && !clearExternalDepth;
     mState->externalFrameHostDepthReverseZ = false;
     mState->externalFramePreservesHostColor = !clearColor;
+    // Same eager batch-open as the cached path (see note there).
+    if (iEagerBatchOpenEnabled(mState) && iBatchActiveForTarget(mState, renderTarget))
+        iEnsureBatchOpen(mState, renderTarget, mReporter);
     if (mState->handleProbeLogCount < 60)
     {
         ++mState->handleProbeLogCount;
@@ -8144,7 +8567,7 @@ bool piRendererVulkan::SetRenderTarget(piRTarget obj)
     // viewer before SwapBuffers) flushes the open batch's single submit.
     if (mState && mState->batchRecording && obj != mState->batchTarget)
     {
-        iFlushBatch(mState, mReporter);
+        iFlushBatch(mState, mReporter, obj == nullptr ? "target-switch-to-null" : "target-switch-to-other");
     }
     if (mState) mState->currentRenderTarget = obj;
     return obj == nullptr || obj->framebuffer != VK_NULL_FRAMEBUFFER;
@@ -8334,27 +8757,32 @@ void piRendererVulkan::DestroyTexture(piTexture obj)
     if (!obj) return;
     if (mState && mState->device != VK_NULL_DEVICE)
     {
-        if (obj->sampler != VK_NULL_SAMPLER && mState->vkDestroySampler)
-        {
-            mState->vkDestroySampler(mState->device, obj->sampler, nullptr);
-            obj->sampler = VK_NULL_SAMPLER;
-        }
         const bool ownsVulkanImage = obj->externalHandle == 0;
-        if ((ownsVulkanImage || obj->ownsImageView) && obj->imageView != VK_NULL_IMAGE_VIEW && mState->vkDestroyImageView)
+        VkImageView viewToDestroy = (ownsVulkanImage || obj->ownsImageView) ? obj->imageView : VK_NULL_IMAGE_VIEW;
+        VkImage imageToDestroy = ownsVulkanImage ? obj->image : 0;
+        if (mState->batchRingReady)
         {
-            mState->vkDestroyImageView(mState->device, obj->imageView, nullptr);
-            obj->imageView = VK_NULL_IMAGE_VIEW;
+            // Defer: pipelined eye slots may still reference these handles
+            // (chapter-skip destruction race). Destroyed on ring retirement -
+            // no render-thread stall (the previous wait-here caused visible
+            // stutter during streaming-heavy scenes).
+            iEnqueueDeferredDestroy(mState, obj->sampler, viewToDestroy, imageToDestroy, VK_NULL_BUFFER, obj->memory);
         }
-        if (ownsVulkanImage && obj->image != 0 && mState->vkDestroyImage)
+        else
         {
-            mState->vkDestroyImage(mState->device, obj->image, nullptr);
-            obj->image = 0;
+            if (obj->sampler != VK_NULL_SAMPLER && mState->vkDestroySampler)
+                mState->vkDestroySampler(mState->device, obj->sampler, nullptr);
+            if (viewToDestroy != VK_NULL_IMAGE_VIEW && mState->vkDestroyImageView)
+                mState->vkDestroyImageView(mState->device, viewToDestroy, nullptr);
+            if (imageToDestroy != 0 && mState->vkDestroyImage)
+                mState->vkDestroyImage(mState->device, imageToDestroy, nullptr);
+            if (obj->memory != VK_NULL_DEVICE_MEMORY && mState->vkFreeMemory)
+                mState->vkFreeMemory(mState->device, obj->memory, nullptr);
         }
-        if (obj->memory != VK_NULL_DEVICE_MEMORY && mState->vkFreeMemory)
-        {
-            mState->vkFreeMemory(mState->device, obj->memory, nullptr);
-            obj->memory = VK_NULL_DEVICE_MEMORY;
-        }
+        obj->sampler = VK_NULL_SAMPLER;
+        obj->imageView = VK_NULL_IMAGE_VIEW;
+        obj->image = 0;
+        obj->memory = VK_NULL_DEVICE_MEMORY;
     }
     std::free(obj->data);
     if (mState && mState->liveTextures > 0) --mState->liveTextures;
@@ -8613,16 +9041,20 @@ void piRendererVulkan::DestroyBuffer(piBuffer obj)
     if (!obj) return;
     if (mState && mState->device != VK_NULL_DEVICE)
     {
-        if (obj->buffer != VK_NULL_BUFFER && mState->vkDestroyBuffer)
+        if (mState->batchRingReady)
         {
-            mState->vkDestroyBuffer(mState->device, obj->buffer, nullptr);
-            obj->buffer = VK_NULL_BUFFER;
+            // Defer (see DestroyTexture): no stall, destroyed on ring retirement.
+            iEnqueueDeferredDestroy(mState, VK_NULL_SAMPLER, VK_NULL_IMAGE_VIEW, 0, obj->buffer, obj->memory);
         }
-        if (obj->memory != VK_NULL_DEVICE_MEMORY && mState->vkFreeMemory)
+        else
         {
-            mState->vkFreeMemory(mState->device, obj->memory, nullptr);
-            obj->memory = VK_NULL_DEVICE_MEMORY;
+            if (obj->buffer != VK_NULL_BUFFER && mState->vkDestroyBuffer)
+                mState->vkDestroyBuffer(mState->device, obj->buffer, nullptr);
+            if (obj->memory != VK_NULL_DEVICE_MEMORY && mState->vkFreeMemory)
+                mState->vkFreeMemory(mState->device, obj->memory, nullptr);
         }
+        obj->buffer = VK_NULL_BUFFER;
+        obj->memory = VK_NULL_DEVICE_MEMORY;
     }
     std::free(obj->data);
     if (mState && mState->liveBuffers > 0) --mState->liveBuffers;
