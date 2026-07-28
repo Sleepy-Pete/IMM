@@ -109,3 +109,8 @@ code/appImmGodotGDExtension/*.pdb
 /code/projects/web/app/.vite/
 /code/projects/web/app/public/decoder/
 /code/projects/web/app/dist/
+
+# Large test documents - never commit (user directive 2026-07-27)
+code/ImmUnitySampleProject/Assets/StreamingAssets/TheArtofChange.imm
+code/ImmUnitySampleProject/Assets/StreamingAssets/TheArtofChange.imm.meta
+code/ImmUnitySampleProject/Builds/

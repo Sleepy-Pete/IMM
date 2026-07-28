@@ -221,7 +221,7 @@ Transform:
   m_GameObject: {fileID: 490438580}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 9.82, y: -9.076345, z: 22.79}
+  m_LocalPosition: {x: 9.82, y: -9.076345, z: 29.45}
   m_LocalScale: {x: 11.43, y: 9.939131, z: 9.939131}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -499,7 +499,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   loadSource: 1
   directoryPath: 
-  selectedFileName: sample1.imm
+  selectedFileName: TheArtofChange.imm
   loadOnStart: 1
   autoPlay: 1
   documentTransform: {fileID: 1009379717}
