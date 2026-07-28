@@ -572,7 +572,9 @@ namespace ImmPlayer
         {
             std::atomic<bool> spuOk(true);
             std::atomic<size_t> spuNext(0);
-            const size_t workerCount = soundLayers.size() < 3 ? soundLayers.size() : 3;
+            // QuantumRace ships FOUR ~22 MB tracks; a cap of 3 left the fourth
+            // as a second serial wave (25s + 18s). Four workers = one wave.
+            const size_t workerCount = soundLayers.size() < 4 ? soundLayers.size() : 4;
             std::vector<std::thread> workers;
             workers.reserve(workerCount);
             for (size_t w = 0; w < workerCount; ++w)

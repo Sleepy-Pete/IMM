@@ -500,8 +500,19 @@ namespace ImmPlayer
 		const double sc2 = lengthSquared((layerToViewer*vec4d(1.0, 0.0, 0.0, 0.0)).xyz());
 		const double dis2 = lengthSquared(vcen);
 		const double f = sqrt(double(lrad2) * sc2 / dis2);
-		if (f < 0.005) // IQ-TODO: do a smooth fade here, super easy by using the layer opacity
+		// 0.005 was tuned for room-scale documents; QuantumRace's km-scale
+		// vistas put big distant layers right at it and they popped out with
+		// no fade and NO telemetry - user report: "missing large strokes or
+		// layers near the end". 0.001 keeps far vistas; the sampled log names
+		// what still gets dropped; IMM_UNITY_NO_SIZE_CULL disables for A/B.
+		// IQ-TODO: do a smooth fade here, super easy by using the layer opacity
+		static const bool sNoSizeCull = [](){ const char *v = getenv("IMM_UNITY_NO_SIZE_CULL"); return v != nullptr && v[0] != '\0' && v[0] != '0'; }();
+		if (!sNoSizeCull && f < 0.001)
 		{
+			static uint32_t sSizeCullLogCounter = 0;
+			const uint32_t n = sSizeCullLogCounter++;
+			if ((n % 300) == 0 && log)
+				log->Printf(LT_MESSAGE, L"[IMM_SIZECULL] dropped layer %s f=%f dist=%f (n=%u)", la->GetName().GetS(), float(f), float(sqrt(dis2)), n);
 			return;
 		}
 

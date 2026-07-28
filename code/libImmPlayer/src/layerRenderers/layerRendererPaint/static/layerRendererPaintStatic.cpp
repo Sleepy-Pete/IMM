@@ -583,7 +583,10 @@ bool LayerRendererPaintStatic::Init(piRenderer* renderer, piLog* log, Drawing::C
             const float lrad2 = diagonalSquared(bbox);
             const double dis2 = lengthSquared(vcen);
             const double sizeInScreen = layerToViewer.mScale * sqrt(double(lrad2) / dis2);
-            if (sizeInScreen < 0.005) // IQ-TODO: do a smooth fade here, super easy by using the layer opacity
+            // Same km-scale fix as the pretessellated path: 0.005 dropped big
+            // distant layers with a hard pop. IQ-TODO: smooth fade via opacity.
+            static const bool sNoSizeCull = [](){ const char *v = getenv("IMM_UNITY_NO_SIZE_CULL"); return v != nullptr && v[0] != '\0' && v[0] != '0'; }();
+            if (!sNoSizeCull && sizeInScreen < 0.001)
             {
                 return;
             }

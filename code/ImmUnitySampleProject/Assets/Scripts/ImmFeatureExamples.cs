@@ -352,7 +352,12 @@ namespace ImmPlayer
                                     Mathf.Abs(rawScale - _prevSpawnScale) > 0.5f * Mathf.Max(rawScale, _prevSpawnScale);
                     if (!teleport && sampleDt > 0.0005f && sampleDt < 0.1f)
                     {
-                        float ahead = Mathf.Clamp(Time.deltaTime, 0.0f, 2.0f * sampleDt);
+                        // 1.5 frames ahead: 1.0 covered the native evaluation
+                        // latency but the rig still trailed in fast nested-
+                        // layer travel (user verdict "better... still trying
+                        // hard to keep up"). Remaining ~half frame is the
+                        // apply-to-scanout gap.
+                        float ahead = Mathf.Clamp(1.5f * Time.deltaTime, 0.0f, 3.0f * sampleDt);
                         float t = ahead / sampleDt;
                         spawnPose.position = rawPos + delta * t;
                         spawnPose.rotation = Quaternion.SlerpUnclamped(_prevSpawnRot, rawRot, 1.0f + t);
