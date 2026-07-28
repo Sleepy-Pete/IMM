@@ -117,20 +117,33 @@ Each entry: symptom → root cause → fix (commit).
   `IMM_UNITY_START_CHAPTER=N` test hook, `1db66b6`). Total IMM render-thread cost
   is now ~0.5 ms/eye — the heavy-scene fps sags were this, twice a frame.
 
-## Next work (priority order)
+## Completed in the finish-line pass (2026-07-28 evening)
 
-1. **simpleperf the player loop.** The ~4 ms/eye of player-side CPU (duplicated per
-   eye) is the 72-sustained store-gate blocker. Record the render thread in a heavy
-   scene, read hot symbols, fix (upload-once-per-frame / dirty tracking are the
-   leading candidates).
-2. **Color-space audit** (Gamma-vs-Linear decision) and **host-depth interleave**
-   (activates real compositor PTW depth — depth submission is already enabled and
-   waiting — plus proper Unity-object occlusion).
-3. **Play-from-title guard fix** (parked by user; diagnosis captured above).
-4. **UI panel/volume/browse** (Meta Quill player parity).
-5. **Ship hygiene.** Strip probes/BATCHTRACE/piLog spam, remove the validation-layer
-   .so, composite default decision, GLES→Vulkan manifest default after soak, push
-   `vr-main`, document the WiFi-adb + stream + VrApi workflow.
+- **Color-space audit closed, no change:** Linear end-to-end (Unity project → C# →
+  bridge → player), matching the native viewer's Vulkan contract; sRGB storage with
+  linear math is the correct round trip.
+- **Play-at-a-stop** (`134c1bb`): A reads the doc's own `PlaybackState`; `Waiting`
+  → `Continue()` (the Quill verb, every stop including the title card).
+- **Host-depth interleave complete** (`191c6b9` supply + `a5be810` prime): Unity's
+  XR depth reaches the plugin, and a fullscreen depth-only prime draw lays it into
+  the transient 4x depth at batch open — strokes depth-test against Unity geometry
+  with MSAA and FFR intact. Smoked on device with all fingerprints simultaneously.
+  Opt-in `IMM_UNITY_VK_HOST_DEPTH` until the one-press occlusion eyeball; kill
+  `IMM_UNITY_VK_NO_DEPTH_PRIME` falls back to 1x attach.
+- **Ship hygiene** (`9cf9ca8` + native pass): alpha composite is the code default
+  (opaque opt-in for full-360 docs), the stray 26 MB validation layer no longer
+  ships in the APK, frame-begin/pose logging sampled, Android graphics API verified
+  Vulkan-only, and the device debug flag file is EMPTY — every verified behavior is
+  the code default.
+
+## Next work
+
+1. Two one-press in-headset verifies: A-at-stop continues, and (with
+   `IMM_UNITY_VK_HOST_DEPTH`) the white cube occluding/occluded by strokes; flip
+   host-depth default-on after it passes. Confirm the deepest scenes hold 72.
+2. **UI panel/volume/browse** (Meta Quill player parity) — the remaining
+   product-scale feature.
+3. Workflow docs (WiFi-adb + stream + VrApi capture recipes) as they stabilize.
 
 ## Open bugs (parked, non-blocking)
 
