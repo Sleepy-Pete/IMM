@@ -631,12 +631,48 @@ namespace ImmPlayer
             }
             if (_doc == null || _doc.GetChapterCount() <= 1)
                 yield break;
+            // Headless test hook: IMM_UNITY_START_CHAPTER=N in imm_debug_flags.txt
+            // jumps straight to chapter N at boot (heavy-scene captures without a
+            // controller press).
+            int startChapter = ReadFlagFileIntValue("IMM_UNITY_START_CHAPTER", -1);
+            if (startChapter >= 0 && startChapter < _doc.GetChapterCount())
+            {
+                Debug.Log($"{DiagPrefix}Debug start chapter {startChapter} (flag file)");
+                RequestChapterAndSync(startChapter);
+                yield break;
+            }
             // Only auto-advance off the title card; a user press may already
             // have moved the doc on.
             if (_doc.GetCurrentChapter() != 0)
                 yield break;
             Debug.Log($"{DiagPrefix}Auto-advancing to first stop (chapter 1)");
             SkipForward();
+        }
+
+        // Reads NAME=VALUE from the shared debug flag file (persistentDataPath/
+        // imm_debug_flags.txt); returns fallback when absent or malformed.
+        private static int ReadFlagFileIntValue(string name, int fallback)
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            try
+            {
+                string path = System.IO.Path.Combine(Application.persistentDataPath, "imm_debug_flags.txt");
+                if (System.IO.File.Exists(path))
+                {
+                    foreach (string line in System.IO.File.ReadAllLines(path))
+                    {
+                        string trimmed = line.Trim();
+                        if (trimmed.StartsWith(name + "=", System.StringComparison.OrdinalIgnoreCase) &&
+                            int.TryParse(trimmed.Substring(name.Length + 1), out int value))
+                            return value;
+                    }
+                }
+            }
+            catch (System.Exception)
+            {
+            }
+#endif
+            return fallback;
         }
 
         public void SkipForward()
