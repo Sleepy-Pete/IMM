@@ -536,6 +536,61 @@ namespace ImmPlayer
         }
 
         /// <summary>
+        /// Timeline-driven spawn-area change signal: true after playback (or a
+        /// skip) crosses a Quill MakeDefault keyframe. Consume with
+        /// ClearSpawnAreaNeedsUpdate after re-anchoring on GetInitialSpawnAreaId.
+        /// </summary>
+        public bool GetSpawnAreaNeedsUpdate()
+        {
+            if (!IsLoaded) return false;
+            return ImmNativePlugin.GetSpawnAreaNeedsUpdate(DocumentId);
+        }
+
+        public void ClearSpawnAreaNeedsUpdate()
+        {
+            if (!IsLoaded) return;
+            ImmNativePlugin.SetSpawnAreaNeedsUpdate(DocumentId, false);
+        }
+
+        /// <summary>
+        /// Per-frame-safe spawn-area pose: live evaluated transform (animated
+        /// viewpoint layers move it continuously), converted to Unity space and
+        /// composed with the document root. Scale is returned separately so rig
+        /// drivers can solve position with it (same convention as the one-shot
+        /// viewpoint apply). No allocation.
+        /// </summary>
+        public bool TryGetSpawnAreaWorldPoseAndScale(
+            int spawnAreaId,
+            Transform documentRoot,
+            out Pose worldPose,
+            out float scale,
+            out bool animated)
+        {
+            worldPose = default;
+            scale = 1f;
+            animated = false;
+            if (!IsLoaded || documentRoot == null || spawnAreaId < 0)
+                return false;
+
+            if (!ImmNativePlugin.GetSpawnAreaPose(DocumentId, spawnAreaId, out SpawnAreaPose pose))
+                return false;
+
+            ConvertSpawnAreaPoseToUnity(
+                pose.GetPosition(),
+                pose.GetRotation(),
+                pose.sca,
+                out Vector3 localPosition,
+                out Quaternion localRotation);
+
+            Vector3 worldPosition = documentRoot.TransformPoint(localPosition);
+            Quaternion worldRotation = documentRoot.rotation * localRotation;
+            worldPose = new Pose(worldPosition, worldRotation);
+            scale = pose.sca > 0.0001f ? pose.sca : 1f;
+            animated = pose.animated != 0;
+            return true;
+        }
+
+        /// <summary>
         /// Resolve a spawn area to a view-target pose (for camera rig roots), compensating for current head position offset.
         /// </summary>
         public bool TryGetSpawnAreaViewTargetPose(
