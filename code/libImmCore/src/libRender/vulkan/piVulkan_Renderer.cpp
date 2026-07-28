@@ -275,6 +275,8 @@ static constexpr VkSampleCountFlagBits VK_SAMPLE_COUNT_2_BIT = 0x00000002;
 static constexpr VkSampleCountFlagBits VK_SAMPLE_COUNT_4_BIT = 0x00000004;
 static constexpr VkSampleCountFlagBits VK_SAMPLE_COUNT_8_BIT = 0x00000008;
 static constexpr VkSampleCountFlagBits VK_SAMPLE_COUNT_16_BIT = 0x00000010;
+static constexpr VkImageUsageFlags VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT = 0x00000040;
+static constexpr VkMemoryPropertyFlags VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT = 0x00000010;
 static constexpr VkImageViewType VK_IMAGE_VIEW_TYPE_2D = 1;
 static constexpr VkImageViewType VK_IMAGE_VIEW_TYPE_2D_ARRAY = 5;
 static constexpr VkComponentSwizzle VK_COMPONENT_SWIZZLE_IDENTITY = 0;
@@ -1313,6 +1315,16 @@ struct piRTargetS
     uint32_t colorAttachmentCount = 0;
     bool hasDepth = false;
     bool ownsRenderPassObjects = true;
+    // MSAA (native-viewer quality contract): draws rasterize at renderSampleCount
+    // into transient tile-memory attachments below and resolve in-pass into the
+    // wrapped 1x color image. 1_BIT = classic single-sampled target.
+    VkSampleCountFlagBits renderSampleCount = VK_SAMPLE_COUNT_1_BIT;
+    VkImage msaaColorImage = 0;
+    VkDeviceMemory msaaColorMemory = VK_NULL_DEVICE_MEMORY;
+    VkImageView msaaColorView = VK_NULL_IMAGE_VIEW;
+    VkImage msaaDepthImage = 0;
+    VkDeviceMemory msaaDepthMemory = VK_NULL_DEVICE_MEMORY;
+    VkImageView msaaDepthView = VK_NULL_IMAGE_VIEW;
 };
 
 struct piSamplerS
@@ -1451,6 +1463,9 @@ struct piVulkanState
     int compositeBridgeResolved = -1;           // -1 unknown, 0 off, 1 on
     bool compositeBridgeReported = false;
     bool compositeBridgeFailed = false;         // a failed bridge submit may leave a semaphore signaled; never signal again
+    int msaaResolved = -1;                      // IMM_UNITY_VK_NO_MSAA: -1 unknown, 0 off, 1 on
+    bool nextRenderTargetWantsMsaa = false;     // set by the external eye Begin around CreateRenderTarget
+    bool msaaReported = false;
     VkBuffer stagingBuffer = VK_NULL_BUFFER;
     VkDeviceMemory stagingMemory = VK_NULL_DEVICE_MEMORY;
     VkDeviceSize stagingSize = 0;
@@ -4036,7 +4051,9 @@ static bool iEnsureStaticPaintGraphicsPipeline(piVulkanState *state, piShader sh
     piRasterState rasterState = state->currentRasterState;
     const VkCullModeFlags cullMode = rasterState ? iToVulkanCullMode(rasterState->cullMode) : VK_CULL_MODE_NONE;
     const VkFrontFace frontFace = rasterState && rasterState->frontIsCounterClockWise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
-    const VkSampleCountFlagBits sampleCount = target->color[0] ? target->color[0]->sampleCount : VK_SAMPLE_COUNT_1_BIT;
+    const VkSampleCountFlagBits sampleCount = target->renderSampleCount != VK_SAMPLE_COUNT_1_BIT
+                                                  ? target->renderSampleCount
+                                                  : (target->color[0] ? target->color[0]->sampleCount : VK_SAMPLE_COUNT_1_BIT);
     const bool wireframe = rasterState && rasterState->wireframe;
     const bool depthClamp = rasterState && rasterState->depthClamp;
     const bool mayUseDepth = target->hasDepth &&
@@ -4304,6 +4321,19 @@ static bool iCompositeBridgeEnabled(piVulkanState *state)
     if (state->compositeBridgeResolved < 0)
         state->compositeBridgeResolved = iRendererFlagEnabled("IMM_UNITY_VK_NO_COMPOSITE_BRIDGE") ? 0 : 1;
     return state->compositeBridgeResolved != 0;
+}
+
+// MSAA 4x for the external eye frame (native-viewer quality contract): draws
+// rasterize at 4x into transient tile-memory attachments and resolve in-pass
+// into Unity's 1x eye image; stroke alpha-to-coverage comes from the player's
+// blend state (a no-op at 1x, active at 4x). Kill: IMM_UNITY_VK_NO_MSAA.
+static bool iMsaaEnabled(piVulkanState *state)
+{
+    if (!state)
+        return false;
+    if (state->msaaResolved < 0)
+        state->msaaResolved = iRendererFlagEnabled("IMM_UNITY_VK_NO_MSAA") ? 0 : 1;
+    return state->msaaResolved != 0;
 }
 
 // Eager batch open at BeginExternalImageFrame: isolates each eye's uniform
@@ -4728,6 +4758,11 @@ static bool iEnsureBatchOpen(piVulkanState *state, piRTarget target, piRenderer:
     const bool inPassClear = state->externalFramePendingInPassClear &&
                              target == state->externalFrameRenderTarget &&
                              target->clearRenderPass != VK_NULL_RENDER_PASS;
+    // MSAA targets have CLEAR ops on every pass variant (single-pass-per-eye
+    // contract), so clear values are required even on reopens. A mid-eye
+    // reopen re-clears under MSAA - the pool-exhaustion flush must never fire
+    // there (BATCHTRACE evidences it if it ever does).
+    const bool passNeedsClearValues = inPassClear || target->renderSampleCount != VK_SAMPLE_COUNT_1_BIT;
     VkClearValue batchClearValues[5] = {};
     VkRenderPassBeginInfo renderPassBegin = {};
     renderPassBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -4737,7 +4772,7 @@ static bool iEnsureBatchOpen(piVulkanState *state, piRTarget target, piRenderer:
     renderPassBegin.renderArea.offset.y = 0;
     renderPassBegin.renderArea.extent.width = target->width;
     renderPassBegin.renderArea.extent.height = target->height;
-    if (inPassClear)
+    if (passNeedsClearValues)
     {
         // Colors: transparent black (zero-init). Depth: far plane - 0.0 under
         // reverse-Z (Unity Vulkan projections), 1.0 under standard Z.
@@ -5073,7 +5108,9 @@ static bool iEnsurePictureGraphicsPipeline(piVulkanState *state, piShader shader
                                     target == state->externalFrameRenderTarget;
     const bool hostDepthBackdrop = useHostDepthTarget && !shader->isPicture2D;
     const uint32_t hostDepthBackdropMode = hostDepthBackdrop ? (state->externalFrameHostDepthReverseZ ? 1u : 2u) : 0u;
-    const VkSampleCountFlagBits sampleCount = target->color[0] ? target->color[0]->sampleCount : VK_SAMPLE_COUNT_1_BIT;
+    const VkSampleCountFlagBits sampleCount = target->renderSampleCount != VK_SAMPLE_COUNT_1_BIT
+                                                  ? target->renderSampleCount
+                                                  : (target->color[0] ? target->color[0]->sampleCount : VK_SAMPLE_COUNT_1_BIT);
     const bool mayUseDepth = target->hasDepth &&
                              (!state->hostRenderPassFrameActive || state->externalFrameUsesHostDepth);
     const bool depthTest = mayUseDepth && state->depthTestEnabled && state->currentDepthState && state->currentDepthState->depthEnable;
@@ -6511,11 +6548,130 @@ static bool iCreateRenderTargetObjects(piVulkanState *state, piRTarget target, p
         return false;
     }
 
+    // MSAA 4x branch (external eye frame): rebuild the attachment set as
+    // [0] = transient 4x color, [1] = transient 4x depth, [2] = resolve into
+    // the wrapped 1x image. loadOp=CLEAR + storeOp=DONT_CARE keeps the 4x data
+    // in tile memory (the in-pass resolve is the only main-memory write), and
+    // initialLayout=UNDEFINED on every attachment makes the pass legal from any
+    // prior layout with no barrier - same trick as the CLEAR variant. Any
+    // creation failure falls back non-fatally to the classic 1x target.
+    VkAttachmentReference resolveReference = {};
+    bool msaaActive = false;
+    if (state->nextRenderTargetWantsMsaa && iMsaaEnabled(state) &&
+        target->colorAttachmentCount == 1 && target->hasDepth &&
+        sampleCount == VK_SAMPLE_COUNT_1_BIT && target->color[0] && target->depth)
+    {
+        const VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
+        bool msaaOk = iCreateDeviceLocalImage(state, width, height, target->color[0]->vkFormat, msaaSamples,
+                                              VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
+                                              &target->msaaColorImage, &target->msaaColorMemory, reporter) &&
+                      iCreateDeviceLocalImage(state, width, height, target->depth->vkFormat, msaaSamples,
+                                              VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
+                                              &target->msaaDepthImage, &target->msaaDepthMemory, reporter);
+        if (msaaOk && state->vkCreateImageView)
+        {
+            VkImageViewCreateInfo msaaViewInfo = {};
+            msaaViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            msaaViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            msaaViewInfo.subresourceRange.baseMipLevel = 0;
+            msaaViewInfo.subresourceRange.levelCount = 1;
+            msaaViewInfo.subresourceRange.baseArrayLayer = 0;
+            msaaViewInfo.subresourceRange.layerCount = 1;
+            msaaViewInfo.image = target->msaaColorImage;
+            msaaViewInfo.format = target->color[0]->vkFormat;
+            msaaViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            msaaOk = state->vkCreateImageView(state->device, &msaaViewInfo, nullptr, &target->msaaColorView) == VK_SUCCESS &&
+                     target->msaaColorView != VK_NULL_IMAGE_VIEW;
+            if (msaaOk)
+            {
+                msaaViewInfo.image = target->msaaDepthImage;
+                msaaViewInfo.format = target->depth->vkFormat;
+                msaaViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+                msaaOk = state->vkCreateImageView(state->device, &msaaViewInfo, nullptr, &target->msaaDepthView) == VK_SUCCESS &&
+                         target->msaaDepthView != VK_NULL_IMAGE_VIEW;
+            }
+        }
+        else
+        {
+            msaaOk = false;
+        }
+        if (msaaOk)
+        {
+            attachments[0] = {};
+            attachments[0].format = target->color[0]->vkFormat;
+            attachments[0].samples = msaaSamples;
+            attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            attachments[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            attachments[1] = {};
+            attachments[1].format = target->depth->vkFormat;
+            attachments[1].samples = msaaSamples;
+            attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            attachments[2] = {};
+            attachments[2].format = target->color[0]->vkFormat;
+            attachments[2].samples = VK_SAMPLE_COUNT_1_BIT;
+            attachments[2].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            attachments[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            attachments[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            attachments[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            attachments[2].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            attachments[2].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            colorReferences[0].attachment = 0;
+            colorReferences[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            depthReference.attachment = 1;
+            depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            resolveReference.attachment = 2;
+            resolveReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            attachmentViews[0] = target->msaaColorView;
+            attachmentViews[1] = target->msaaDepthView;
+            attachmentViews[2] = target->color[0]->imageView;
+            attachmentCount = 3;
+            target->renderSampleCount = msaaSamples;
+            msaaActive = true;
+            if (!state->msaaReported)
+            {
+                state->msaaReported = true;
+                iReport(reporter, "Vulkan renderer MSAA 4x ACTIVE: transient attachments, in-pass resolve, player A2C honored");
+            }
+        }
+        else
+        {
+            if (target->msaaColorView != VK_NULL_IMAGE_VIEW && state->vkDestroyImageView)
+                state->vkDestroyImageView(state->device, target->msaaColorView, nullptr);
+            if (target->msaaDepthView != VK_NULL_IMAGE_VIEW && state->vkDestroyImageView)
+                state->vkDestroyImageView(state->device, target->msaaDepthView, nullptr);
+            if (target->msaaColorImage != 0 && state->vkDestroyImage)
+                state->vkDestroyImage(state->device, target->msaaColorImage, nullptr);
+            if (target->msaaDepthImage != 0 && state->vkDestroyImage)
+                state->vkDestroyImage(state->device, target->msaaDepthImage, nullptr);
+            if (target->msaaColorMemory != VK_NULL_DEVICE_MEMORY && state->vkFreeMemory)
+                state->vkFreeMemory(state->device, target->msaaColorMemory, nullptr);
+            if (target->msaaDepthMemory != VK_NULL_DEVICE_MEMORY && state->vkFreeMemory)
+                state->vkFreeMemory(state->device, target->msaaDepthMemory, nullptr);
+            target->msaaColorView = VK_NULL_IMAGE_VIEW;
+            target->msaaDepthView = VK_NULL_IMAGE_VIEW;
+            target->msaaColorImage = 0;
+            target->msaaDepthImage = 0;
+            target->msaaColorMemory = VK_NULL_DEVICE_MEMORY;
+            target->msaaDepthMemory = VK_NULL_DEVICE_MEMORY;
+            iReport(reporter, "Vulkan renderer MSAA unavailable; falling back to single-sampled eye target");
+        }
+    }
+
     VkSubpassDescription subpass = {};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = target->colorAttachmentCount;
     subpass.pColorAttachments = target->colorAttachmentCount > 0 ? colorReferences : nullptr;
     subpass.pDepthStencilAttachment = target->hasDepth ? &depthReference : nullptr;
+    subpass.pResolveAttachments = msaaActive ? &resolveReference : nullptr;
 
     VkRenderPassCreateInfo renderPassInfo = {};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -6555,10 +6711,16 @@ static bool iCreateRenderTargetObjects(piVulkanState *state, piRTarget target, p
     // by render-pass compatibility). Failure is non-fatal: VK_NULL falls back to
     // the legacy standalone clear submits.
     {
-        for (uint32_t i = 0; i < attachmentCount; ++i)
+        // MSAA passes are already CLEAR/UNDEFINED on the rasterized attachments
+        // (and the resolve target must stay DONT_CARE) - create the second
+        // handle unmutated so both variants are the same single-pass contract.
+        if (!msaaActive)
         {
-            attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-            attachments[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            for (uint32_t i = 0; i < attachmentCount; ++i)
+            {
+                attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+                attachments[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            }
         }
         VkResult clearResult = state->vkCreateRenderPass(state->device, &renderPassInfo, nullptr, &target->clearRenderPass);
         if (clearResult != VK_SUCCESS)
@@ -8617,7 +8779,11 @@ bool piRendererVulkan::BeginExternalImageFrameWithView(void *image, void *imageV
         return false;
     }
 
+    // External eye targets opt into the MSAA 4x contract (iCreateRenderTargetObjects
+    // falls back to 1x non-fatally if attachments cannot be built).
+    mState->nextRenderTargetWantsMsaa = true;
     piRTarget renderTarget = CreateRenderTarget(colorTexture, nullptr, nullptr, nullptr, depthTexture);
+    mState->nextRenderTargetWantsMsaa = false;
     if (!renderTarget || !SetRenderTarget(renderTarget))
     {
         if (renderTarget) DestroyRenderTarget(renderTarget);
@@ -8737,6 +8903,36 @@ void piRendererVulkan::DestroyRenderTarget(piRTarget obj)
         {
             mState->vkDestroyRenderPass(mState->device, obj->clearRenderPass, nullptr);
             obj->clearRenderPass = VK_NULL_RENDER_PASS;
+        }
+        if (obj->msaaColorView != VK_NULL_IMAGE_VIEW && mState->vkDestroyImageView)
+        {
+            mState->vkDestroyImageView(mState->device, obj->msaaColorView, nullptr);
+            obj->msaaColorView = VK_NULL_IMAGE_VIEW;
+        }
+        if (obj->msaaDepthView != VK_NULL_IMAGE_VIEW && mState->vkDestroyImageView)
+        {
+            mState->vkDestroyImageView(mState->device, obj->msaaDepthView, nullptr);
+            obj->msaaDepthView = VK_NULL_IMAGE_VIEW;
+        }
+        if (obj->msaaColorImage != 0 && mState->vkDestroyImage)
+        {
+            mState->vkDestroyImage(mState->device, obj->msaaColorImage, nullptr);
+            obj->msaaColorImage = 0;
+        }
+        if (obj->msaaDepthImage != 0 && mState->vkDestroyImage)
+        {
+            mState->vkDestroyImage(mState->device, obj->msaaDepthImage, nullptr);
+            obj->msaaDepthImage = 0;
+        }
+        if (obj->msaaColorMemory != VK_NULL_DEVICE_MEMORY && mState->vkFreeMemory)
+        {
+            mState->vkFreeMemory(mState->device, obj->msaaColorMemory, nullptr);
+            obj->msaaColorMemory = VK_NULL_DEVICE_MEMORY;
+        }
+        if (obj->msaaDepthMemory != VK_NULL_DEVICE_MEMORY && mState->vkFreeMemory)
+        {
+            mState->vkFreeMemory(mState->device, obj->msaaDepthMemory, nullptr);
+            obj->msaaDepthMemory = VK_NULL_DEVICE_MEMORY;
         }
     }
     if (mState && mState->liveRenderTargets > 0) --mState->liveRenderTargets;
