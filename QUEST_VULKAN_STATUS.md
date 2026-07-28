@@ -240,6 +240,41 @@ driver works in-headset.** Three follow-ups from that ride:
 
 Device: `1725_farplane_loadbeat` build installed+stopped (all of the above).
 
+## Picture path repaired (`c3b26b2`) + pose prediction (`b87c608`) — 2026-07-28 late
+
+Pete's first full QR ride found the skybox scenes collapsing to 23 fps in BOTH
+eyes (Stale 40-58, GPU and CPU idle — TimeWarp dragging stale frames read as
+"tracking broken") and the title PNG "glued to my eyes". Four defects, one path:
+
+- **Pipeline thrash**: the picture pipeline kept ONE cached variant keyed on
+  render pass; the batched eye targets cycle SIX passes (2 eyes x 3 ring
+  slots), so `vkCreateGraphicsPipelines` ran on every picture draw (~7 ms;
+  the api bracket measured 14-24 ms/eye). Now on the paint path's variant
+  cache — worst api after the fix: **0.52 ms**, 129 skybox-seconds at 72 fps.
+- **2D quad in NDC**: the Vulkan 2D picture VS emitted raw NDC positions —
+  every 2D picture rendered fullscreen and head-locked. Now world-placed
+  (aspect-scaled quad through `mLayerToViewer` + eye projection, GLES parity).
+- **Wrong eye**: both picture VSes hardcoded `mEye[0]`; right eye rendered
+  pictures with the left eye's projection. Now `pass.mID` like the paint VS.
+- **Aspect never arrived**: `SetShaderConstant4F` is a GL-only stub on Vulkan;
+  the aspect now rides the slot-9 buffer, bound as descriptor binding 9.
+
+User verdict: *"skybox and png fixes are in and they work and there is better
+tracking."* Shader generator gains an NDK-glslc fallback (no glslangValidator
+needed).
+
+**Pose prediction** (`b87c608`): the native spawn pose is evaluated a frame
+behind, so the rig trailed the authored camera at travel speed. One-frame
+extrapolation (slerp + scale-rate, teleport guard; capture mirrors the APPLIED
+pose so prediction never leaks into the user offset). Kill
+`IMM_UNITY_NO_VIEWPOINT_PREDICT`. Also `culled=`/`trisCulled=` counters in the
+sampled render line — the evidence channel for the open missing-strokes hunt.
+
+**Open**: missing large strokes/layers near the film's end (RENDER_BUDGET
+eliminated — compiled out; far plane already 20000; end-window draws healthy,
+zero streaming lines). Next evidence: right-stick burst capture at the moment
++ culled= correlation → frustum-cull vs not-in-draw-list vs drawn-invisible.
+
 ## Next work
 
 1. Quantum Race in-headset verify on a fresh boot (above), then the two one-press
