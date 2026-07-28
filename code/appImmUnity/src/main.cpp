@@ -2117,7 +2117,20 @@ extern "C" bool UNITY_INTERFACE_EXPORT GetSpawnAreaInfo(int docId, int spawnarea
     Document::SpawnAreaInfo spawnAreaInfo;
     if (!iPlayer().GetSpawnAreaInfo(spawnAreaInfo, docId, spawnareaId))
         return false;
-    serializedSpawnArea.mName = piws2str(spawnAreaInfo.mName);
+    // The C# marshaller copies the string during the call; hand it a static
+    // buffer instead of a malloc'd one (piws2str allocates - the old direct
+    // assignment leaked a buffer per call).
+    {
+        static char sSpawnAreaNameUtf8[256];
+        sSpawnAreaNameUtf8[0] = '\0';
+        char* nameUtf8 = piws2str(spawnAreaInfo.mName);
+        if (nameUtf8 != nullptr)
+        {
+            std::snprintf(sSpawnAreaNameUtf8, sizeof(sSpawnAreaNameUtf8), "%s", nameUtf8);
+            std::free(nameUtf8);
+        }
+        serializedSpawnArea.mName = sSpawnAreaNameUtf8;
+    }
     serializedSpawnArea.mVersion = spawnAreaInfo.mVersion;
     serializedSpawnArea.mType = spawnAreaInfo.mIsFloorLevel ? SerializedSpawnArea::Type::FloorLevel : SerializedSpawnArea::Type::EyeLevel;
     serializedSpawnArea.mAnimated = spawnAreaInfo.mAnimated;
@@ -2178,6 +2191,59 @@ extern "C" bool UNITY_INTERFACE_EXPORT GetSpawnAreaInfo(int docId, int spawnarea
         serializedSpawnArea.screenshot.height = pScreenshot->GetYRes();
         serializedSpawnArea.screenshot.pData = pScreenshot->GetData(0);
     }
+    return true;
+}
+
+// Timeline-driven spawn-area change signal. Quill MakeDefault keyframes on
+// spawn-area layers set it as playback (or a skip's SetStateAt) crosses them;
+// the host consumes it to re-anchor the rig on the authored viewpoint - the
+// same contract appImmViewer's GlobalWork loop uses (viewer.cpp).
+extern "C" bool UNITY_INTERFACE_EXPORT GetSpawnAreaNeedsUpdate(int docId)
+{
+    return iPlayer().GetSpawnAreaNeedsUpdate(docId);
+}
+
+extern "C" void UNITY_INTERFACE_EXPORT SetSpawnAreaNeedsUpdate(int docId, bool state)
+{
+    iPlayer().SetSpawnAreaNeedsUpdate(docId, state);
+}
+
+// Pose-only spawn-area query, safe to poll every frame: no name conversion
+// (GetSpawnAreaInfo allocates for it), no screenshot lookup - just the live
+// evaluated spawn-area-to-world transform, which animated viewpoint layers
+// (transform keyframes on the spawn area or its parents) move continuously.
+struct SerializedSpawnAreaPose
+{
+    float posx, posy, posz;       // position
+    float rotx, roty, rotz, rotw; // rotation (quaternion)
+    float sca;                    // uniform scale
+    int32_t animated;             // layer (or a parent) has >1 transform key
+    int32_t isFloorLevel;         // TrackingLevel::Floor
+    int32_t locomotion;           // volume allow-translation mask: X<<2 | Y<<1 | Z
+};
+
+extern "C" bool UNITY_INTERFACE_EXPORT GetSpawnAreaPose(int docId, int spawnareaId, SerializedSpawnAreaPose* pose)
+{
+    if (pose == nullptr || spawnareaId < 0) // Player checks the upper bound only
+        return false;
+    Document::SpawnAreaInfo spawnAreaInfo;
+    if (!iPlayer().GetSpawnAreaInfo(spawnAreaInfo, docId, spawnareaId))
+        return false;
+    const trans3d mat = spawnAreaInfo.mSpawnAreaToWorld;
+    pose->posx = (float)mat.mTranslation.x;
+    pose->posy = (float)mat.mTranslation.y;
+    pose->posz = (float)mat.mTranslation.z;
+    pose->rotx = (float)mat.mRotation.x;
+    pose->roty = (float)mat.mRotation.y;
+    pose->rotz = (float)mat.mRotation.z;
+    pose->rotw = (float)mat.mRotation.w;
+    pose->sca  = (float)mat.mScale;
+    pose->animated = spawnAreaInfo.mAnimated ? 1 : 0;
+    pose->isFloorLevel = spawnAreaInfo.mIsFloorLevel ? 1 : 0;
+    pose->locomotion =
+        (((spawnAreaInfo.mVolume.mAllowTranslationX ? 1 : 0) << 2) |
+         ((spawnAreaInfo.mVolume.mAllowTranslationY ? 1 : 0) << 1) |
+         ((spawnAreaInfo.mVolume.mAllowTranslationZ ? 1 : 0) << 0));
     return true;
 }
 
