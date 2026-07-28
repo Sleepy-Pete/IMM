@@ -640,9 +640,12 @@ static void UNITY_INTERFACE_API iUnityVulkanQueueRenderCallback(int event_id, vo
     }
     // A "frame begin" without its matching "Unity Vulkan render:" completion line
     // pinpoints a hang inside this callback (no-timeout vkQueueSubmit etc.).
+    // Sampled like the per-eye [render] lines: full-rate begin logging alone was
+    // ~140 logcat lines/s (ship hygiene; a hang still shows as serial silence).
     const int frameSerial = ++sUnityVulkanFrameSerial;
-    iLog().Printf(LT_MESSAGE, L"Unity Vulkan frame begin: serial=%d event=%d", frameSerial, event_id);
-    if ((frameSerial % 72) == 1)
+    if (frameSerial <= 20 || (frameSerial % 60) == 0)
+        iLog().Printf(LT_MESSAGE, L"Unity Vulkan frame begin: serial=%d event=%d", frameSerial, event_id);
+    if ((frameSerial % 720) == 1)
     {
         // Head-pose tracer: world2Head follows the (possibly static) camera transform;
         // XR head TRACKING flows through the per-eye stereo matrices. If world2LeftEye
@@ -659,31 +662,21 @@ static void UNITY_INTERFACE_API iUnityVulkanQueueRenderCallback(int event_id, vo
     }
 
     piRendererVulkan *vulkanRenderer = static_cast<piRendererVulkan *>(context->renderer);
-    bool frameBegun;
-    if (context->depthImage == 0)
-    {
-        // Offscreen-RT mode (Quest): IMM owns the whole target - clear and fully
-        // re-render it; EndExternalImageFrame leaves it SHADER_READ for Unity's
-        // composite pass to sample.
-        frameBegun = vulkanRenderer->BeginExternalImageFrame(
-            reinterpret_cast<void *>(static_cast<uintptr_t>(context->colorImage)),
-            context->colorFormat,
-            context->width,
-            context->height,
-            1);
-    }
-    else
-    {
-        frameBegun = vulkanRenderer->BeginExternalImageFramePreserveColor(
-            reinterpret_cast<void *>(static_cast<uintptr_t>(context->colorImage)),
-            context->colorFormat,
-            context->colorSamples,
-            reinterpret_cast<void *>(static_cast<uintptr_t>(context->depthImage)),
-            context->depthFormat,
-            context->depthSamples,
-            context->width,
-            context->height);
-    }
+    // Offscreen-RT mode (Quest): IMM owns the whole target - clear and fully
+    // re-render it; EndExternalImageFrame leaves it SHADER_READ for Unity's
+    // composite pass to sample. A depth image here is the HOST (Unity XR)
+    // depth handed through for occlusion (IMM_UNITY_VK_HOST_DEPTH): the
+    // renderer decides attach-at-1x vs PRIME-at-4x; color semantics stay
+    // offscreen-clear either way (the old PreserveColor routing here rendered
+    // without clearing - trails - and is retired for eye frames).
+    const bool frameBegun = vulkanRenderer->BeginExternalImageFrame(
+        reinterpret_cast<void *>(static_cast<uintptr_t>(context->colorImage)),
+        context->colorFormat,
+        context->width,
+        context->height,
+        1,
+        reinterpret_cast<void *>(static_cast<uintptr_t>(context->depthImage)),
+        context->depthImage != 0 ? context->depthFormat : 0);
     if (!frameBegun)
     {
         iLog().Printf(LT_ERROR, L"Unity Vulkan queue render skipped: failed to begin external image frame for camera=%d", context->cameraID);
