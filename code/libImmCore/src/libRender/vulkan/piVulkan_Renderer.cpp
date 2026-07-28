@@ -1845,7 +1845,8 @@ static void iReport(piRenderer::piReporter *reporter, const char *message)
 
 static void iDebugLog(const char *message)
 {
-    const char *path = std::getenv("IMM_VULKAN_DEBUG_LOG_PATH");
+    // Launch-time constant; getenv per draw showed in the render-thread profile.
+    static const char *path = std::getenv("IMM_VULKAN_DEBUG_LOG_PATH");
     if (!path || !message)
     {
         return;

@@ -673,7 +673,7 @@ bool LayerRendererPaintStatic::Init(piRenderer* renderer, piLog* log, Drawing::C
 
 
         const int forcedBrushType = iForcedPaintBrushType();
-        const bool traceDraws = std::getenv("IMM_TRACE_STATIC_PAINT_DRAWS") != nullptr;
+        static const bool traceDraws = std::getenv("IMM_TRACE_STATIC_PAINT_DRAWS") != nullptr;
         int lastShaderID = -1;
         int lastStateID = -1;
         uint32_t traceDrawIndex = 0;

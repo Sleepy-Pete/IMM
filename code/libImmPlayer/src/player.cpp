@@ -1055,7 +1055,12 @@ namespace ImmPlayer
 
                 // update loading process ideally this happens only for the first camera. We need to have a frameID counter for that to detect changes in frameID
                 bool needRender = false;
-                if (!iEnvFlagEnabled("IMM_UNITY_SKIP_DOC_UPDATE_STATE_GPU"))
+                // These flags are launch-time constants; getenv per camera per
+                // frame showed up in the 2026-07-28 render-thread profile.
+                static const bool sSkipDocUpdateStateGpu = iEnvFlagEnabled("IMM_UNITY_SKIP_DOC_UPDATE_STATE_GPU");
+                static const bool sSkipDisplayPreRender = iEnvFlagEnabled("IMM_UNITY_SKIP_DISPLAY_PRERENDER");
+                static const bool sSkipUnloadNotInTimeline = iEnvFlagEnabled("IMM_UNITY_SKIP_UNLOAD_NOT_IN_TIMELINE");
+                if (!sSkipDocUpdateStateGpu)
                 {
                     iTraceUnityGlobalRender("before-update-state-gpu");
                     needRender = doc->UpdateStateGPU(mLayerPaintRender, &mLayerRenderPicture, &mLayerRenderModel, mRenderer, mLog, mColorSpace);
@@ -1069,7 +1074,7 @@ namespace ImmPlayer
 
                 if (needRender)
                 {
-                    if (!iEnvFlagEnabled("IMM_UNITY_SKIP_DISPLAY_PRERENDER"))
+                    if (!sSkipDisplayPreRender)
                     {
                         iTraceUnityGlobalRender("before-display-prerender-layer");
                         iDisplayPreRenderLayer(doc->GetSequence()->GetRoot(), doc->GetDocumentToWorld(), 1.0f, mViewerInfo.mWorldToHead);
@@ -1080,7 +1085,15 @@ namespace ImmPlayer
                         iTraceUnityGlobalRender("skip-display-prerender-layer");
                     }
 
-                    if (!iEnvFlagEnabled("IMM_UNITY_SKIP_UNLOAD_NOT_IN_TIMELINE"))
+                    // The unload-eligibility scan walks the whole layer tree
+                    // through std::function dispatch - the top app cost in the
+                    // 2026-07-28 render-thread profile (player.cpp:1254 lambda).
+                    // Eligibility changes as playback crosses section bounds,
+                    // not per camera per frame: scan on a coarse cadence (~2x/s
+                    // at 72fps stereo). Unloads land a few hundred ms later at
+                    // worst; the renderer's deferred destruction absorbs them.
+                    static uint32_t sUnloadScanCounter = 0;
+                    if (!sSkipUnloadNotInTimeline && (sUnloadScanCounter++ % 60u) == 0u)
                     {
                         iTraceUnityGlobalRender("before-unload-not-in-timeline");
                         iUnloadNotInTimeline(doc->GetSequence()->GetRoot(), mTime);
