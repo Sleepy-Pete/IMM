@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <thread>
 #include <chrono>
+#include <atomic>
+#include <vector>
 
 
 #include "libImmCore/src/libBasics/piDebug.h"
@@ -534,7 +536,10 @@ namespace ImmPlayer
 
         log->Printf(LT_MESSAGE, L"Loading in SPU...");
 
-        auto loadInSPU = [this, log, layerRenderSound, soundEngine](Layer* layer, int level, int child, bool instance) -> bool
+        // Pass 1 (serial): renderer-side slot allocation - ids are assigned
+        // sequentially, so this must stay ordered. Cheap.
+        std::vector<Layer*> soundLayers;
+        auto collectSPU = [this, log, layerRenderSound, &soundLayers](Layer* layer, int level, int child, bool instance) -> bool
         {
             if (layer->GetType() == Layer::Type::Sound)
             {
@@ -545,22 +550,70 @@ namespace ImmPlayer
                     log->Printf(LT_ERROR, L"Could not load in CPU Sound layer %s", layer->GetFullName()->GetS());
                     return false;
                 }
-#ifndef UNLOAD_SOUNDS
-                // When voice management is on, we don't preload sounds in the sound engine
-                if (!layerRenderSound->LoadInSPU(soundEngine, log, layer))
-                {
-                    log->Printf(LT_ERROR, L"Could not load in SPU Sound layer %s", layer->GetFullName()->GetS());
-                    return false;
-                }
-#endif
+                soundLayers.push_back(layer);
             }
             return true;
         };
-        if (!mSequence.Recurse(loadInSPU, false, false, false, false))
+        if (!mSequence.Recurse(collectSPU, false, false, false, false))
         {
             log->Printf(LT_ERROR, L"Error loading in SPU...");
             return false;
         }
+
+#ifndef UNLOAD_SOUNDS
+        // Pass 2: sound-engine registration. On Android each compressed sound
+        // opus-decodes through its own AMediaCodec inside AddSound, and the
+        // engine's sound array is mutex-protected - so decode the tracks in
+        // PARALLEL (QuantumRace's three ~20 MB tracks took ~53 s serially;
+        // parallel wall time is the longest single track). Other platforms
+        // keep the serial path - their engine backends are unaudited.
+#if defined(ANDROID)
+        if (soundLayers.size() > 1)
+        {
+            std::atomic<bool> spuOk(true);
+            std::atomic<size_t> spuNext(0);
+            const size_t workerCount = soundLayers.size() < 3 ? soundLayers.size() : 3;
+            std::vector<std::thread> workers;
+            workers.reserve(workerCount);
+            for (size_t w = 0; w < workerCount; ++w)
+            {
+                workers.emplace_back([&]()
+                {
+                    for (;;)
+                    {
+                        const size_t i = spuNext.fetch_add(1);
+                        if (i >= soundLayers.size())
+                            break;
+                        if (!layerRenderSound->LoadInSPU(soundEngine, log, soundLayers[i]))
+                        {
+                            log->Printf(LT_ERROR, L"Could not load in SPU Sound layer %s", soundLayers[i]->GetFullName()->GetS());
+                            spuOk = false;
+                        }
+                    }
+                });
+            }
+            for (auto &worker : workers)
+                worker.join();
+            if (!spuOk)
+            {
+                log->Printf(LT_ERROR, L"Error loading in SPU...");
+                return false;
+            }
+        }
+        else
+#endif
+        {
+            for (Layer* layer : soundLayers)
+            {
+                if (!layerRenderSound->LoadInSPU(soundEngine, log, layer))
+                {
+                    log->Printf(LT_ERROR, L"Could not load in SPU Sound layer %s", layer->GetFullName()->GetS());
+                    log->Printf(LT_ERROR, L"Error loading in SPU...");
+                    return false;
+                }
+            }
+        }
+#endif
 
         std::chrono::steady_clock::time_point timeEnd = std::chrono::steady_clock::now();
 
