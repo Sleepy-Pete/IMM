@@ -248,6 +248,7 @@ static constexpr VkPipelineStageFlags VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
 static constexpr VkPipelineStageFlags VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT = 0x00000200;
 static constexpr VkPipelineStageFlags VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT = 0x00000400;
 static constexpr VkPipelineStageFlags VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT = 0x00002000;
+static constexpr VkPipelineStageFlags VK_PIPELINE_STAGE_ALL_COMMANDS_BIT = 0x00010000;
 static constexpr VkAccessFlags VK_ACCESS_TRANSFER_WRITE_BIT = 0x00001000;
 static constexpr VkAccessFlags VK_ACCESS_TRANSFER_READ_BIT = 0x00000800;
 static constexpr VkAccessFlags VK_ACCESS_SHADER_READ_BIT = 0x00000020;
@@ -1436,6 +1437,20 @@ struct piVulkanState
     bool utilityDrainSkipReported = false;
     uint32_t utilityDrainWaitCount = 0;         // utility scopes that waited >=1 pending slot
     uint32_t utilityDrainSkipCount = 0;         // utility scopes that skipped every pending slot
+    // Composite bridge: IMM eye work submits on a dedicated second queue while
+    // Unity's composite blit samples the eye RT on Unity's own queue - only CPU
+    // timing kept those ordered. The end-of-eye submit now signals the slot's
+    // semaphore, and a wait-only submission queued on the HOST queue (from the
+    // render thread, ahead of Unity's frame submit) joins the queues: the blit
+    // provably executes after the eye render, with no CPU stall. This is what
+    // makes single-buffered (same-frame) eye RT reads sound - the 1-frame-stale
+    // triple-buffer composite was the world-locked-to-head artifact.
+    // Kill: IMM_UNITY_VK_NO_COMPOSITE_BRIDGE.
+    VkQueue hostQueue = VK_NULL_QUEUE;          // Unity's own graphics queue (pre dedicated-queue override)
+    VkSemaphore batchRingBridgeSemaphores[kBatchRingSize] = {};
+    int compositeBridgeResolved = -1;           // -1 unknown, 0 off, 1 on
+    bool compositeBridgeReported = false;
+    bool compositeBridgeFailed = false;         // a failed bridge submit may leave a semaphore signaled; never signal again
     VkBuffer stagingBuffer = VK_NULL_BUFFER;
     VkDeviceMemory stagingMemory = VK_NULL_DEVICE_MEMORY;
     VkDeviceSize stagingSize = 0;
@@ -1501,6 +1516,10 @@ struct piVulkanState
     uint64_t batchOpenNs = 0;                                       // timestamp at batch open, for record-vs-wait perf probe
     uint64_t batchDescNs = 0;                                       // accumulated per-draw descriptor alloc+update time this eye
     uint64_t batchDrawNs = 0;                                       // accumulated time INSIDE draw-record calls this eye; record minus this = inter-draw gap (player/Unity-side per-draw overhead)
+    uint64_t batchUploadNs = 0;                                     // accumulated UpdateBuffer time while this eye's batch records (the gap's suspected dominant slice)
+    uint64_t batchUploadBytes = 0;                                  // bytes moved by those UpdateBuffer calls
+    uint64_t batchLockNs = 0;                                       // accumulated submitMutex acquisition wait in the draw paths (streaming-thread helpers hold it across fenced bodies)
+    uint64_t batchApiNs = 0;                                        // accumulated wall time inside DrawPrimitiveIndexed (public entry->exit); gap minus this = time in the PLAYER's own loop
     uint32_t perfProbeCount = 0;
     // In-pass clears: fold the external eye-frame's color+depth clears into the
     // batch render pass (LOAD_OP_CLEAR variant) instead of two standalone fenced
@@ -2702,12 +2721,16 @@ static bool iCreateVulkanFrameResources(piVulkanState *state, piRenderer::piRepo
                      state->utilityCommandBuffer != VK_NULL_COMMAND_BUFFER &&
                      state->vkCreateFence(state->device, &fenceInfo, nullptr, &state->utilityFence) == VK_SUCCESS &&
                      state->utilityFence != VK_NULL_FENCE;
+        VkSemaphoreCreateInfo bridgeSemaphoreInfo = {};
+        bridgeSemaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         for (int i = 0; sepOk && i < piVulkanState::kBatchRingSize; ++i)
         {
             sepOk = state->vkAllocateCommandBuffers(state->device, &sepAlloc, &state->batchRingCommandBuffers[i]) == VK_SUCCESS &&
                     state->batchRingCommandBuffers[i] != VK_NULL_COMMAND_BUFFER &&
                     state->vkCreateFence(state->device, &fenceInfo, nullptr, &state->batchRingFences[i]) == VK_SUCCESS &&
-                    state->batchRingFences[i] != VK_NULL_FENCE;
+                    state->batchRingFences[i] != VK_NULL_FENCE &&
+                    state->vkCreateSemaphore(state->device, &bridgeSemaphoreInfo, nullptr, &state->batchRingBridgeSemaphores[i]) == VK_SUCCESS &&
+                    state->batchRingBridgeSemaphores[i] != VK_NULL_SEMAPHORE;
         }
         state->batchRingReady = sepOk;
         iReport(reporter, sepOk ? "Vulkan renderer resource separation ACTIVE: utility cmdbuf + batch ring(3)"
@@ -3069,7 +3092,11 @@ static bool iAllocateHostTransientUniformSlice(piVulkanState *state, piBuffer bu
         }
         return false;
     }
-    std::memset(state->hostTransientUniformMapped + offset, 0, buffer->size);
+    // Zero only the padding tail (the copy overwrites the rest): these are
+    // write-combined bytes, and per-draw callers pass small payloads into
+    // buffers created much larger (mChunkData is 128x its 8-byte payload).
+    if (len < buffer->size)
+        std::memset(state->hostTransientUniformMapped + offset + len, 0, buffer->size - len);
     std::memcpy(state->hostTransientUniformMapped + offset, data, len);
     buffer->descriptorBuffer = state->hostTransientUniformBuffer;
     buffer->descriptorOffset = offset;
@@ -4260,6 +4287,25 @@ static bool iPipelinedSubmitEnabled(piVulkanState *state)
     return state->pipelinedSubmitResolved != 0;
 }
 
+// Composite bridge (see piVulkanState declaration). Requires a genuinely
+// distinct host queue (same queue = submission order already covers the blit)
+// and the pipelined submit (fence-serialized flushes are CPU-ordered anyway,
+// and their post-submit failure paths would break signal/wait 1:1 pairing).
+static bool iCompositeBridgeEnabled(piVulkanState *state)
+{
+    if (!state || !state->batchRingReady || state->compositeBridgeFailed)
+        return false;
+    if (state->hostQueue == VK_NULL_QUEUE || state->hostQueue == state->graphicsQueue)
+        return false;
+    if (state->batchRingBridgeSemaphores[0] == VK_NULL_SEMAPHORE)
+        return false;
+    if (!iPipelinedSubmitEnabled(state))
+        return false;
+    if (state->compositeBridgeResolved < 0)
+        state->compositeBridgeResolved = iRendererFlagEnabled("IMM_UNITY_VK_NO_COMPOSITE_BRIDGE") ? 0 : 1;
+    return state->compositeBridgeResolved != 0;
+}
+
 // Eager batch open at BeginExternalImageFrame: isolates each eye's uniform
 // uploads into the transient ring (they otherwise hit shared persistent
 // storage the previous eye's in-flight draws are reading - the left-eye
@@ -4451,7 +4497,7 @@ static bool iBatchActiveForTarget(piVulkanState *state, piRTarget target)
 // Close the open batch: end the render pass + command buffer, submit ONCE, wait
 // once. Leaves the color attachment in COLOR_ATTACHMENT_OPTIMAL (its render-pass
 // final layout) so the caller's transition/present logic runs unchanged.
-static bool iFlushBatch(piVulkanState *state, piRenderer::piReporter *reporter, const char *traceReason = "end-of-eye")
+static bool iFlushBatch(piVulkanState *state, piRenderer::piReporter *reporter, const char *traceReason = "end-of-eye", VkSemaphore signalSemaphore = VK_NULL_SEMAPHORE)
 {
     if (!state || !state->batchRecording)
         return true;
@@ -4515,6 +4561,14 @@ static bool iFlushBatch(piVulkanState *state, piRenderer::piReporter *reporter, 
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &state->commandBuffer;
+    // Composite-bridge signal (semaphore signals also cover all earlier
+    // submission-order work on this queue, so mid-eye pool-exhausted flushes
+    // are covered by the end-of-eye signal).
+    if (signalSemaphore != VK_NULL_SEMAPHORE)
+    {
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = &signalSemaphore;
+    }
     const uint64_t submitStartNs = iNowNanoseconds();
     const int ringSlot = state->batchCurrentSlot;
     const VkFence batchFence = ringSlot >= 0 ? state->batchRingFences[ringSlot] : state->frameFence;
@@ -4575,9 +4629,11 @@ static bool iFlushBatch(piVulkanState *state, piRenderer::piReporter *reporter, 
         // Unity per-draw dispatch + uniform uploads between draws. drawRec vs gap
         // decides which side of the plugin boundary the heavy-scene CPU cost is on.
         const double gapMs = (double)(recordNs > state->batchDrawNs ? recordNs - state->batchDrawNs : 0) / 1.0e6;
-        char m[256];
-        std::snprintf(m, sizeof(m), "IMM_PERF eye: record(cpu)=%.2fms [drawRec=%.2fms descAlloc=%.2fms gap=%.2fms] flushSubmitWait(gpu)=%.2fms draws=%u utilWait=%u utilSkip=%u",
+        char m[288];
+        std::snprintf(m, sizeof(m), "IMM_PERF eye: record(cpu)=%.2fms [drawRec=%.2fms descAlloc=%.2fms gap=%.2fms upl=%.2fms/%lluKB lock=%.2fms api=%.2fms] flushSubmitWait(gpu)=%.2fms draws=%u utilWait=%u utilSkip=%u",
                       (double)recordNs / 1.0e6, (double)state->batchDrawNs / 1.0e6, (double)state->batchDescNs / 1.0e6, gapMs,
+                      (double)state->batchUploadNs / 1.0e6, (unsigned long long)(state->batchUploadBytes / 1024ull),
+                      (double)state->batchLockNs / 1.0e6, (double)state->batchApiNs / 1.0e6,
                       (double)waitNs / 1.0e6, state->batchDrawCount,
                       state->utilityDrainWaitCount, state->utilityDrainSkipCount);
         iReport(reporter, m);
@@ -4715,6 +4771,10 @@ static bool iEnsureBatchOpen(piVulkanState *state, piRTarget target, piRenderer:
     state->batchDrawCount = 0;
     state->batchDescNs = 0;
     state->batchDrawNs = 0;
+    state->batchUploadNs = 0;
+    state->batchUploadBytes = 0;
+    state->batchLockNs = 0;
+    state->batchApiNs = 0;
     state->batchOpenNs = iNowNanoseconds();
     // Attachment references: a utility helper touching these images must wait
     // out this slot's submission (and only it).
@@ -4745,7 +4805,10 @@ static VkDescriptorSet iAllocateBatchDescriptorSet(piVulkanState *state, VkDescr
 
 static bool iSubmitStaticPaintDraw(piVulkanState *state, piShader shader, piRTarget target, piVertexArray vertexArray, uint32_t num, uint32_t numInstances, uint32_t baseVertex, uint32_t baseInstance, uint32_t baseIndex, piRenderer::piReporter *reporter)
 {
+    const uint64_t lockStartNs = iNowNanoseconds();
     std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
+    if (state)
+        state->batchLockNs += iNowNanoseconds() - lockStartNs;
     const bool hostRenderPass = state && state->hostRenderPassFrameActive;
     if (!state || !shader || !target || !vertexArray || state->device == VK_NULL_DEVICE ||
         state->commandBuffer == VK_NULL_COMMAND_BUFFER || (!hostRenderPass && state->frameFence == VK_NULL_FENCE) ||
@@ -5156,7 +5219,10 @@ static bool iEnsurePictureGraphicsPipeline(piVulkanState *state, piShader shader
 
 static bool iSubmitPictureDraw(piVulkanState *state, piShader shader, piRTarget target, const piVertexArray vertexArray, uint32_t num, uint32_t numInstances, uint32_t baseIndex, piRenderer::piReporter *reporter)
 {
+    const uint64_t lockStartNs = iNowNanoseconds();
     std::unique_lock<std::recursive_mutex> submitLock = state ? std::unique_lock<std::recursive_mutex>(state->submitMutex) : std::unique_lock<std::recursive_mutex>();
+    if (state)
+        state->batchLockNs += iNowNanoseconds() - lockStartNs;
     const bool hostRenderPass = state && state->hostRenderPassFrameActive;
     if (!state || !shader || !target || !vertexArray || !vertexArray->vertexBuffer[0] || !vertexArray->indexBuffer ||
         shader->pipeline == VK_NULL_PIPELINE || shader->pipelineLayout == VK_NULL_PIPELINE_LAYOUT ||
@@ -6963,6 +7029,7 @@ bool piRendererVulkan::Initialize(int id, const void **hwnd, int num, bool disab
         mState->physicalDevice = static_cast<VkPhysicalDevice>(externalDevice->physicalDevice);
         mState->device = static_cast<VkDevice>(externalDevice->device);
         mState->graphicsQueue = static_cast<VkQueue>(externalDevice->graphicsQueue);
+        mState->hostQueue = mState->graphicsQueue;
         mState->graphicsQueueFamilyIndex = externalDevice->graphicsQueueFamilyIndex;
         if (!iLoadVulkanInstanceEntryPoints(mState, mReporter) ||
             !iLoadVulkanSwapchainEntryPoints(mState, mReporter) ||
@@ -7063,6 +7130,11 @@ void piRendererVulkan::Deinitialize(void)
             {
                 mState->vkDestroyFence(mState->device, mState->batchRingFences[i], nullptr);
                 mState->batchRingFences[i] = VK_NULL_FENCE;
+            }
+            if (mState->batchRingBridgeSemaphores[i] != VK_NULL_SEMAPHORE && mState->vkDestroySemaphore)
+            {
+                mState->vkDestroySemaphore(mState->device, mState->batchRingBridgeSemaphores[i], nullptr);
+                mState->batchRingBridgeSemaphores[i] = VK_NULL_SEMAPHORE;
             }
         }
         // Command buffers are freed with the pool below.
@@ -8059,7 +8131,35 @@ void piRendererVulkan::EndExternalImageFrame(void)
             iBatchedTransitionEnabled(mState) &&
             !mState->externalFramePreservesHostColor &&
             mState->externalFrameColorTexture != nullptr;
-        iFlushBatch(mState, mReporter);
+        // Composite bridge: this eye's submit signals its slot semaphore, and a
+        // wait-only submission queued on Unity's own queue - ahead of Unity's
+        // frame submit in submission order - makes the composite blit execute
+        // after the eye render on the GPU. Same-frame (single-buffer) eye RT
+        // reads become sound without any CPU stall.
+        VkSemaphore bridgeSemaphore = VK_NULL_SEMAPHORE;
+        const int flushSlot = mState->batchCurrentSlot;
+        if (flushSlot >= 0 && iCompositeBridgeEnabled(mState))
+            bridgeSemaphore = mState->batchRingBridgeSemaphores[flushSlot];
+        const bool flushed = iFlushBatch(mState, mReporter, "end-of-eye", bridgeSemaphore);
+        if (flushed && bridgeSemaphore != VK_NULL_SEMAPHORE)
+        {
+            VkPipelineStageFlags bridgeWaitStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+            VkSubmitInfo bridge = {};
+            bridge.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            bridge.waitSemaphoreCount = 1;
+            bridge.pWaitSemaphores = &bridgeSemaphore;
+            bridge.pWaitDstStageMask = &bridgeWaitStage;
+            if (mState->vkQueueSubmit(mState->hostQueue, 1, &bridge, VK_NULL_FENCE) != VK_SUCCESS)
+            {
+                mState->compositeBridgeFailed = true;
+                iError(mReporter, "Vulkan renderer composite bridge submit FAILED; bridge disabled");
+            }
+            else if (!mState->compositeBridgeReported)
+            {
+                mState->compositeBridgeReported = true;
+                iReport(mReporter, "Vulkan renderer composite bridge ACTIVE: host-queue composite waits the eye-submit semaphore");
+            }
+        }
     }
 
     if (mState->externalFramePendingInPassClear)
@@ -9147,6 +9247,11 @@ void piRendererVulkan::UpdateBuffer(piBuffer obj, const void *data, int offset, 
 {
     (void)invalidate;
     if (!obj || !data || offset < 0 || len < 0 || (unsigned int)(offset + len) > obj->size) return;
+    // Gap attribution: total UpdateBuffer time/bytes while an eye batch records
+    // is the suspected dominant slice of IMM_PERF's `gap` (player-side per-draw
+    // cost, duplicated per eye). Telemetry only - benign if racy.
+    const bool countAsBatchUpload = mState && mState->batchRecording;
+    const uint64_t uploadStartNs = countAsBatchUpload ? iNowNanoseconds() : 0;
     std::memcpy(obj->data + offset, data, (size_t)len);
     // While a batched eye-frame is open (or the host owns the command buffer),
     // route constant-buffer writes into the per-frame transient ring so each
@@ -9155,18 +9260,21 @@ void piRendererVulkan::UpdateBuffer(piBuffer obj, const void *data, int offset, 
     // end-of-frame submit still sees each draw's own uniforms instead of the
     // last write. (The first draw's pre-open uniforms stay in the buffer's own
     // storage, which nothing overwrites once later writes divert to the ring.)
+    bool routedToTransientRing = false;
     if (mState && (mState->hostRenderPassFrameActive || mState->batchRecording) && obj->use == BufferUse::Constant && offset == 0)
     {
-        if (iAllocateHostTransientUniformSlice(mState, obj, obj->data, obj->size, mReporter))
-        {
-            return;
-        }
+        routedToTransientRing = iAllocateHostTransientUniformSlice(mState, obj, obj->data, obj->size, mReporter);
     }
-    if (mState)
+    if (!routedToTransientRing && mState)
     {
         iUploadBufferData(mState, obj, data, (unsigned int)offset, (unsigned int)len, mReporter);
         obj->descriptorBuffer = obj->buffer;
         obj->descriptorOffset = 0;
+    }
+    if (countAsBatchUpload)
+    {
+        mState->batchUploadNs += iNowNanoseconds() - uploadStartNs;
+        mState->batchUploadBytes += (uint64_t)len;
     }
 }
 void piRendererVulkan::AttachPixelPackBuffer(piBuffer obj) { (void)obj; iUnsupported(mState, mReporter, piVulkanUnsupportedFeature::PixelPackBuffer, "Vulkan pixel pack buffers are not implemented yet"); }
@@ -9276,6 +9384,7 @@ void piRendererVulkan::DrawPrimitiveIndexed(PrimitiveType pt, uint32_t num, uint
     {
         return;
     }
+    const uint64_t apiStartNs = iNowNanoseconds();
     if (pt == PrimitiveType::Triangle && mState->currentShader && mState->currentShader->isPicture &&
         mState->currentRenderTarget && mState->currentRenderTarget->color[0] &&
         mState->currentVertexArray && mState->currentVertexArray->indexBuffer && mState->textures[0])
@@ -9296,6 +9405,8 @@ void piRendererVulkan::DrawPrimitiveIndexed(PrimitiveType pt, uint32_t num, uint
                           mState->currentRenderTarget->height);
             iDebugLog(message);
             mState->pendingPresentTexture = target;
+            if (mState->batchRecording)
+                mState->batchApiNs += iNowNanoseconds() - apiStartNs;
             return;
         }
         if (!mState->drawSubmitFailureReported)
@@ -9439,6 +9550,8 @@ void piRendererVulkan::DrawPrimitiveIndexed(PrimitiveType pt, uint32_t num, uint
     }
     if (hasStaticPaintGpuPath)
     {
+        if (mState->batchRecording)
+            mState->batchApiNs += iNowNanoseconds() - apiStartNs;
         return;
     }
 
