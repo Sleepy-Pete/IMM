@@ -848,7 +848,11 @@ namespace ImmPlayer
         }
         #endif
 
-        bool useBuffer = renderer->GetAPI() == piRenderer::API::DX;
+        // DX and Vulkan read the picture constants (unSize aspect) from the
+        // slot-9 buffer; SetShaderConstant4F is a GL-only path (a stub on
+        // Vulkan, which left the 2D quad VS with no aspect at all).
+        bool useBuffer = renderer->GetAPI() == piRenderer::API::DX ||
+                         renderer->GetAPI() == piRenderer::API::Vulkan;
 
 
         renderer->AttachShaderConstants(mShaderConstants, 9);

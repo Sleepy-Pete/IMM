@@ -1234,6 +1234,7 @@ struct piShaderPipelineVariant
     VkCompareOp depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
     bool alphaToCoverage = false;
     bool blendEnabled = false;
+    uint32_t hostDepthBackdropMode = 0; // picture pipelines only (spec constant); 0 for paint
 };
 
 struct piShaderS
@@ -1781,6 +1782,7 @@ struct piVulkanState
     bool pictureDrawReported = false;
     bool hostPictureDrawReported = false;
     bool pictureDrawFailureReported = false;
+    uint32_t pictureTraceCounter = 0; // sampled compose-trace (per-draw logging is real CPU)
     bool ownsDedicatedQueue = false;
     int paintProbeLogCount = 0;
     int handleProbeLogCount = 0;
@@ -3555,7 +3557,7 @@ static bool iEnsurePicturePipelineLayout(piVulkanState *state, piRenderer::piRep
         return true;
     }
 
-    VkDescriptorSetLayoutBinding bindings[4] = {};
+    VkDescriptorSetLayoutBinding bindings[5] = {};
     bindings[0].binding = 0;
     bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     bindings[0].descriptorCount = 1;
@@ -3572,10 +3574,16 @@ static bool iEnsurePicturePipelineLayout(piVulkanState *state, piRenderer::piRep
     bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     bindings[3].descriptorCount = 1;
     bindings[3].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    // Binding 9: the picture renderer's small constants (unSize = aspect
+    // ratio) - the 2D quad VS places the quad in the world with it.
+    bindings[4].binding = 9;
+    bindings[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    bindings[4].descriptorCount = 1;
+    bindings[4].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
     VkDescriptorSetLayoutCreateInfo setLayoutInfo = {};
     setLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    setLayoutInfo.bindingCount = 4;
+    setLayoutInfo.bindingCount = 5;
     setLayoutInfo.pBindings = bindings;
     VkResult result = state->vkCreateDescriptorSetLayout(state->device, &setLayoutInfo, nullptr, &state->pictureDescriptorSetLayout);
     if (result != VK_SUCCESS || state->pictureDescriptorSetLayout == VK_NULL_DESCRIPTOR_SET_LAYOUT)
@@ -3708,12 +3716,12 @@ static bool iUpdatePictureDescriptorSet(piVulkanState *state, VkDescriptorSet se
     imageInfo.imageLayout = picture->imageLayout;
     picture->lastBatchUseStamp = state->batchRingStampCounter;
 
-    VkDescriptorBufferInfo bufferInfos[3] = {};
+    VkDescriptorBufferInfo bufferInfos[4] = {};
     bufferInfos[0] = iDescriptorBufferInfo(layerBuffer);
     bufferInfos[1] = iDescriptorBufferInfo(displayBuffer);
     bufferInfos[2] = iDescriptorBufferInfo(passBuffer);
 
-    VkWriteDescriptorSet writes[4] = {};
+    VkWriteDescriptorSet writes[5] = {};
     writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writes[0].dstSet = set;
     writes[0].dstBinding = 0;
@@ -3738,7 +3746,23 @@ static bool iUpdatePictureDescriptorSet(piVulkanState *state, VkDescriptorSet se
     writes[3].descriptorCount = 1;
     writes[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     writes[3].pBufferInfo = &bufferInfos[2];
-    state->vkUpdateDescriptorSets(state->device, 4, writes, 0, nullptr);
+    // Binding 9 (picture constants / unSize): the player attaches its small
+    // constants buffer at slot 9 before picture rendering; the 2D VS reads the
+    // quad aspect from it. Optional - the 360 shaders never reference it.
+    uint32_t writeCount = 4;
+    piBuffer sizeBuffer = state->constantBuffers[9];
+    if (sizeBuffer && sizeBuffer->buffer != VK_NULL_BUFFER)
+    {
+        bufferInfos[3] = iDescriptorBufferInfo(sizeBuffer);
+        writes[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[4].dstSet = set;
+        writes[4].dstBinding = 9;
+        writes[4].descriptorCount = 1;
+        writes[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[4].pBufferInfo = &bufferInfos[3];
+        writeCount = 5;
+    }
+    state->vkUpdateDescriptorSets(state->device, writeCount, writes, 0, nullptr);
 
     if (!state->pictureDescriptorReported)
     {
@@ -5431,12 +5455,33 @@ static bool iEnsurePictureGraphicsPipeline(piVulkanState *state, piShader shader
     {
         return true;
     }
-    if (shader->pipeline != VK_NULL_PIPELINE && state->vkDestroyPipeline)
+    // Variant cache (same fix as the paint path): the batched eye targets
+    // cycle SIX render passes (2 eyes x 3 ring slots), so the single cached
+    // pipeline slot missed every draw and vkCreateGraphicsPipelines ran per
+    // picture draw (~7 ms each on Adreno = the 23 fps skybox windows, both
+    // eyes, whenever a picture was on screen).
+    for (int vi = 0; vi < shader->pipelineVariantCount; ++vi)
     {
-        state->vkDestroyPipeline(state->device, shader->pipeline, nullptr);
-        shader->pipeline = VK_NULL_PIPELINE;
-        shader->pipelineRenderPass = VK_NULL_RENDER_PASS;
+        const piShaderPipelineVariant &v = shader->pipelineVariants[vi];
+        if (v.pipeline != VK_NULL_PIPELINE &&
+            v.renderPass == target->renderPass &&
+            v.sampleCount == sampleCount &&
+            v.depthTest == depthTest &&
+            v.depthCompareOp == depthCompareOp &&
+            v.hostDepthBackdropMode == hostDepthBackdropMode)
+        {
+            shader->pipeline = v.pipeline;
+            shader->pipelineRenderPass = v.renderPass;
+            shader->pipelineSampleCount = v.sampleCount;
+            shader->pipelineDepthTest = v.depthTest;
+            shader->pipelineDepthCompareOp = v.depthCompareOp;
+            shader->pipelineHostDepthBackdropMode = v.hostDepthBackdropMode;
+            return true;
+        }
     }
+    // Miss: build a new variant. The old pipeline (if any) belongs to a cache
+    // slot now - do NOT destroy it here; eviction and shader teardown own that.
+    shader->pipeline = VK_NULL_PIPELINE;
     if (shader->vertexModule == VK_NULL_SHADER_MODULE || shader->fragmentModule == VK_NULL_SHADER_MODULE ||
         shader->pipelineLayout == VK_NULL_PIPELINE_LAYOUT || target->renderPass == VK_NULL_RENDER_PASS ||
         !state->vkCreateGraphicsPipelines)
@@ -5553,6 +5598,35 @@ static bool iEnsurePictureGraphicsPipeline(piVulkanState *state, piShader shader
     shader->pipelineDepthTest = depthTest;
     shader->pipelineDepthCompareOp = depthCompareOp;
     shader->pipelineHostDepthBackdropMode = hostDepthBackdropMode;
+    // Register in the variant cache so the next draw on this render pass
+    // reuses it (round-robin evict if it ever fills - 6 passes x few modes
+    // fits comfortably in 16).
+    {
+        int slot;
+        if (shader->pipelineVariantCount < piShaderS::kPipelineVariantCacheSize)
+            slot = shader->pipelineVariantCount++;
+        else
+        {
+            slot = (int)(shader->pipelineVariantNext++ % (uint32_t)piShaderS::kPipelineVariantCacheSize);
+            VkPipeline old = shader->pipelineVariants[slot].pipeline;
+            if (old != VK_NULL_PIPELINE && old != shader->pipeline && state->vkDestroyPipeline)
+                state->vkDestroyPipeline(state->device, old, nullptr);
+        }
+        piShaderPipelineVariant &v = shader->pipelineVariants[slot];
+        v.pipeline = shader->pipeline;
+        v.renderPass = target->renderPass;
+        v.cullMode = VK_CULL_MODE_NONE;
+        v.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        v.sampleCount = sampleCount;
+        v.wireframe = false;
+        v.depthClamp = false;
+        v.depthTest = depthTest;
+        v.depthWrite = false;
+        v.depthCompareOp = depthCompareOp;
+        v.alphaToCoverage = false;
+        v.blendEnabled = true;
+        v.hostDepthBackdropMode = hostDepthBackdropMode;
+    }
     if (!state->picturePipelineReported)
     {
         iReport(reporter, "Vulkan renderer created picture graphics pipeline");
@@ -9949,9 +10023,9 @@ void piRendererVulkan::DestroyShader(piShader obj)
     if (!obj) return;
     if (mState && mState->device != VK_NULL_DEVICE)
     {
-        // Destroy all cached pipeline variants (paint). obj->pipeline aliases one of
-        // them, so clear it after to avoid a double-free below; picture shaders keep
-        // no variants and destroy obj->pipeline directly.
+        // Destroy all cached pipeline variants (paint AND picture - both use the
+        // variant cache now). obj->pipeline aliases one of them, so clear it after
+        // to avoid a double-free below.
         for (int vi = 0; vi < obj->pipelineVariantCount; ++vi)
         {
             if (obj->pipelineVariants[vi].pipeline != VK_NULL_PIPELINE && mState->vkDestroyPipeline)
@@ -10211,16 +10285,23 @@ void piRendererVulkan::DrawPrimitiveIndexed(PrimitiveType pt, uint32_t num, uint
             iEnsurePictureGraphicsPipeline(mState, mState->currentShader, mState->currentRenderTarget, mState->currentVertexArray, mReporter) &&
             iSubmitPictureDraw(mState, mState->currentShader, mState->currentRenderTarget, mState->currentVertexArray, num, numInstances, baseIndex, mReporter))
         {
-            char message[256];
-            std::snprintf(message,
-                          sizeof(message),
-                          "[IMM_VK_COMPOSE_TRACE_20260612] picture_gpu host=%d num=%u instances=%u target=%ux%u",
-                          mState->hostRenderPassFrameActive ? 1 : 0,
-                          num,
-                          numInstances,
-                          mState->currentRenderTarget->width,
-                          mState->currentRenderTarget->height);
-            iDebugLog(message);
+            // Sampled: this fires per picture draw per eye (144/s with a
+            // skybox on screen) and logging is real CPU inside the api bracket.
+            const uint32_t traceIndex = mState->pictureTraceCounter++;
+            if (traceIndex < 3 || (traceIndex % 300) == 0)
+            {
+                char message[256];
+                std::snprintf(message,
+                              sizeof(message),
+                              "[IMM_VK_COMPOSE_TRACE_20260612] picture_gpu host=%d num=%u instances=%u target=%ux%u n=%u",
+                              mState->hostRenderPassFrameActive ? 1 : 0,
+                              num,
+                              numInstances,
+                              mState->currentRenderTarget->width,
+                              mState->currentRenderTarget->height,
+                              traceIndex);
+                iDebugLog(message);
+            }
             mState->pendingPresentTexture = target;
             if (mState->batchRecording)
                 mState->batchApiNs += iNowNanoseconds() - apiStartNs;

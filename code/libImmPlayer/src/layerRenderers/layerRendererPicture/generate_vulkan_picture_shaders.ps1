@@ -19,7 +19,45 @@ function Resolve-Tool([string]$Name) {
     if (Test-Path $scoopCandidate) {
         return $scoopCandidate
     }
-    throw "$Name was not found on PATH, VULKAN_SDK, or the Scoop Vulkan SDK install path"
+    return $null
+}
+
+# Fallback compiler: the Android NDK ships glslc (shader-tools), the same
+# toolchain the depth-prime shaders use. Flags are translated in Invoke-Glsl.
+function Resolve-NdkGlslc {
+    $sdkRoot = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { Join-Path $env:LOCALAPPDATA "Android\Sdk" }
+    $ndkDir = Join-Path $sdkRoot "ndk"
+    if (Test-Path $ndkDir) {
+        foreach ($ndk in (Get-ChildItem $ndkDir -Directory | Sort-Object Name -Descending)) {
+            $candidate = Join-Path $ndk.FullName "shader-tools\windows-x86_64\glslc.exe"
+            if (Test-Path $candidate) {
+                return $candidate
+            }
+        }
+    }
+    return $null
+}
+
+function Invoke-Glsl([string]$Stage, [string]$Source, [string]$Output, [string[]]$Defines) {
+    if ($script:glslang) {
+        $glslArgs = @("-V", "-S", $Stage)
+        foreach ($d in $Defines) { $glslArgs += "-D$d" }
+        $glslArgs += @("-o", $Output, $Source)
+        & $script:glslang @glslArgs | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw "glslangValidator failed for $Output" }
+    }
+    else {
+        $stageName = if ($Stage -eq "vert") { "vertex" } else { "fragment" }
+        $glslcArgs = @("-fshader-stage=$stageName", "--target-env=vulkan1.0")
+        foreach ($d in $Defines) { $glslcArgs += "-D$d" }
+        $glslcArgs += @("-o", $Output, $Source)
+        & $script:glslc @glslcArgs | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw "glslc failed for $Output" }
+    }
+    if ($script:spirvVal) {
+        & $script:spirvVal $Output
+        if ($LASTEXITCODE -ne 0) { throw "spirv-val failed for $Output" }
+    }
 }
 
 function Write-SpvInclude([string]$Path, [string]$Prefix, [array]$Variants) {
@@ -50,8 +88,19 @@ function Write-SpvInclude([string]$Path, [string]$Prefix, [array]$Variants) {
     Set-Content -Path $Path -Value ($lines -join "`n") -Encoding ASCII
 }
 
-$glslang = Resolve-Tool "glslangValidator"
-$spirvVal = Resolve-Tool "spirv-val"
+$script:glslang = Resolve-Tool "glslangValidator"
+$script:spirvVal = Resolve-Tool "spirv-val"
+$script:glslc = $null
+if (-not $script:glslang) {
+    $script:glslc = Resolve-NdkGlslc
+    if (-not $script:glslc) {
+        throw "Neither glslangValidator (PATH/VULKAN_SDK/scoop) nor NDK glslc (shader-tools) was found"
+    }
+    Write-Host "glslangValidator not found - using NDK glslc: $script:glslc"
+}
+if (-not $script:spirvVal) {
+    Write-Host "spirv-val not found - skipping SPIR-V validation"
+}
 
 New-Item -ItemType Directory -Force $OutputDir | Out-Null
 $workDir = Join-Path $OutputDir "vulkan_picture_spirv_work"
@@ -79,6 +128,18 @@ layout (std140, row_major, binding=4) uniform DisplayState
     vec2       mResolution;
 } display;
 
+// Eye selection: multipass uploads BOTH eyes' matrices once per frame and
+// switches PassState.mID per eye pass - same convention as the paint VS
+// (iid = pass.mID). mEye[0] hardcoded here rendered the right eye with the
+// left eye's projection.
+layout (std140, binding=5) uniform PassState
+{
+    int mID;
+    int kk1;
+    int kk2;
+    int kk3;
+} pass;
+
 layout(location=0) in vec3 in_position;
 layout(location=1) in vec3 in_normal;
 layout(location=0) out vec3 out_direction;
@@ -90,7 +151,7 @@ void main()
 {
     vec3 viewer_position = (layer.mLayerToViewer * vec4(in_position, 1.0)).xyz;
     out_direction = normalize(in_position);
-    gl_Position = display.mEye[0].mMatrix_CamPrj * vec4(viewer_position, 1.0);
+    gl_Position = display.mEye[pass.mID].mMatrix_CamPrj * vec4(viewer_position, 1.0);
     if (hostDepthBackdropMode == 1u)
     {
         gl_Position.z = 0.0;
@@ -146,11 +207,50 @@ Set-Content -Path $fsPath -Value $fsSource -NoNewline -Encoding ASCII
 $vs2DSource = @'
 #version 460
 
+// World-placed 2D picture quad, mirroring the GLES shader_pi2D_vs path:
+// unit corners scaled by unSize (aspect, 1) in layer space, transformed by
+// mLayerToViewer then the current eye's projection. The old version emitted
+// raw NDC positions - every 2D picture rendered as a fullscreen head-locked
+// overlay ("glued to my eyes").
+
+layout (std140, row_major, binding=3) uniform LayersState
+{
+    mat4x4 mLayerToViewer;
+    float  mLayerToViewerScale;
+    float  mOpacity;
+    float  mkUnused;
+    float  mDrawInTime;
+    vec4   mAnimParams;
+    vec4   mKeepAlive[2];
+    uint   mID;
+} layer;
+
+struct DisplayEye { mat4x4 mMatrix_CamPrj; };
+layout (std140, row_major, binding=4) uniform DisplayState
+{
+    DisplayEye mEye[2];
+    vec2       mResolution;
+} display;
+
+layout (std140, binding=5) uniform PassState
+{
+    int mID;
+    int kk1;
+    int kk2;
+    int kk3;
+} pass;
+
+// Picture renderer constants: unSize.xy = (aspect ratio, 1).
+layout (std140, binding=9) uniform PictureConstants
+{
+    vec4 unSize;
+} constants;
+
 layout(location=0) out vec2 out_uv;
 
 void main()
 {
-    vec2 positions[6] = vec2[](
+    vec2 corners[6] = vec2[](
         vec2(-1.0, -1.0),
         vec2( 1.0, -1.0),
         vec2( 1.0,  1.0),
@@ -158,16 +258,11 @@ void main()
         vec2( 1.0,  1.0),
         vec2(-1.0,  1.0)
     );
-    vec2 uvs[6] = vec2[](
-        vec2(0.0, 1.0),
-        vec2(1.0, 1.0),
-        vec2(1.0, 0.0),
-        vec2(0.0, 1.0),
-        vec2(1.0, 0.0),
-        vec2(0.0, 0.0)
-    );
-    gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
-    out_uv = uvs[gl_VertexIndex];
+    vec2 c = corners[gl_VertexIndex];
+    vec3 opos = vec3(constants.unSize.xy * c, 0.0);
+    vec3 viewer_position = (layer.mLayerToViewer * vec4(opos, 1.0)).xyz;
+    out_uv = 0.5 + 0.5 * c * vec2(1.0, -1.0);
+    gl_Position = display.mEye[pass.mID].mMatrix_CamPrj * vec4(viewer_position, 1.0);
 }
 '@
 
@@ -213,34 +308,22 @@ $vs2DVariants = New-Object System.Collections.Generic.List[string]
 $fs2DVariants = New-Object System.Collections.Generic.List[string]
 
 $vsOut = Join-Path $workDir "shader_pip360Equirect_vs_vk.spv"
-& $glslang -V -S vert -o $vsOut $vsPath | Out-Host
-if ($LASTEXITCODE -ne 0) { throw "glslangValidator failed for $vsOut" }
-& $spirvVal $vsOut
-if ($LASTEXITCODE -ne 0) { throw "spirv-val failed for $vsOut" }
+Invoke-Glsl "vert" $vsPath $vsOut @()
 $vsVariants.Add($vsOut)
 
 for ($colorSpace = 0; $colorSpace -le 1; ++$colorSpace) {
     $fsOut = Join-Path $workDir "shader_pip360Equirect_fs_vk_c${colorSpace}.spv"
-    & $glslang -V -S frag "-DCOLOR_SPACE=$colorSpace" -o $fsOut $fsPath | Out-Host
-    if ($LASTEXITCODE -ne 0) { throw "glslangValidator failed for $fsOut" }
-    & $spirvVal $fsOut
-    if ($LASTEXITCODE -ne 0) { throw "spirv-val failed for $fsOut" }
+    Invoke-Glsl "frag" $fsPath $fsOut @("COLOR_SPACE=$colorSpace")
     $fsVariants.Add($fsOut)
 }
 
 $vs2DOut = Join-Path $workDir "shader_pi2D_vs_vk.spv"
-& $glslang -V -S vert -o $vs2DOut $vs2DPath | Out-Host
-if ($LASTEXITCODE -ne 0) { throw "glslangValidator failed for $vs2DOut" }
-& $spirvVal $vs2DOut
-if ($LASTEXITCODE -ne 0) { throw "spirv-val failed for $vs2DOut" }
+Invoke-Glsl "vert" $vs2DPath $vs2DOut @()
 $vs2DVariants.Add($vs2DOut)
 
 for ($colorSpace = 0; $colorSpace -le 1; ++$colorSpace) {
     $fs2DOut = Join-Path $workDir "shader_pi2D_fs_vk_c${colorSpace}.spv"
-    & $glslang -V -S frag "-DCOLOR_SPACE=$colorSpace" -o $fs2DOut $fs2DPath | Out-Host
-    if ($LASTEXITCODE -ne 0) { throw "glslangValidator failed for $fs2DOut" }
-    & $spirvVal $fs2DOut
-    if ($LASTEXITCODE -ne 0) { throw "spirv-val failed for $fs2DOut" }
+    Invoke-Glsl "frag" $fs2DPath $fs2DOut @("COLOR_SPACE=$colorSpace")
     $fs2DVariants.Add($fs2DOut)
 }
 
