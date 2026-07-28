@@ -110,6 +110,12 @@ Each entry: symptom → root cause → fix (commit).
   chapter model after a skip-back — fix with chapter-state logging).
 - **Gap verdict:** upl/lock/api brackets prove the renderer costs 0.30 ms of the
   ~4.5 ms per-eye gap; the rest is the player's own loop → simpleperf next.
+- **Gap KILLED (`519f1a4`):** simpleperf named the cost — `iUnloadNotInTimeline`'s
+  full-tree scan per camera per frame plus per-call getenv checks. Throttling the
+  scan to ~2×/s and caching the flags took the measured gap from 4.2-4.7 ms to
+  **0.19 ms per eye** at matched draw counts (headless A/B via the new
+  `IMM_UNITY_START_CHAPTER=N` test hook, `1db66b6`). Total IMM render-thread cost
+  is now ~0.5 ms/eye — the heavy-scene fps sags were this, twice a frame.
 
 ## Next work (priority order)
 
