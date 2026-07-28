@@ -5752,17 +5752,36 @@ static bool iSubmitPictureQuadDraw(piVulkanState *state, piShader shader, piRTar
         return false;
     }
 
-    // This quad path is not batched; if a batched eye-frame is open, flush it so
-    // this draw's own submit does not corrupt the shared command buffer.
-    if (!hostRenderPass && state->batchRecording)
-    {
-        iFlushBatch(state, reporter);
-    }
-
+    const bool batchActive = iBatchActiveForTarget(state, target);
+    VkDescriptorSet pictureSet = state->pictureDescriptorSet;
     const uint64_t timeout = 5000000000ull;
     VkResult result = VK_SUCCESS;
-    if (!hostRenderPass)
+    if (batchActive)
     {
+        // Batched: the quad records into the open eye pass like every other
+        // picture draw. The legacy own-pass reopen below is FATAL on the MSAA
+        // eye target: its always-CLEAR pass demands clear values (driver
+        // null-derefs on pClearValues=NULL - QuantumRace's 360 backdrop found
+        // this) and a re-begin would wipe the already-recorded eye anyway.
+        if (!iEnsureBatchOpen(state, target, reporter))
+            return false;
+        pictureSet = iAllocateBatchDescriptorSet(state, state->batchPictureDescriptorPool, state->pictureDescriptorSetLayout);
+        if (pictureSet == VK_NULL_DESCRIPTOR_SET)
+        {
+            if (!iFlushBatch(state, reporter, "pool-exhausted") || !iEnsureBatchOpen(state, target, reporter))
+                return false;
+            pictureSet = iAllocateBatchDescriptorSet(state, state->batchPictureDescriptorPool, state->pictureDescriptorSetLayout);
+        }
+        if (pictureSet == VK_NULL_DESCRIPTOR_SET || !iUpdatePictureDescriptorSet(state, pictureSet, reporter))
+            return false;
+    }
+    else if (!hostRenderPass)
+    {
+        // Legacy own-submit path (no batch open on this target).
+        if (state->batchRecording)
+        {
+            iFlushBatch(state, reporter);
+        }
         result = state->vkWaitForFences(state->device, 1, &state->frameFence, 1, timeout);
         if (result != VK_SUCCESS)
         {
@@ -5806,10 +5825,19 @@ static bool iSubmitPictureQuadDraw(piVulkanState *state, piShader shader, piRTar
     state->vkCmdSetViewport(state->commandBuffer, 0, 1, &viewport);
     state->vkCmdSetScissor(state->commandBuffer, 0, 1, &scissor);
     state->vkCmdBindPipeline(state->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shader->pipeline);
-    state->vkCmdBindDescriptorSets(state->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shader->pipelineLayout, 0, 1, &state->pictureDescriptorSet, 0, nullptr);
+    state->vkCmdBindDescriptorSets(state->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shader->pipelineLayout, 0, 1, &pictureSet, 0, nullptr);
     state->vkCmdDraw(state->commandBuffer, 6, numInstances, 0, 0);
-    if (hostRenderPass)
+    if (hostRenderPass || batchActive)
     {
+        if (batchActive)
+        {
+            ++state->batchDrawCount;
+            if (!state->pictureDrawReported)
+            {
+                iReport(reporter, "Vulkan renderer submitted picture draw commands");
+                state->pictureDrawReported = true;
+            }
+        }
         return true;
     }
 

@@ -269,6 +269,16 @@ namespace ImmPlayer
                 _doc = null;
             }
 
+            // Per-device document override: IMM_UNITY_DOC_FILE=<name>.imm in
+            // imm_debug_flags.txt selects any StreamingAssets document without a
+            // rebuild (test-loop convenience; seed for the browse feature).
+            string overrideFile = ReadFlagFileStringValue("IMM_UNITY_DOC_FILE");
+            if (!string.IsNullOrEmpty(overrideFile))
+            {
+                Debug.Log($"{DiagPrefix}Document override from flag file: {overrideFile}");
+                selectedFileName = overrideFile;
+            }
+
             if (string.IsNullOrEmpty(selectedFileName))
                 yield break;
 
@@ -647,6 +657,30 @@ namespace ImmPlayer
                 yield break;
             Debug.Log($"{DiagPrefix}Auto-advancing to first stop (chapter 1)");
             SkipForward();
+        }
+
+        // Reads NAME=VALUE (string) from the shared debug flag file; null when absent.
+        private static string ReadFlagFileStringValue(string name)
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            try
+            {
+                string path = System.IO.Path.Combine(Application.persistentDataPath, "imm_debug_flags.txt");
+                if (System.IO.File.Exists(path))
+                {
+                    foreach (string line in System.IO.File.ReadAllLines(path))
+                    {
+                        string trimmed = line.Trim();
+                        if (trimmed.StartsWith(name + "=", System.StringComparison.OrdinalIgnoreCase))
+                            return trimmed.Substring(name.Length + 1).Trim();
+                    }
+                }
+            }
+            catch (System.Exception)
+            {
+            }
+#endif
+            return null;
         }
 
         // Reads NAME=VALUE from the shared debug flag file (persistentDataPath/
