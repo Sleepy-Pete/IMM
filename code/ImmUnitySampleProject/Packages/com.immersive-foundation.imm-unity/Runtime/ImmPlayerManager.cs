@@ -627,11 +627,14 @@ namespace ImmPlayer
         {
             if (_vulkanCompositeMaterial == null)
             {
-                // Opaque composite by default: the 360 backdrop covers the whole
-                // view, so alpha blending only costs an eye-buffer read on the
-                // tiler. Kill: IMM_UNITY_VK_NO_OPAQUE_COMPOSITE (restores the
-                // alpha-blended ImmVulkanComposite material).
-                if (!IsEnvFlagEnabled("IMM_UNITY_VK_NO_OPAQUE_COMPOSITE"))
+                // ALPHA composite is the ship default: documents without full 360
+                // coverage (e.g. The Art of Change) must show Unity content
+                // through empty IMM pixels - opaque overwrote it everywhere (the
+                // missing-white-cube bug). Opaque saves the eye-buffer read and
+                // is opt-in for full-360 docs: IMM_UNITY_VK_OPAQUE_COMPOSITE
+                // (the old NO_OPAQUE_COMPOSITE kill remains honored as alpha).
+                if (IsEnvFlagEnabled("IMM_UNITY_VK_OPAQUE_COMPOSITE") &&
+                    !IsEnvFlagEnabled("IMM_UNITY_VK_NO_OPAQUE_COMPOSITE"))
                 {
                     Shader opaque = Resources.Load<Shader>("ImmVulkanCompositeOpaque");
                     if (opaque != null)
