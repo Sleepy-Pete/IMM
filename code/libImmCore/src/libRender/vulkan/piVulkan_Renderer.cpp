@@ -277,6 +277,14 @@ static constexpr VkSampleCountFlagBits VK_SAMPLE_COUNT_8_BIT = 0x00000008;
 static constexpr VkSampleCountFlagBits VK_SAMPLE_COUNT_16_BIT = 0x00000010;
 static constexpr VkImageUsageFlags VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT = 0x00000040;
 static constexpr VkMemoryPropertyFlags VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT = 0x00000010;
+// VK_EXT_fragment_density_map (enabled on Unity's device via boot.config
+// xr-vulkan-extension-fragment-density-map-enabled=1)
+static constexpr VkImageUsageFlags VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT = 0x00000200;
+static constexpr VkImageLayout VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT = 1000218000;
+static constexpr VkStructureType VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT = 1000218001;
+static constexpr VkAccessFlags VK_ACCESS_FRAGMENT_DENSITY_MAP_READ_BIT_EXT = 0x01000000;
+static constexpr VkPipelineStageFlags VK_PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT_EXT = 0x00800000;
+static constexpr VkFormat VK_FORMAT_R8G8_UNORM = 16;
 static constexpr VkImageViewType VK_IMAGE_VIEW_TYPE_2D = 1;
 static constexpr VkImageViewType VK_IMAGE_VIEW_TYPE_2D_ARRAY = 5;
 static constexpr VkComponentSwizzle VK_COMPONENT_SWIZZLE_IDENTITY = 0;
@@ -596,6 +604,13 @@ struct VkRenderPassCreateInfo
     const VkSubpassDescription *pSubpasses;
     uint32_t dependencyCount;
     const void *pDependencies;
+};
+
+struct VkRenderPassFragmentDensityMapCreateInfoEXT
+{
+    VkStructureType sType;
+    const void *pNext;
+    VkAttachmentReference fragmentDensityMapAttachment;
 };
 
 struct VkFramebufferCreateInfo
@@ -1325,6 +1340,13 @@ struct piRTargetS
     VkImage msaaDepthImage = 0;
     VkDeviceMemory msaaDepthMemory = VK_NULL_DEVICE_MEMORY;
     VkImageView msaaDepthView = VK_NULL_IMAGE_VIEW;
+    // Native FFR (VK_EXT_fragment_density_map): a small R8G8 density image -
+    // full density center falling off toward the periphery (FFR-2-equivalent,
+    // the native-viewer contract) - attached to the eye pass. Uploaded once at
+    // target creation, read by the tiler every pass.
+    VkImage fdmImage = 0;
+    VkDeviceMemory fdmMemory = VK_NULL_DEVICE_MEMORY;
+    VkImageView fdmView = VK_NULL_IMAGE_VIEW;
 };
 
 struct piSamplerS
@@ -1466,6 +1488,9 @@ struct piVulkanState
     int msaaResolved = -1;                      // IMM_UNITY_VK_NO_MSAA: -1 unknown, 0 off, 1 on
     bool nextRenderTargetWantsMsaa = false;     // set by the external eye Begin around CreateRenderTarget
     bool msaaReported = false;
+    int ffrResolved = -1;                       // IMM_UNITY_VK_NO_FFR: -1 unknown, 0 off, 1 on
+    bool ffrReported = false;
+    bool ffrFailed = false;                     // one FDM creation failure disables FFR for the session
     VkBuffer stagingBuffer = VK_NULL_BUFFER;
     VkDeviceMemory stagingMemory = VK_NULL_DEVICE_MEMORY;
     VkDeviceSize stagingSize = 0;
@@ -4336,6 +4361,18 @@ static bool iMsaaEnabled(piVulkanState *state)
     return state->msaaResolved != 0;
 }
 
+// Native FFR on our eye passes (VK_EXT_fragment_density_map; the extension is
+// enabled on Unity's device via boot.config). FFR-2-equivalent radial density,
+// per the native-viewer contract. Kill: IMM_UNITY_VK_NO_FFR.
+static bool iFfrEnabled(piVulkanState *state)
+{
+    if (!state || state->ffrFailed)
+        return false;
+    if (state->ffrResolved < 0)
+        state->ffrResolved = iRendererFlagEnabled("IMM_UNITY_VK_NO_FFR") ? 0 : 1;
+    return state->ffrResolved != 0;
+}
+
 // Eager batch open at BeginExternalImageFrame: isolates each eye's uniform
 // uploads into the transient ring (they otherwise hit shared persistent
 // storage the previous eye's in-flight draws are reading - the left-eye
@@ -6434,6 +6471,152 @@ static bool iCreateTextureImage(piVulkanState *state, piTexture texture, int bin
     return true;
 }
 
+static bool iEnsureStagingBuffer(piVulkanState *state, VkDeviceSize size, piRenderer::piReporter *reporter);
+
+// Create + fill + upload the fragment-density image for an eye target: full
+// density inside the central radius easing to ~0.4 at the corners
+// (FFR-2-equivalent). 32px granularity per density texel (safe on Adreno).
+// One-shot fenced upload on the utility pair; the image then lives in
+// FRAGMENT_DENSITY_MAP_OPTIMAL_EXT for the tiler to read every pass.
+static bool iCreateFragmentDensityMap(piVulkanState *state, piRTarget target, uint32_t eyeWidth, uint32_t eyeHeight, piRenderer::piReporter *reporter)
+{
+    if (!state || !target || !state->vkCmdCopyBufferToImage || !state->vkCmdPipelineBarrier)
+        return false;
+    const uint32_t kTexel = 32;
+    const uint32_t fdmW = (eyeWidth + kTexel - 1) / kTexel;
+    const uint32_t fdmH = (eyeHeight + kTexel - 1) / kTexel;
+    if (fdmW == 0 || fdmH == 0)
+        return false;
+    if (!iCreateDeviceLocalImage(state, fdmW, fdmH, VK_FORMAT_R8G8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+                                 VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                                 &target->fdmImage, &target->fdmMemory, reporter))
+        return false;
+    VkImageViewCreateInfo viewInfo = {};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.image = target->fdmImage;
+    viewInfo.format = VK_FORMAT_R8G8_UNORM;
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+    if (state->vkCreateImageView(state->device, &viewInfo, nullptr, &target->fdmView) != VK_SUCCESS ||
+        target->fdmView == VK_NULL_IMAGE_VIEW)
+    {
+        state->vkDestroyImage(state->device, target->fdmImage, nullptr);
+        state->vkFreeMemory(state->device, target->fdmMemory, nullptr);
+        target->fdmImage = 0;
+        target->fdmMemory = VK_NULL_DEVICE_MEMORY;
+        target->fdmView = VK_NULL_IMAGE_VIEW;
+        return false;
+    }
+
+    std::unique_lock<std::recursive_mutex> submitLock(state->submitMutex);
+    iUtilityScope utilityScope(state, 0 /* freshly created - nothing in flight references it */);
+    const VkDeviceSize dataSize = (VkDeviceSize)fdmW * (VkDeviceSize)fdmH * 2ull;
+    bool ok = state->commandBuffer != VK_NULL_COMMAND_BUFFER && state->frameFence != VK_NULL_FENCE &&
+              iEnsureStagingBuffer(state, dataSize, reporter);
+    void *mapped = nullptr;
+    if (ok)
+        ok = state->vkMapMemory(state->device, state->stagingMemory, 0, dataSize, 0, &mapped) == VK_SUCCESS && mapped;
+    if (ok)
+    {
+        uint8_t *texels = (uint8_t *)mapped;
+        for (uint32_t y = 0; y < fdmH; ++y)
+        {
+            for (uint32_t x = 0; x < fdmW; ++x)
+            {
+                const float dx = ((float)x + 0.5f) / (float)fdmW - 0.5f;
+                const float dy = ((float)y + 0.5f) / (float)fdmH - 0.5f;
+                const float d = 2.0f * std::sqrt(dx * dx + dy * dy);
+                float density = d <= 0.55f ? 1.0f : 1.0f - (d - 0.55f) * 0.9f;
+                if (density < 0.4f) density = 0.4f;
+                const uint8_t v = (uint8_t)(density * 255.0f + 0.5f);
+                texels[(y * fdmW + x) * 2 + 0] = v;
+                texels[(y * fdmW + x) * 2 + 1] = v;
+            }
+        }
+        state->vkUnmapMemory(state->device, state->stagingMemory);
+        const uint64_t timeout = 5000000000ull;
+        ok = state->vkWaitForFences(state->device, 1, &state->frameFence, 1, timeout) == VK_SUCCESS;
+        if (ok)
+        {
+            state->vkResetFences(state->device, 1, &state->frameFence);
+            state->vkResetCommandBuffer(state->commandBuffer, 0);
+            VkCommandBufferBeginInfo beginInfo = {};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+            ok = state->vkBeginCommandBuffer(state->commandBuffer, &beginInfo) == VK_SUCCESS;
+        }
+        if (ok)
+        {
+            VkImageSubresourceRange range = {};
+            range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            range.baseMipLevel = 0;
+            range.levelCount = 1;
+            range.baseArrayLayer = 0;
+            range.layerCount = 1;
+            VkImageMemoryBarrier toTransfer = {};
+            toTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            toTransfer.srcAccessMask = 0;
+            toTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            toTransfer.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            toTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            toTransfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toTransfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toTransfer.image = target->fdmImage;
+            toTransfer.subresourceRange = range;
+            state->vkCmdPipelineBarrier(state->commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                        0, 0, nullptr, 0, nullptr, 1, &toTransfer);
+            VkBufferImageCopy region = {};
+            region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            region.imageSubresource.mipLevel = 0;
+            region.imageSubresource.baseArrayLayer = 0;
+            region.imageSubresource.layerCount = 1;
+            region.imageExtent.width = fdmW;
+            region.imageExtent.height = fdmH;
+            region.imageExtent.depth = 1;
+            state->vkCmdCopyBufferToImage(state->commandBuffer, state->stagingBuffer, target->fdmImage,
+                                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+            VkImageMemoryBarrier toFdm = {};
+            toFdm.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            toFdm.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            toFdm.dstAccessMask = VK_ACCESS_FRAGMENT_DENSITY_MAP_READ_BIT_EXT;
+            toFdm.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            toFdm.newLayout = VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT;
+            toFdm.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toFdm.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            toFdm.image = target->fdmImage;
+            toFdm.subresourceRange = range;
+            state->vkCmdPipelineBarrier(state->commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT_EXT,
+                                        0, 0, nullptr, 0, nullptr, 1, &toFdm);
+            ok = state->vkEndCommandBuffer(state->commandBuffer) == VK_SUCCESS;
+        }
+        if (ok)
+        {
+            VkSubmitInfo submitInfo = {};
+            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            submitInfo.commandBufferCount = 1;
+            submitInfo.pCommandBuffers = &state->commandBuffer;
+            const uint64_t timeout = 5000000000ull;
+            ok = state->vkQueueSubmit(state->graphicsQueue, 1, &submitInfo, state->frameFence) == VK_SUCCESS &&
+                 state->vkWaitForFences(state->device, 1, &state->frameFence, 1, timeout) == VK_SUCCESS;
+        }
+    }
+    if (!ok)
+    {
+        state->vkDestroyImageView(state->device, target->fdmView, nullptr);
+        state->vkDestroyImage(state->device, target->fdmImage, nullptr);
+        state->vkFreeMemory(state->device, target->fdmMemory, nullptr);
+        target->fdmView = VK_NULL_IMAGE_VIEW;
+        target->fdmImage = 0;
+        target->fdmMemory = VK_NULL_DEVICE_MEMORY;
+        return false;
+    }
+    return true;
+}
+
 static bool iCreateRenderTargetObjects(piVulkanState *state, piRTarget target, piRenderer::piReporter *reporter)
 {
     if (!state || !target || state->device == VK_NULL_DEVICE)
@@ -6556,7 +6739,9 @@ static bool iCreateRenderTargetObjects(piVulkanState *state, piRTarget target, p
     // prior layout with no barrier - same trick as the CLEAR variant. Any
     // creation failure falls back non-fatally to the classic 1x target.
     VkAttachmentReference resolveReference = {};
+    VkRenderPassFragmentDensityMapCreateInfoEXT fdmChain = {};
     bool msaaActive = false;
+    bool ffrActive = false;
     if (state->nextRenderTargetWantsMsaa && iMsaaEnabled(state) &&
         target->colorAttachmentCount == 1 && target->hasDepth &&
         sampleCount == VK_SAMPLE_COUNT_1_BIT && target->color[0] && target->depth)
@@ -6641,6 +6826,39 @@ static bool iCreateRenderTargetObjects(piVulkanState *state, piRTarget target, p
                 state->msaaReported = true;
                 iReport(reporter, "Vulkan renderer MSAA 4x ACTIVE: transient attachments, in-pass resolve, player A2C honored");
             }
+            // Native FFR rides the same pass: density attachment + pNext chain.
+            // Failure is non-fatal (full-density pass, FFR disabled for session).
+            if (iFfrEnabled(state))
+            {
+                if (iCreateFragmentDensityMap(state, target, width, height, reporter))
+                {
+                    attachments[3] = {};
+                    attachments[3].format = VK_FORMAT_R8G8_UNORM;
+                    attachments[3].samples = VK_SAMPLE_COUNT_1_BIT;
+                    attachments[3].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+                    attachments[3].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+                    attachments[3].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                    attachments[3].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+                    attachments[3].initialLayout = VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT;
+                    attachments[3].finalLayout = VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT;
+                    attachmentViews[3] = target->fdmView;
+                    attachmentCount = 4;
+                    fdmChain.sType = VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT;
+                    fdmChain.fragmentDensityMapAttachment.attachment = 3;
+                    fdmChain.fragmentDensityMapAttachment.layout = VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT;
+                    ffrActive = true;
+                    if (!state->ffrReported)
+                    {
+                        state->ffrReported = true;
+                        iReport(reporter, "Vulkan renderer native FFR ACTIVE: fragment density map on eye passes");
+                    }
+                }
+                else
+                {
+                    state->ffrFailed = true;
+                    iReport(reporter, "Vulkan renderer FFR unavailable; eye passes run full density");
+                }
+            }
         }
         else
         {
@@ -6675,6 +6893,7 @@ static bool iCreateRenderTargetObjects(piVulkanState *state, piRTarget target, p
 
     VkRenderPassCreateInfo renderPassInfo = {};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.pNext = ffrActive ? &fdmChain : nullptr;
     renderPassInfo.attachmentCount = attachmentCount;
     renderPassInfo.pAttachments = attachments;
     renderPassInfo.subpassCount = 1;
@@ -8933,6 +9152,21 @@ void piRendererVulkan::DestroyRenderTarget(piRTarget obj)
         {
             mState->vkFreeMemory(mState->device, obj->msaaDepthMemory, nullptr);
             obj->msaaDepthMemory = VK_NULL_DEVICE_MEMORY;
+        }
+        if (obj->fdmView != VK_NULL_IMAGE_VIEW && mState->vkDestroyImageView)
+        {
+            mState->vkDestroyImageView(mState->device, obj->fdmView, nullptr);
+            obj->fdmView = VK_NULL_IMAGE_VIEW;
+        }
+        if (obj->fdmImage != 0 && mState->vkDestroyImage)
+        {
+            mState->vkDestroyImage(mState->device, obj->fdmImage, nullptr);
+            obj->fdmImage = 0;
+        }
+        if (obj->fdmMemory != VK_NULL_DEVICE_MEMORY && mState->vkFreeMemory)
+        {
+            mState->vkFreeMemory(mState->device, obj->fdmMemory, nullptr);
+            obj->fdmMemory = VK_NULL_DEVICE_MEMORY;
         }
     }
     if (mState && mState->liveRenderTargets > 0) --mState->liveRenderTargets;
