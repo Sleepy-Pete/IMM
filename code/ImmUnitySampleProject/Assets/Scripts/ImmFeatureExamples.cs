@@ -769,15 +769,19 @@ namespace ImmPlayer
             if (_doc == null)
                 yield break;
 
-            const int maxFrames = 120;
-            int frames = 0;
-            while (_doc != null && frames < maxFrames)
+            // Spawn areas exist only at LoadingComplete (MngrPlayer::Enter),
+            // which lands AFTER the async audio decode - 44 s+ for QuantumRace.
+            // The old 120-FRAME cap expired ~1.7 s in, so the initial anchor
+            // never applied and the viewpoint driver never engaged. Wait on a
+            // generous realtime deadline instead (decode runs off-thread now,
+            // frames tick normally the whole time).
+            float deadline = Time.realtimeSinceStartup + 180.0f;
+            while (_doc != null && Time.realtimeSinceStartup < deadline)
             {
                 SyncSpawnAreaSelection();
                 if (_spawnAreaIds.Length == 0)
                 {
                     yield return null;
-                    frames++;
                     continue;
                 }
 

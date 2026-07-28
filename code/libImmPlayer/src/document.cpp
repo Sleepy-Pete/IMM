@@ -250,7 +250,22 @@ namespace ImmPlayer
                 }
                 else
                 {
+                    // SPU (audio decode) stays on this loader thread. It used
+                    // to run inside the state-machine step below, which the
+                    // host calls under Player::GlobalWork's mutex on its main
+                    // thread - a 221 MB document decodes audio for ~40-60 s,
+                    // freezing the whole app (zero frames submitted; reads as
+                    // a crash in-headset).
                     mState.mLoadingState = LoadingState::LoadingSPU;
+                    if (!iLoadSPU(layerRenderSound, soundEngine, log))
+                    {
+                        mState.mLoadingState = LoadingState::UnloadingCPU;
+                        mState.mErrorState = ErrorState::FailedSPU;
+                    }
+                    else
+                    {
+                        mState.mLoadingState = LoadingState::LoadingGPU;
+                    }
                 }
             });
 
@@ -258,20 +273,11 @@ namespace ImmPlayer
         }
         else if (st == LoadingState::LoadingCPU)
         {
-            // do nothing, keep waiting
+            // do nothing, keep waiting (loader thread)
         }
         else if (st == LoadingState::LoadingSPU)
         {
-            //LoadSPU(&mLayerRenderSound, mSoundEngine, mLog);
-            if (!iLoadSPU(layerRenderSound, soundEngine, log))
-            {
-                mState.mLoadingState = LoadingState::UnloadingCPU;
-                mState.mErrorState = ErrorState::FailedSPU;
-            }
-            else
-            {
-                mState.mLoadingState = LoadingState::LoadingGPU;
-            }
+            // do nothing, keep waiting (audio decoding on the loader thread)
         }
         else if (st == LoadingState::LoadingGPU)
         {
