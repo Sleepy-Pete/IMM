@@ -308,6 +308,9 @@ namespace ImmPlayer
 
             if (ShouldRunPostLoadFeature("initial spawn area", "IMM_UNITY_DISABLE_INITIAL_SPAWN_AREA"))
                 StartCoroutine(ApplyInitialSpawnAreaViewpoint());
+
+            if (autoPlay && ShouldRunPostLoadFeature("auto first stop", "IMM_UNITY_DISABLE_AUTO_FIRST_STOP"))
+                StartCoroutine(AdvanceToFirstStopWhenReady());
         }
 
         private IEnumerator LoadFromStreamingAssets(string fileName)
@@ -610,6 +613,30 @@ namespace ImmPlayer
         public void Restart()
         {
             _doc?.Restart();
+        }
+
+        // Quill-player parity: play carries the doc from the title card to its
+        // first stop on its own; without this the doc parks at the start until
+        // a manual Next Chapter press (user report 2026-07-28, every run).
+        private IEnumerator AdvanceToFirstStopWhenReady()
+        {
+            float deadline = Time.realtimeSinceStartup + 20.0f;
+            while (Time.realtimeSinceStartup < deadline)
+            {
+                if (_doc == null)
+                    yield break;
+                if (_doc.GetChapterCount() > 0 && _initialSpawnAreaCoroutine == null)
+                    break;
+                yield return null;
+            }
+            if (_doc == null || _doc.GetChapterCount() <= 1)
+                yield break;
+            // Only auto-advance off the title card; a user press may already
+            // have moved the doc on.
+            if (_doc.GetCurrentChapter() != 0)
+                yield break;
+            Debug.Log($"{DiagPrefix}Auto-advancing to first stop (chapter 1)");
+            SkipForward();
         }
 
         public void SkipForward()
