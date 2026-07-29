@@ -707,7 +707,11 @@ static void UNITY_INTERFACE_API iUnityVulkanQueueRenderCallback(int event_id, vo
     // the first frames for boot diagnostics, then sample every 60th eye-frame
     // (fps can still be derived from the sampled cadence: 60 eyes/interval).
     static uint32_t sRenderLogCounter = 0;
-    const bool logThisEye = sRenderLogCounter < 20 || (sRenderLogCounter % 60u) == 0u;
+    // Sample period must be ODD: eyes alternate, so an even period (was 60)
+    // always lands on the SAME eye - every render line ever logged was eye 0
+    // and per-eye asymmetries (a backdrop present in one eye only) were
+    // invisible. 61 alternates.
+    const bool logThisEye = sRenderLogCounter < 20 || (sRenderLogCounter % 61u) == 0u;
     ++sRenderLogCounter;
     if (logThisEye)
         iLog().Printf(LT_MESSAGE, L"Unity Vulkan frame stage: serial=%d target begun", frameSerial);
@@ -720,8 +724,9 @@ static void UNITY_INTERFACE_API iUnityVulkanQueueRenderCallback(int event_id, vo
     if (logThisEye)
         iLog().Printf(
             LT_MESSAGE,
-            L"Unity Vulkan render: camera=%d viewport=%dx%d rendered=%d drawCalls=%d paintDrawCalls=%d pictureDrawCalls=%d picture360DrawCalls=%d culled=%d trisCulled=%d",
+            L"Unity Vulkan render: camera=%d eye=%d viewport=%dx%d rendered=%d drawCalls=%d paintDrawCalls=%d pictureDrawCalls=%d picture360DrawCalls=%d culled=%d trisCulled=%d",
             context->cameraID,
+            eyeID,
             context->width,
             context->height,
             rendered ? 1 : 0,
