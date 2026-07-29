@@ -58,24 +58,37 @@ namespace ImmPlayer
                 LayerSpawnArea * lv = (LayerSpawnArea*)layer->GetImplementation();
                 mSpawnAreas.Append(layer, true);
 
-                // Authoring dump for the animated viewpoint: stepped keys
-                // (InterpolationType::None) HOLD then snap in SetStateAt, which
-                // reads as stuttering rather than smooth travel - and viewer
-                // -side prediction amplifies the snap. Name what was authored.
+                // Authoring dump for the animated viewpoint. The spawn layer
+                // itself often carries NO keys - the motion lives on a PARENT
+                // group (GetTransformToWorld composes the chain), so walk up
+                // and name the layer that actually animates. Stepped keys
+                // (InterpolationType::None) hold then snap; that authoring is
+                // honored deliberately - forcing interpolation flattens the
+                // intended holds and cuts (tried 2026-07-28, reverted).
                 if (mLog)
                 {
-                    const unsigned int numKeys = layer->GetNumAnimKeys(Layer::AnimProperty::Transform);
-                    unsigned int stepped = 0, linear = 0, eased = 0;
-                    for (unsigned int i = 0; i < numKeys; ++i)
+                    Layer *node = layer;
+                    int level = 0;
+                    while (node != nullptr && level < 8)
                     {
-                        const Layer::AnimKey *key = layer->GetAnimKey(Layer::AnimProperty::Transform, i);
-                        if (key == nullptr) continue;
-                        if (key->mInterpolation == Layer::InterpolationType::None) ++stepped;
-                        else if (key->mInterpolation == Layer::InterpolationType::Linear) ++linear;
-                        else ++eased;
+                        const unsigned int numKeys = node->GetNumAnimKeys(Layer::AnimProperty::Transform);
+                        if (numKeys > 0 || node == layer)
+                        {
+                            unsigned int stepped = 0, linear = 0, eased = 0;
+                            for (unsigned int i = 0; i < numKeys; ++i)
+                            {
+                                const Layer::AnimKey *key = node->GetAnimKey(Layer::AnimProperty::Transform, i);
+                                if (key == nullptr) continue;
+                                if (key->mInterpolation == Layer::InterpolationType::None) ++stepped;
+                                else if (key->mInterpolation == Layer::InterpolationType::Linear) ++linear;
+                                else ++eased;
+                            }
+                            mLog->Printf(LT_MESSAGE, L"[IMM_KEYS] spawn %s ancestor[%d] %s transform keys=%u stepped=%u linear=%u eased=%u",
+                                         layer->GetName().GetS(), level, node->GetName().GetS(), numKeys, stepped, linear, eased);
+                        }
+                        node = node->GetParent();
+                        ++level;
                     }
-                    mLog->Printf(LT_MESSAGE, L"[IMM_KEYS] spawn area %s transform keys=%u stepped=%u linear=%u eased=%u",
-                                 layer->GetName().GetS(), numKeys, stepped, linear, eased);
                 }
             }
             return true;
