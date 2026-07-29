@@ -1,7 +1,45 @@
 # Quest Vulkan Status — Wins and Next Work
 
 _Updated 2026-07-28. Branch `vr-main`, verified in-headset on Quest (Adreno 740) with
-`TheArtofChange.imm` (103 MB streaming document) and the sample forest scene._
+`TheArtofChange.imm` (103 MB streaming document), `TheQuantumRace.imm` (221 MB) and
+the sample forest scene._
+
+## ⏭ Start here next session (2026-07-28 end of day)
+
+Everything below is pushed (`origin/vr-main`). Both apps are force-stopped on the
+headset; the device is ready to launch either one.
+
+**The one open defect: two stroke layers missing near the end of QuantumRace.**
+Ruled out already, with telemetry rather than argument — don't re-chase these:
+size culling (zero drops), layer and chunk frustum culling (zero drops),
+`RENDER_BUDGET` (compiled out), far-plane clipping (fixed at 20000), and per-eye
+submission (counts symmetric, `pic=2 p360=1` in both eyes). So the layers never
+enter the draw list at all.
+
+**Two instruments are loaded and waiting — neither needs new code:**
+
+1. **`[IMM_NODRAW]` telemetry**, live in the installed build. Reach the moment in
+   our player and the log names the layer *and the reason*: not visible, not
+   potentially visible (timeline window), opacity 0, layer not loaded, or drawing
+   not loaded. No controller press needed.
+2. **The reference-player A/B is already set up.** `TheQuantumRace.imm` is pushed
+   to `/sdcard/Android/data/org.linuxfoundation.imm.player/files/IMM/` and loads
+   cleanly there (79 chapters). Watch the same moment in the GLES3 native player:
+   strokes present there ⇒ the loss is in our Unity/Vulkan integration; strokes
+   missing there too ⇒ shared player/importer code or the document. That prebuilt
+   APK predates our telemetry, so this pass is visual; building `appImmViewer`
+   from source with `[IMM_NODRAW]` compiled in would make it mechanical.
+
+**Also open (lower priority):** whether the 1.5-frame viewpoint prediction adds
+overshoot on top of correct authored motion — test by feel with
+`IMM_UNITY_NO_VIEWPOINT_PREDICT`, not by adding machinery. And the stutter fix
+itself belongs in Quill: `Maincam/SecondaryAnim` (36/59 stepped) is the
+highest-leverage layer to re-key.
+
+**Device state:** `2111_confirmstate` build installed and stopped, flag file =
+`IMM_UNITY_DOC_FILE=TheQuantumRace.imm` + `IMM_UNITY_VK_ENABLE_BURST=1`.
+WiFi adb `192.168.1.220:5555` is the reliable channel (USB drops mid-session);
+re-arm with `adb -s <usb-serial> tcpip 5555` from any USB window.
 
 ## Where things stand
 
@@ -475,13 +513,20 @@ so raw-`getenv` toggles across the player and renderer libs work from this file
 
 ## Next work
 
-1. Quantum Race in-headset verify on a fresh boot (above), then the two one-press
-   checks: A-at-stop continues; host-depth occlusion with `IMM_UNITY_VK_HOST_DEPTH`
-   (white cube vs strokes) — flip host-depth default-on after it passes. Confirm
-   the deepest scenes hold 72.
-2. **UI panel/volume/browse** (Meta Quill player parity) — the remaining
-   product-scale feature; the doc-override flag is its seed.
-3. Workflow docs (WiFi-adb + stream + VrApi capture recipes) as they stabilize.
+1. **Missing stroke layers in QuantumRace** — the one open defect. Both
+   instruments are already loaded; see "Start here next session" at the top.
+2. **Viewpoint prediction sanity check** — does 1.5-frame prediction add
+   overshoot on top of authored motion? Feel it with
+   `IMM_UNITY_NO_VIEWPOINT_PREDICT`.
+3. **Loading indicator** — now buildable, since the app renders throughout the
+   ~28 s load instead of freezing.
+4. **UI panel/volume/browse** (Meta Quill player parity) — the remaining
+   product-scale feature. The Quill player screenshot documents the target
+   layout; the doc-override flag is the seed for browse.
+5. Parked one-press checks: A-at-stop continues; host-depth occlusion with
+   `IMM_UNITY_VK_HOST_DEPTH` (white cube vs strokes) → flip default-on if it
+   passes; confirm the deepest scenes hold 72.
+6. Workflow docs (WiFi-adb + stream + VrApi capture recipes) as they stabilize.
 
 ## Open bugs (parked, non-blocking)
 
