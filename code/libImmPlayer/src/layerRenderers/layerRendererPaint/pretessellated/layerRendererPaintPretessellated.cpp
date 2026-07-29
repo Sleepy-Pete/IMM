@@ -477,12 +477,29 @@ namespace ImmPlayer
 	void LayerRendererPaintPretessellated::DisplayPreRender(piRenderer* renderer, piSoundEngine* sound, piLog* log, Layer* la, const frustum3& frus, const trans3d & layerToViewer, float laOpacity)
 	{
 		LayerPaint* lp = (LayerPaint*)la->GetImplementation();
-        if (!la->GetLoaded()) return;
+		// These early-outs are the SILENT ways a stroke layer disappears: no
+		// draw, no cull counter, no telemetry (culls were measured at zero
+		// while content was visibly missing, so the loss is here or upstream).
+		// Sampled naming so the missing layers identify themselves.
+        if (!la->GetLoaded())
+		{
+			static uint32_t sNotLoadedCounter = 0;
+			const uint32_t n = sNotLoadedCounter++;
+			if ((n % 300) == 0 && log)
+				log->Printf(LT_MESSAGE, L"[IMM_NODRAW] layer %s NOT LOADED (n=%u)", la->GetName().GetS(), n);
+			return;
+		}
 
 		const Drawing *dr = lp->GetCurrentDrawing();
 
         if (!dr->GetLoaded())
+		{
+			static uint32_t sDrawingNotLoadedCounter = 0;
+			const uint32_t n = sDrawingNotLoadedCounter++;
+			if ((n % 300) == 0 && log)
+				log->Printf(LT_MESSAGE, L"[IMM_NODRAW] layer %s drawing NOT LOADED (n=%u)", la->GetName().GetS(), n);
             return;
+		}
 
 		const bound3 bbox = dr->GetBBox();//lp->GetBBox(drawing);
 

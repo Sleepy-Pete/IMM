@@ -160,6 +160,16 @@ namespace ImmPlayer
         // keeps chapter cuts as hard snaps.
         private bool _viewpointPredict;
         private float _viewpointPredictFrames = 1.5f; // IMM_UNITY_PREDICT_FRAMES dials it per-run
+        // Stepped authored keys (Quill InterpolationType::None) HOLD then snap
+        // - the player returns the same pose for several frames, then jumps.
+        // Extrapolation amplifies that; a critically-damped follow turns the
+        // staircase into continuous motion. IMM_UNITY_SMOOTH_VIEWPOINT=<hz>
+        // (e.g. 8) enables it; 0/absent keeps pure prediction.
+        private float _viewpointSmoothHz;
+        private bool _hasSmoothedPose;
+        private Vector3 _smoothedPos;
+        private Quaternion _smoothedRot = Quaternion.identity;
+        private float _smoothedScale = 1f;
         private bool _hasPoseHistory;
         private Vector3 _prevSpawnPos;
         private Quaternion _prevSpawnRot = Quaternion.identity;
@@ -203,7 +213,14 @@ namespace ImmPlayer
                 {
                     _viewpointPredictFrames = parsedFrames;
                 }
-                Debug.Log($"{ViewpointLogPrefix}animated viewpoint driver ARMED (yawOnly={constrainViewpointRotationToYawInXR}, predict={_viewpointPredict} x{_viewpointPredictFrames:F1}, kill IMM_UNITY_NO_ANIMATED_VIEWPOINT)");
+                string smoothHz = ReadFlagFileStringValue("IMM_UNITY_SMOOTH_VIEWPOINT");
+                if (!string.IsNullOrEmpty(smoothHz) &&
+                    float.TryParse(smoothHz, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedHz) &&
+                    parsedHz > 0f && parsedHz <= 60f)
+                {
+                    _viewpointSmoothHz = parsedHz;
+                }
+                Debug.Log($"{ViewpointLogPrefix}animated viewpoint driver ARMED (yawOnly={constrainViewpointRotationToYawInXR}, predict={_viewpointPredict} x{_viewpointPredictFrames:F1}, smoothHz={_viewpointSmoothHz:F1}, kill IMM_UNITY_NO_ANIMATED_VIEWPOINT)");
             }
             else
             {
@@ -379,6 +396,36 @@ namespace ImmPlayer
                 _hasPoseHistory = true;
             }
 
+            // Smoothing pass (opt-in): critically-damped follow of the authored
+            // pose. With stepped keys the raw pose is a staircase; this rides
+            // it continuously. Teleports snap through (history was reset).
+            if (_viewpointSmoothHz > 0.0f)
+            {
+                if (!_hasSmoothedPose)
+                {
+                    _smoothedPos = spawnPose.position;
+                    _smoothedRot = spawnPose.rotation;
+                    _smoothedScale = spawnScale;
+                    _hasSmoothedPose = true;
+                }
+                else
+                {
+                    float k = 1.0f - Mathf.Exp(-_viewpointSmoothHz * Mathf.Max(Time.deltaTime, 0.0001f));
+                    // Snap (don't smooth) across authored jumps, same guard as prediction.
+                    if ((spawnPose.position - _smoothedPos).sqrMagnitude > 25.0f ||
+                        Quaternion.Angle(_smoothedRot, spawnPose.rotation) > 30.0f)
+                    {
+                        k = 1.0f;
+                    }
+                    _smoothedPos = Vector3.Lerp(_smoothedPos, spawnPose.position, k);
+                    _smoothedRot = Quaternion.Slerp(_smoothedRot, spawnPose.rotation, k);
+                    _smoothedScale = Mathf.Lerp(_smoothedScale, spawnScale, k);
+                }
+                spawnPose.position = _smoothedPos;
+                spawnPose.rotation = _smoothedRot;
+                spawnScale = _smoothedScale;
+            }
+
             Quaternion spawnRot = EffectiveViewpointRotation(spawnPose.rotation);
             Vector3 rigPos = spawnPose.position + spawnRot * (_rigOffsetInSpawnSpacePos * spawnScale);
             Quaternion rigRot = spawnRot * _rigOffsetInSpawnSpaceRot;
@@ -536,6 +583,7 @@ namespace ImmPlayer
             _viewpointAnchored = false;
             _hasRigOffset = false;
             _hasPoseHistory = false;
+            _hasSmoothedPose = false;
             _appliedPoseFrame = -1;
             _viewpointDriverActiveLogged = false;
 
@@ -1295,6 +1343,7 @@ namespace ImmPlayer
                 _viewpointAnchored = true;
                 _hasRigOffset = false;
                 _hasPoseHistory = false;
+                _hasSmoothedPose = false;
                 _appliedPoseFrame = -1;
             }
         }

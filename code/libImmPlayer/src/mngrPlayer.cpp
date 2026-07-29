@@ -57,6 +57,26 @@ namespace ImmPlayer
             {
                 LayerSpawnArea * lv = (LayerSpawnArea*)layer->GetImplementation();
                 mSpawnAreas.Append(layer, true);
+
+                // Authoring dump for the animated viewpoint: stepped keys
+                // (InterpolationType::None) HOLD then snap in SetStateAt, which
+                // reads as stuttering rather than smooth travel - and viewer
+                // -side prediction amplifies the snap. Name what was authored.
+                if (mLog)
+                {
+                    const unsigned int numKeys = layer->GetNumAnimKeys(Layer::AnimProperty::Transform);
+                    unsigned int stepped = 0, linear = 0, eased = 0;
+                    for (unsigned int i = 0; i < numKeys; ++i)
+                    {
+                        const Layer::AnimKey *key = layer->GetAnimKey(Layer::AnimProperty::Transform, i);
+                        if (key == nullptr) continue;
+                        if (key->mInterpolation == Layer::InterpolationType::None) ++stepped;
+                        else if (key->mInterpolation == Layer::InterpolationType::Linear) ++linear;
+                        else ++eased;
+                    }
+                    mLog->Printf(LT_MESSAGE, L"[IMM_KEYS] spawn area %s transform keys=%u stepped=%u linear=%u eased=%u",
+                                 layer->GetName().GetS(), numKeys, stepped, linear, eased);
+                }
             }
             return true;
         };

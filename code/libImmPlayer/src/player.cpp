@@ -1166,12 +1166,34 @@ namespace ImmPlayer
 
     void Player::iDisplayPreRenderLayer(Layer* la, const trans3d & parentToWorld, float parentOpacity, const trans3d & worldToViewer)
     {
+        // The three silent drops upstream of the renderers: an invisible
+        // layer, one outside the timeline window, or one at zero opacity all
+        // vanish with no draw and no cull counter. Sampled naming (paint
+        // layers only, to keep the rate sane) so missing strokes identify
+        // themselves and the reason.
+        const bool isPaintForDropLog = la->GetType() == Layer::Type::Paint;
         if (!la->GetVisible())
+        {
+            if (isPaintForDropLog && mLog)
+            {
+                static uint32_t sInvisibleCounter = 0;
+                const uint32_t n = sInvisibleCounter++;
+                if ((n % 600) == 0)
+                    mLog->Printf(LT_MESSAGE, L"[IMM_NODRAW] paint layer %s NOT VISIBLE (n=%u)", la->GetName().GetS(), n);
+            }
             return;
+        }
 
 
         if (!la->GetPotentiallyVisible())
         {
+            if (isPaintForDropLog && mLog)
+            {
+                static uint32_t sNotPotentiallyCounter = 0;
+                const uint32_t n = sNotPotentiallyCounter++;
+                if ((n % 600) == 0)
+                    mLog->Printf(LT_MESSAGE, L"[IMM_NODRAW] paint layer %s NOT POTENTIALLY VISIBLE (n=%u)", la->GetName().GetS(), n);
+            }
             return;
         }
 
@@ -1181,6 +1203,14 @@ namespace ImmPlayer
 
         if (laOpacity == 0.0f)
         {
+            if (isPaintForDropLog && mLog)
+            {
+                static uint32_t sZeroOpacityCounter = 0;
+                const uint32_t n = sZeroOpacityCounter++;
+                if ((n % 600) == 0)
+                    mLog->Printf(LT_MESSAGE, L"[IMM_NODRAW] paint layer %s OPACITY 0 (parent=%.2f own=%.2f) (n=%u)",
+                                 la->GetName().GetS(), parentOpacity, la->GetOpacity(), n);
+            }
             return;
         }
         const Layer::Type lt = la->GetType();
