@@ -64,32 +64,18 @@ namespace ImmPlayer
                 // -side prediction amplifies the snap. Name what was authored.
                 if (mLog)
                 {
-                    // The spawn layer itself often carries NO keys - the motion
-                    // lives on a PARENT group (GetTransformToWorld composes the
-                    // chain, and mAnimated already ORs the parents in). Walk up
-                    // so the animating layer is the one that gets named.
-                    Layer *node = layer;
-                    int level = 0;
-                    while (node != nullptr && level < 8)
+                    const unsigned int numKeys = layer->GetNumAnimKeys(Layer::AnimProperty::Transform);
+                    unsigned int stepped = 0, linear = 0, eased = 0;
+                    for (unsigned int i = 0; i < numKeys; ++i)
                     {
-                        const unsigned int numKeys = node->GetNumAnimKeys(Layer::AnimProperty::Transform);
-                        if (numKeys > 0 || node == layer)
-                        {
-                            unsigned int stepped = 0, linear = 0, eased = 0;
-                            for (unsigned int i = 0; i < numKeys; ++i)
-                            {
-                                const Layer::AnimKey *key = node->GetAnimKey(Layer::AnimProperty::Transform, i);
-                                if (key == nullptr) continue;
-                                if (key->mInterpolation == Layer::InterpolationType::None) ++stepped;
-                                else if (key->mInterpolation == Layer::InterpolationType::Linear) ++linear;
-                                else ++eased;
-                            }
-                            mLog->Printf(LT_MESSAGE, L"[IMM_KEYS] spawn %s ancestor[%d] %s transform keys=%u stepped=%u linear=%u eased=%u",
-                                         layer->GetName().GetS(), level, node->GetName().GetS(), numKeys, stepped, linear, eased);
-                        }
-                        node = node->GetParent();
-                        ++level;
+                        const Layer::AnimKey *key = layer->GetAnimKey(Layer::AnimProperty::Transform, i);
+                        if (key == nullptr) continue;
+                        if (key->mInterpolation == Layer::InterpolationType::None) ++stepped;
+                        else if (key->mInterpolation == Layer::InterpolationType::Linear) ++linear;
+                        else ++eased;
                     }
+                    mLog->Printf(LT_MESSAGE, L"[IMM_KEYS] spawn area %s transform keys=%u stepped=%u linear=%u eased=%u",
+                                 layer->GetName().GetS(), numKeys, stepped, linear, eased);
                 }
             }
             return true;

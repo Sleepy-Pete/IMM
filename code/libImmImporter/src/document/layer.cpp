@@ -827,27 +827,13 @@ void Layer::SetTransformOverride(bool enabled, const trans3d & mat)
                 break;
 
             case AnimProperty::Transform:
-            {
-                // A stepped key (InterpolationType::None) HOLDS its pose and
-                // then snaps at the next key. QuantumRace's camera chain mixes
-                // them with linear keys (Cam 17/44 stepped, SecondaryAnim
-                // 36/59, Maincam 73/3911), so travel flows in some shots and
-                // steps in others - and every layer driven by those keys
-                // (vehicles included) steps with it. IMM_SMOOTH_STEPPED_KEYS=1
-                // interpolates them anyway; default honors the authoring.
-                static const bool sSmoothSteppedKeys = [](){
-                    const char *v = getenv("IMM_SMOOTH_STEPPED_KEYS");
-                    return v != nullptr && v[0] != '\0' && v[0] != '0';
-                }();
-                const bool holdThisKey = (lastKey->mInterpolation == InterpolationType::None) && !sSmoothSteppedKeys;
-                if (holdThisKey || isLastKey)
+                if (lastKey->mInterpolation == InterpolationType::None || isLastKey)
                     mTransform = lastKey->mValue.mTransform;
                 else
                 {
                     mTransform = mix(lastKey->mValue.mTransform * mPivotTransform, nextKey->mValue.mTransform * mPivotTransform, t) * invert(mPivotTransform);
                 }
                 break;
-            }
            
             case AnimProperty::DrawInTime:
                 if (lastKey->mInterpolation == InterpolationType::None || isLastKey)
