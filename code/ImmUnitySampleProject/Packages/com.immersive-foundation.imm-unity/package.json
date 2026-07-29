@@ -1,20 +1,13 @@
 {
   "name": "com.immersive-foundation.imm-unity",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "IMM Unity",
-  "description": "IMM Unity player runtime and samples.",
+  "description": "IMM Unity player runtime: loads and plays .imm documents (Quill exports) in Unity, with a native plugin for Android arm64 (Quest), Windows, macOS and iOS.",
   "unity": "2021.3",
   "dependencies": {
     "com.immersive-foundation.imm-stroke-reader": "0.1.0"
   },
   "author": {
     "name": "Immersive Foundation"
-  },
-  "samples": [
-    {
-      "displayName": "IMM Samples",
-      "description": "Example scripts for IMM runtime.",
-      "path": "Samples~/Examples"
-    }
-  ]
+  }
 }
