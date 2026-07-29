@@ -16,6 +16,43 @@ resolves normally.
 
 ---
 
+## Mode 0 — `.unitypackage` (easiest for someone else; no manifest editing)
+
+A single self-contained file. The consumer drags it into an open Unity project
+(or *Assets → Import Package → Custom Package*) and everything lands ready to
+use — both packages, all native binaries for Android arm64, Windows x64, macOS
+and iOS, with their import settings intact.
+
+Because the exported paths keep their `Packages/...` prefix, the import creates
+**embedded packages** rather than loose files in `Assets/`. Assembly
+definitions, plugin platform settings and package identity all survive, and
+uninstalling is deleting the two folders under `Packages/`.
+
+Build it:
+
+```powershell
+tools/build_unitypackage.ps1            # batch mode; Editor must be closed
+tools/build_unitypackage.ps1 -SyncNative  # rebuild the .so first
+```
+
+or, with the Editor open, use the menu item **IMM → Export Unity Package
+(release artifact)**. Output lands in `code/ImmUnitySampleProject/dist/`
+(gitignored — attach it to a GitHub Release rather than committing it).
+
+**The one manual step for the consumer:** add Newtonsoft Json, which SharpQuill's
+reader/writer genuinely require. *Package Manager → + → Add package by name →*
+`com.unity.nuget.newtonsoft-json`. It is deliberately not bundled: shipping a
+second copy collides with any project that already has it.
+
+Suggested release note for consumers:
+
+> **Install**
+> 1. Import `IMM-Unity-<version>.unitypackage` into your project.
+> 2. Package Manager → *Add package by name* → `com.unity.nuget.newtonsoft-json`.
+>
+> Requires Unity 2021.3+. Native plugins included for Android arm64 (Quest),
+> Windows x64, macOS and iOS — no C++ toolchain needed.
+
 ## Mode 1 — local path (use this while iterating)
 
 Best while the plugin is changing daily: the consuming project references the
@@ -81,9 +118,6 @@ time. Best for sending a specific build to someone outside the project.
 
 ## Release workflow
 
-Everything the consumer gets is committed, so releasing is: build → sync → bump →
-tag → push.
-
 ```powershell
 # 1. build the native plugin and copy it into the package
 tools/sync_native_to_package.ps1
@@ -94,7 +128,19 @@ tools/sync_native_to_package.ps1
 git add -A; git commit -m "imm-unity 0.2.0"
 git tag imm-unity-v0.2.0
 git push origin vr-main --tags
+
+# 4. build the drop-in artifact and attach it to the release
+tools/build_unitypackage.ps1            # Editor must be closed for batch mode
+gh release create imm-unity-v0.2.0 `
+  code/ImmUnitySampleProject/dist/IMM-Unity-0.2.0.unitypackage `
+  --title "IMM Unity 0.2.0" --notes-file <notes>
 ```
+
+(`gh` is not installed on this machine yet — until it is, create the release
+and upload the `.unitypackage` through the GitHub web UI.)
+
+That covers all four consumption modes at once: tag for git URLs, artifact for
+drag-and-drop, and the committed package for local-path users.
 
 Consumers on a pinned tag then move by editing their `manifest.json`; consumers
 tracking `#vr-main` pick it up on their next resolve (Unity caches git packages —
