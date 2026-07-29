@@ -372,6 +372,35 @@ ground truth than any third-party app:
   precisely the three silent early-outs `[IMM_NODRAW]` now names, which makes
   the telemetry directly interpretable against the authored data.
 
+## Stutter is authored — the specific layers to re-key (2026-07-28 night)
+
+The user built a timeline viewer and independently spotted it: around 6:56,
+subgroups that follow the camera transform carry fully stepped keyframes.
+`tools/quill_layer_map.ps1` corroborates and names them. **Every fully-stepped
+transform layer in the project is a Group** (33 of them) — which matters,
+because a group carries the transform its children ride, so one stepped group
+steps everything under it.
+
+Highest leverage first, inside the camera rig:
+
+| Layer | Xf keys | Stepped | Note |
+|---|---|---|---|
+| `Maincam/SecondaryAnim` | 59 | **36** | the rig everything hangs off — dominant source |
+| `Maincam/SecondaryAnim/Cam` | 44 | **17** | |
+| `Maincam/SecondaryAnim/GarlicCockpit6N1Nn` | 31 | **31** | fully stepped, from 8:27 |
+| `Maincam/SecondaryAnim/Racersempty1` (+`/Abstract/Gar`, `/Abstract/Rainbow`) | 3-4 | 1 each | **live 6:50** — the racers |
+| `Maincam/SecondaryAnim/Foldercars` (+`/Abstract/NewGroup14`, `/NewGroup16`) | 3-6 | 1 each | **live 6:50** |
+
+The racer groups at 6:50 match the reported moment and the "vehicles stutter"
+symptom exactly. Note they each carry only ~1 stepped key of their own — they
+inherit most of the stepping from `SecondaryAnim` above them, so re-keying the
+parent rig is the single highest-value authoring change.
+
+**Fix belongs in Quill, not the player.** Interpolating stepped keys at
+playback was tried and reverted (`e3e2fb5`) because it flattens intended holds
+and cuts. Not every stepped key is a mistake — the ones worth changing are
+those sitting in the middle of continuous camera motion.
+
 ## Debug flags (device: `imm_debug_flags.txt`, one per line, `NAME` or `NAME=VALUE`)
 
 Every entry is pushed into the native process environment at boot (`d3217e2`),

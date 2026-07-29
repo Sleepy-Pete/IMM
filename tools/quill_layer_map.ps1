@@ -106,11 +106,13 @@ if ($Name) {
 if ($AtTime) {
     $t = Convert-TimecodeToTicks $AtTime
     # "live at t": turned on at or before t, and not turned off after that on-key
+    # Groups are INCLUDED: a group carries the transform its children ride, so
+    # a stepped group is exactly what makes a whole set of layers step together
+    # (Maincam/SecondaryAnim is 36/59 stepped and everything under the camera
+    # inherits it). Excluding groups hid the real culprits.
     $view = $view | Where-Object {
-        $_.Type -ne "Group" -and (
-            ($null -eq $_.FirstOnT -and $_.Visible) -or
-            ($null -ne $_.FirstOnT -and $_.FirstOnT -le $t -and ($null -eq $_.LastOffT -or $_.LastOffT -ge $t))
-        )
+        ($null -eq $_.FirstOnT -and $_.Visible) -or
+        ($null -ne $_.FirstOnT -and $_.FirstOnT -le $t -and ($null -eq $_.LastOffT -or $_.LastOffT -ge $t))
     }
     Write-Host "Filter: live at $AtTime ($([int]$t) ticks) -> $($view.Count) layers" -ForegroundColor Yellow
 }
