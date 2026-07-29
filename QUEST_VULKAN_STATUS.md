@@ -371,6 +371,32 @@ does not argue against Vulkan (see [[vulkan-quest-standards-audit]] — the
 Store does not require it), but it does mean the reference players are the
 fastest way to split "ours" from "shared" for any new defect.
 
+**Reference-player A/B is set up and works.** The native player loads the
+newest `.imm` from its own external files dir (`OvrApp.cpp:2237-2265`):
+
+    adb push TheQuantumRace.imm \
+      /sdcard/Android/data/org.linuxfoundation.imm.player/files/IMM/
+    adb shell monkey -p org.linuxfoundation.imm.player \
+      -c android.intent.category.LAUNCHER 1
+
+It loaded QuantumRace cleanly — 79 chapters, same document, same `piLog`
+tags — so the same film can now be watched in both renderers and compared
+scene for scene. First numbers from that run, ours against the reference:
+
+| | Reference (GLES3, native) | Ours (Vulkan, Unity) |
+|---|---|---|
+| CPU load | 4247 ms | ~700 ms (loads from memory) |
+| Audio decode | 65814 ms (serial) | ~28000 ms (4 workers) |
+| GPU load | 2 ms | 0 ms |
+
+**Our port loads QuantumRace 2.3x faster than the reference implementation**
+— the parallel opus decode is a genuine improvement over upstream, not just
+parity. Caveat: the prebuilt reference APK predates our `[IMM_NODRAW]` /
+`[IMM_KEYS]` telemetry, so the missing-layer comparison is currently visual.
+Building `appImmViewer` from source with that telemetry would make the
+comparison mechanical, and is the natural follow-up if the visual pass is
+ambiguous.
+
 **The Quill player is also the UI parity spec.** A user screenshot
 (`com.facebook.arvr.quillplayer-20260727-210116.jpg`, Soda Island Chapter 1)
 documents Meta's exact control layout for the outstanding UI backlog item:
