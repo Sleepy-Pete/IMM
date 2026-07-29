@@ -352,6 +352,33 @@ ground truth than any third-party app:
 - **`com.facebook.arvr.quillplayer`** (Meta, 2.0.141) — visual ground truth
   for whether a layer is supposed to appear at all.
 
+**Both reference players share a stack that differs from ours on every axis.**
+Verified by reading their linked libraries:
+
+| | Meta Quill player | IMM reference player | **Our port** |
+|---|---|---|---|
+| Engine | native C++ | native C++ | **Unity** |
+| VR API | VrApi | VrApi | **OpenXR** |
+| Graphics | **GLES3** | **GLES3** | **Vulkan** |
+
+`libquillplayer.so` and `libDemoQuillPlayer.so` link `libGLESv3`/`libEGL`/
+`libvrapi` with no Vulkan and no Unity; the IMM reference player is the same.
+So neither working reference exercises the code paths we are building. That is
+useful in both directions: it explains why we meet problems they never hit,
+and it means a defect reproduced in the reference player is in shared
+player/importer code, while one that only we see is in our integration. This
+does not argue against Vulkan (see [[vulkan-quest-standards-audit]] — the
+Store does not require it), but it does mean the reference players are the
+fastest way to split "ours" from "shared" for any new defect.
+
+**The Quill player is also the UI parity spec.** A user screenshot
+(`com.facebook.arvr.quillplayer-20260727-210116.jpg`, Soda Island Chapter 1)
+documents Meta's exact control layout for the outstanding UI backlog item:
+playback bar (skip-back / previous / pause / play / volume / HD), *Return to
+Browse*, *Reset View*, *Free Fly*, *Show / Hide Panel*, *Continue*, and
+"Press Thumbstick to Play Next", plus a browse panel with title, studio, date
+and description.
+
 **Source Quill project inspected** (`soda-island-episode-three`,
 `Masterfile_ABC_v43_O_ms_df`: `Quill.json` 50 MB + `Quill.qbin` 1.86 GB):
 
