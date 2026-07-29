@@ -270,10 +270,90 @@ pose so prediction never leaks into the user offset). Kill
 `IMM_UNITY_NO_VIEWPOINT_PREDICT`. Also `culled=`/`trisCulled=` counters in the
 sampled render line — the evidence channel for the open missing-strokes hunt.
 
-**Open**: missing large strokes/layers near the film's end (RENDER_BUDGET
-eliminated — compiled out; far plane already 20000; end-window draws healthy,
-zero streaming lines). Next evidence: right-stick burst capture at the moment
-+ culled= correlation → frustum-cull vs not-in-draw-list vs drawn-invisible.
+## Load time, culling exonerated, and the stepped-key finding — 2026-07-28 night
+
+**Load: 53 s → 30 s.** The SPU pass decoded QuantumRace's FOUR ~22 MB opus
+tracks serially on the loader thread. Each `AddSound` decodes through its own
+`AMediaCodec` and the Android engine's sound array is already mutex-protected,
+so they now decode on up to four workers (`ae77576`, worker cap `edc2974`) —
+wall time is the longest single track. Combined with the freeze fix, the load
+is now a live, tracked, 72 fps world for ~30 s instead of a minute-long
+apparent hang. Non-Android platforms keep the serial path.
+
+**Missing strokes: culling is exonerated, twice over.** The layer screen-size
+cull (`f < 0.005`, tuned for room-scale documents) was widened to 0.001 with
+naming telemetry, and the layer + chunk frustum culls got a kill-switch
+(`IMM_UNITY_NO_FRUSTUM_CULL`) and their own telemetry. Result across full
+rides with content visibly missing: **zero size culls, zero layer-frustum
+culls**. Neither mechanism is dropping the content.
+
+**The render log had been eye-blind all along.** The sampler used an even
+period (60) while eyes alternate, so it always landed on the SAME eye — every
+render line ever captured was eye 0, and per-eye asymmetry was structurally
+invisible. Odd period + explicit `eye=` field (`67030e5`). First per-eye data:
+counts are **symmetric** (`pic=2 p360=1` both eyes, paint within 1-2), so the
+missing content is *not* a per-eye submission failure — the layers never enter
+the draw list at all. That points at the silent early-outs, which now name
+themselves (`[IMM_NODRAW]`, `883525d`): not visible, not potentially visible
+(timeline window), zero opacity, layer not loaded, drawing not loaded.
+
+**Burst capture caught the picture defect on film.** One frame, same instant:
+black sky in one eye, white sky in the other; and a separate frame pure white
+in both. The white had a cause — the scene camera cleared with Unity's default
+**skybox**, so anywhere IMM content is absent the compositor shows Unity's
+bright sky. Now clears to transparent black (`67030e5`), matching the native
+viewer: missing content reads black instead of flashing white. Diagnosis
+clarity, not the root cause.
+
+**Stepped animation keys — user's diagnosis, confirmed, and deliberately NOT
+"fixed".** The `[IMM_KEYS]` dump walks the spawn area's parent chain (the
+spawn layer itself carries no keys — the motion lives on the groups above it):
+
+    Maincam (spawn)   0 keys
+    Cam              44 keys ->  17 stepped, 27 linear
+    SecondaryAnim    59 keys ->  36 stepped, 10 linear, 13 eased
+    Maincam (group) 3911 keys ->  73 stepped, 3810 linear, 28 eased
+
+A stepped key (`InterpolationType::None`) holds its pose and snaps at the next
+key, so travel flows where keys are linear and steps where they are not —
+matching "fine in some points of the film, a problem in others" — and the
+vehicles step for the same reason, since they are driven by the same authored
+keys. Forcing interpolation (`IMM_SMOOTH_STEPPED_KEYS`) was tried and
+**reverted** (`e3e2fb5`): it flattens the edit's intended holds and cuts into
+slides. **The stepping is authoring, not a defect.** The telemetry stays
+(`5d1a03e`). Easing is NOT flattened — Smoothstep/EaseIn/EaseOut are applied
+to `t` upstream; only `None` steps.
+
+**Open, in priority order:**
+
+1. **Two main stroke layers missing near the film's end.** Culling ruled out;
+   per-eye submission ruled out. `[IMM_NODRAW]` will name the layers and the
+   reason on the next ride that reaches them.
+2. **Motion still not perfect in fast/nested-layer travel.** Authored stepping
+   is expected; the open question is whether the 1.5-frame viewpoint
+   prediction now *adds* overshoot on top of correct authored motion. The
+   honest test is `IMM_UNITY_NO_VIEWPOINT_PREDICT` (feel it with no
+   viewer-side interference), not more machinery.
+3. Loading indicator — now buildable, since the app renders throughout load.
+
+## Debug flags (device: `imm_debug_flags.txt`, one per line, `NAME` or `NAME=VALUE`)
+
+Every entry is pushed into the native process environment at boot (`d3217e2`),
+so raw-`getenv` toggles across the player and renderer libs work from this file
+— before that bridge existed they were silently dead on Android.
+
+| Flag | Effect |
+|---|---|
+| `IMM_UNITY_DOC_FILE=<name>.imm` | Pick any StreamingAssets document |
+| `IMM_UNITY_VK_ENABLE_BURST` | Arm right-stick 8-frame stereo burst capture |
+| `IMM_UNITY_START_CHAPTER=N` | Boot straight into chapter N (headless captures) |
+| `IMM_UNITY_NO_ANIMATED_VIEWPOINT` | Disable the animated viewpoint driver |
+| `IMM_UNITY_NO_VIEWPOINT_PREDICT` | Disable pose prediction (raw authored pose) |
+| `IMM_UNITY_PREDICT_FRAMES=<f>` | Prediction lead, default 1.5 |
+| `IMM_UNITY_SMOOTH_VIEWPOINT=<hz>` | Critically-damped viewpoint follow |
+| `IMM_UNITY_VIEWPOINT_YAW_ONLY` | Drop authored pitch/roll (comfort A/B) |
+| `IMM_UNITY_NO_FRUSTUM_CULL` | Disable layer + chunk frustum culling |
+| `IMM_UNITY_NO_SIZE_CULL` | Disable screen-size layer culling |
 
 ## Next work
 
