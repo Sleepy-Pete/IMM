@@ -289,6 +289,12 @@ namespace ImmPlayer
         [DllImport(DllName)]
         public static extern bool GetSpawnAreaPose(int docId, int spawnareaId, out SpawnAreaPose pose);
 
+        // Mirrors a flag-file entry into the native process environment so
+        // raw-getenv toggles across the player/renderer libs work on Android
+        // (env vars never reach an Android app process otherwise).
+        [DllImport(DllName)]
+        public static extern void SetRuntimeFlag(string name, string value);
+
         #endregion
     }
 

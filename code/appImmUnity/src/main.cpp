@@ -432,6 +432,21 @@ static const char *iRuntimeFlagValue(const char *name, char *buffer, size_t buff
 #endif
 }
 
+// The C# side parses the device flag file (imm_debug_flags.txt) and pushes
+// every entry here at boot. setenv makes the flags visible to EVERY
+// raw-getenv toggle across the player/renderer libs - on Android the
+// process env is otherwise empty and those toggles are silently dead.
+extern "C" void UNITY_INTERFACE_EXPORT SetRuntimeFlag(const char *name, const char *value)
+{
+    if (name == nullptr || name[0] == '\0')
+        return;
+#if defined(_WIN32)
+    _putenv_s(name, value != nullptr ? value : "");
+#else
+    setenv(name, value != nullptr ? value : "", 1);
+#endif
+}
+
 static bool iEnvFlagEnabled(const char *name)
 {
     char buffer[96];

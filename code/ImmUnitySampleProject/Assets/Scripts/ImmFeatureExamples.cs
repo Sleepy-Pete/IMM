@@ -159,6 +159,7 @@ namespace ImmPlayer
         // extrapolation from the last two samples closes it; a teleport guard
         // keeps chapter cuts as hard snaps.
         private bool _viewpointPredict;
+        private float _viewpointPredictFrames = 1.5f; // IMM_UNITY_PREDICT_FRAMES dials it per-run
         private bool _hasPoseHistory;
         private Vector3 _prevSpawnPos;
         private Quaternion _prevSpawnRot = Quaternion.identity;
@@ -193,7 +194,16 @@ namespace ImmPlayer
                 // IMM_UNITY_VIEWPOINT_YAW_ONLY is the comfort A/B.
                 constrainViewpointRotationToYawInXR = IsDebugFlagSet("IMM_UNITY_VIEWPOINT_YAW_ONLY");
                 _viewpointPredict = !IsDebugFlagSet("IMM_UNITY_NO_VIEWPOINT_PREDICT");
-                Debug.Log($"{ViewpointLogPrefix}animated viewpoint driver ARMED (yawOnly={constrainViewpointRotationToYawInXR}, predict={_viewpointPredict}, kill IMM_UNITY_NO_ANIMATED_VIEWPOINT)");
+                // Flag-file dial: IMM_UNITY_PREDICT_FRAMES=2.0 etc - tune the
+                // travel-lag compensation per run without a rebuild.
+                string predictFrames = ReadFlagFileStringValue("IMM_UNITY_PREDICT_FRAMES");
+                if (!string.IsNullOrEmpty(predictFrames) &&
+                    float.TryParse(predictFrames, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float parsedFrames) &&
+                    parsedFrames >= 0f && parsedFrames <= 4f)
+                {
+                    _viewpointPredictFrames = parsedFrames;
+                }
+                Debug.Log($"{ViewpointLogPrefix}animated viewpoint driver ARMED (yawOnly={constrainViewpointRotationToYawInXR}, predict={_viewpointPredict} x{_viewpointPredictFrames:F1}, kill IMM_UNITY_NO_ANIMATED_VIEWPOINT)");
             }
             else
             {
@@ -352,12 +362,10 @@ namespace ImmPlayer
                                     Mathf.Abs(rawScale - _prevSpawnScale) > 0.5f * Mathf.Max(rawScale, _prevSpawnScale);
                     if (!teleport && sampleDt > 0.0005f && sampleDt < 0.1f)
                     {
-                        // 1.5 frames ahead: 1.0 covered the native evaluation
-                        // latency but the rig still trailed in fast nested-
-                        // layer travel (user verdict "better... still trying
-                        // hard to keep up"). Remaining ~half frame is the
-                        // apply-to-scanout gap.
-                        float ahead = Mathf.Clamp(1.5f * Time.deltaTime, 0.0f, 3.0f * sampleDt);
+                        // Default 1.5 frames ahead: 1.0 covered the native
+                        // evaluation latency but the rig still trailed in fast
+                        // nested-layer travel. IMM_UNITY_PREDICT_FRAMES dials it.
+                        float ahead = Mathf.Clamp(_viewpointPredictFrames * Time.deltaTime, 0.0f, 4.0f * sampleDt);
                         float t = ahead / sampleDt;
                         spawnPose.position = rawPos + delta * t;
                         spawnPose.rotation = Quaternion.SlerpUnclamped(_prevSpawnRot, rawRot, 1.0f + t);

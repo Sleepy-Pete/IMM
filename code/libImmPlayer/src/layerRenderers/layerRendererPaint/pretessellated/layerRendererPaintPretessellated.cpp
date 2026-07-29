@@ -486,10 +486,19 @@ namespace ImmPlayer
 
 		const bound3 bbox = dr->GetBBox();//lp->GetBBox(drawing);
 
+		// A/B kill for the missing-large-strokes hunt: the size cull is
+		// exonerated (telemetry showed zero drops), so the frustum tests are
+		// the live suspects. IMM_UNITY_NO_FRUSTUM_CULL=1 disables layer AND
+		// chunk frustum culling; sampled logs name what the layer test drops.
+		static const bool sNoFrustumCull = [](){ const char *v = getenv("IMM_UNITY_NO_FRUSTUM_CULL"); return v != nullptr && v[0] != '\0' && v[0] != '0'; }();
+
 		// layer frustum culling
-		if (boxInFrustum(frus, bbox) == 0)
+		if (!sNoFrustumCull && boxInFrustum(frus, bbox) == 0)
 		{
-			//static int kk = 0; log->Printf(LT_MESSAGE, L"culled %s (%d)", la->GetName().GetS(), kk++);
+			static uint32_t sLayerCullLogCounter = 0;
+			const uint32_t n = sLayerCullLogCounter++;
+			if ((n % 600) == 0 && log)
+				log->Printf(LT_MESSAGE, L"[IMM_FRUSCULL] layer %s dropped (n=%u)", la->GetName().GetS(), n);
 			return;
 		}
 
@@ -542,7 +551,7 @@ namespace ImmPlayer
 			for (uint64_t i = 0; i < numChunks; i++)
 			{
                 const DrawingPretessellated::Geometry::Chunk *srcChunk = me->mGeometry->mBuffers[chunkType].mChunks.GetAddress(i);
-				const bool visible = boxInFrustum(frus, srcChunk->mBBox) != 0;
+				const bool visible = sNoFrustumCull || boxInFrustum(frus, srcChunk->mBBox) != 0;
 				if (!visible)
 				{
 					++mDrawCallInfo.numDrawCallsCulled;

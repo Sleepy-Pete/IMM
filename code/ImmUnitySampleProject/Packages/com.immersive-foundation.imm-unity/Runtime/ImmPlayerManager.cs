@@ -126,6 +126,43 @@ namespace ImmPlayer
             }
             _instance = this;
             DontDestroyOnLoad(gameObject);
+            PushFlagFileToNativeEnvironment();
+        }
+
+        // Mirror every flag-file entry into the native process environment at
+        // boot. Raw-getenv toggles live all over the player/renderer libs and
+        // the Android process env is otherwise EMPTY - they were silently dead
+        // on device (only main.cpp's helper falls back to debug.imm sysprops).
+        // Supports both bare-flag lines (NAME -> "1") and NAME=VALUE lines.
+        private static void PushFlagFileToNativeEnvironment()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            try
+            {
+                string path = Path.Combine(Application.persistentDataPath, "imm_debug_flags.txt");
+                if (!File.Exists(path))
+                    return;
+                int pushed = 0;
+                foreach (string line in File.ReadAllLines(path))
+                {
+                    string flag = line.Trim();
+                    if (flag.Length == 0 || flag.StartsWith("#"))
+                        continue;
+                    int eq = flag.IndexOf('=');
+                    string name = eq > 0 ? flag.Substring(0, eq).Trim() : flag;
+                    string value = eq > 0 ? flag.Substring(eq + 1).Trim() : "1";
+                    if (name.Length == 0)
+                        continue;
+                    ImmNativePlugin.SetRuntimeFlag(name, value);
+                    pushed++;
+                }
+                Debug.Log($"[IMM_DEBUG_FLAGS] pushed {pushed} flags into the native environment");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[IMM_DEBUG_FLAGS] failed to push flags to native env: {e.Message}");
+            }
+#endif
         }
 
         private void Start()
