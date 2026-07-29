@@ -336,6 +336,42 @@ to `t` upstream; only `None` steps.
    viewer-side interference), not more machinery.
 3. Loading indicator — now buildable, since the app renders throughout load.
 
+## Reference players and source Quill projects (2026-07-28 night)
+
+**Two reference implementations are installed on the test headset** — better
+ground truth than any third-party app:
+
+- **`org.linuxfoundation.imm.player`** — the native IMM player. No Unity:
+  `libappImmPlayer.so` + `libvrapi.so`, ships `sample1.imm`, and links
+  **`libEGL`/`libGLESv3`** (no Vulkan). Built from the same source tree we are
+  porting, so it emits the **same `piLog` tags** — its log is directly
+  comparable to ours, line for line. Side-loading QuantumRace into it splits
+  the missing-layer question in half: if it draws the layers, the loss is in
+  our Unity/Vulkan integration; if it drops them too, the loss is in shared
+  player/importer logic or the document.
+- **`com.facebook.arvr.quillplayer`** (Meta, 2.0.141) — visual ground truth
+  for whether a layer is supposed to appear at all.
+
+**Source Quill project inspected** (`soda-island-episode-three`,
+`Masterfile_ABC_v43_O_ms_df`: `Quill.json` 50 MB + `Quill.qbin` 1.86 GB):
+
+- `"DefaultViewpoint": "Root/Masterfile/Maincam/SecondaryAnim/Cam/Maincam"` —
+  **the same camera chain QuantumRace's key dump reported**, so this rig is a
+  studio template and findings transfer between documents.
+- `"Framerate": 24` — documents are authored at 24 fps while we present at 72.
+- Key interpolation across the whole project: **Linear 57056, None (stepped)
+  8457 (~12.6%), Smoothstep 2432, EaseIn 614, EaseOut 401.** Stepped keys are
+  a normal, heavy part of the authoring idiom — further support for honoring
+  them rather than smoothing them.
+- Layer types: Paint 1259, Group 1010, Picture 12 (2D 8, 360_Equirect_Mono 6),
+  Sound 4 (Positional 3, Flat 1), Camera 1, Viewpoint 1.
+- Layer schema: `Animation { Duration, Timeline, StartOffset, MaxRepeatCount,
+  Keys { Visibility, Transform, Opacity } }`. **Visibility keys are always
+  `Interpolation: None`** (never interpolated, matching the player). So a
+  layer's presence is decided by visibility keys + timeline window + opacity —
+  precisely the three silent early-outs `[IMM_NODRAW]` now names, which makes
+  the telemetry directly interpretable against the authored data.
+
 ## Debug flags (device: `imm_debug_flags.txt`, one per line, `NAME` or `NAME=VALUE`)
 
 Every entry is pushed into the native process environment at boot (`d3217e2`),
