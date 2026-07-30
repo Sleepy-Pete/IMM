@@ -1,10 +1,50 @@
 # Quest Vulkan Status — Wins and Next Work
 
-_Updated 2026-07-28. Branch `vr-main`, verified in-headset on Quest (Adreno 740) with
+_Updated 2026-07-30. Branch `vr-main`, verified in-headset on Quest (Adreno 740) with
 `TheArtofChange.imm` (103 MB streaming document), `TheQuantumRace.imm` (221 MB) and
 the sample forest scene._
 
-## ⏭ Start here next session (2026-07-29)
+## ⏭ Start here next session (2026-07-30)
+
+**THE QUANTUMRACE "BLOCKER" WAS NOT A DEFECT — IT WAS A STALE INSTALL.** The APK on
+the device was **186 MB** and its asset list held only `TheArtofChange.imm` and
+`sample1.imm`. `TheQuantumRace.imm` was never in the installed build. The 404 was
+reporting the literal truth, and every theory stacked on it — byte-identical
+packaging, a `jar:`/`UnityWebRequest` size limit, the 91 ms failure, the unfinished
+103 MB bisect — was explaining a fact that was not a fact. The check that settles it
+costs one second and is now a standing precheck in `tools/headset-run.ps1`:
+
+```
+adb shell "unzip -l $(pm path <pkg> | sed s/package://) | grep '\.imm'"
+```
+
+Installing a current APK (560,978,671 bytes, all three documents) took **17 seconds**
+streamed over WiFi. QR then loads clean: 221,307,531 bytes, 79 chapters, ~22 s,
+auto-advance to first stop, no crash, MSAA + FFR active, FPS avg 73.2.
+
+**The spatial audio work is live on device for the first time** —
+`[IMM_AUDIO] engine rate=48000 spatial=1 ambisonic=AmbiX` — and QR is the right
+document to judge it: its audio is three positional sources plus a stereo bed
+and it is exactly the case that exercises the spatializer.
+Not yet heard by a human.
+
+**The picture instrumentation caught a regression on its first run — its own.**
+`[IMM_PICFMT]` fired on `shield.png1` followed by `Could not load asset for layer
+shield.png1`, reporting format 7 = `FORMAT_I_RGBA`: the target format. `iConvertSelf`
+implements four cross-format pairs and returns null for everything else, including
+same-format, so `Convert` reported failure for a no-op. `72bfc77` turned that
+previously-discarded bool into a hard `return false`, so already-RGBA pictures
+stopped loading. Fixed in `piImage::Convert` (`c25256d`) — same format is a no-op
+success, `swapRB` still honoured.
+
+**Still open, untouched by that fix:** `360 sky` and `floor png` in the 7:00–9:00
+window. The headless run parks at the first stop and never reaches them. RGB→RGBA on
+an 8192×4096 three-channel JPEG is a real conversion whose 128 MiB allocation can
+genuinely fail, so the original theory stands and the diagnostic is armed for it.
+Reaching that window unattended needs an auto-continue-past-stops flag; without one
+it is an eyes-on check.
+
+## (superseded 2026-07-30) Start here next session (2026-07-29)
 
 **THE MISSING-LAYER DEFECT IS ROOT-CAUSED. It was never a stroke/paint problem and
 never a Vulkan problem.** The layers are PICTURE layers, the user named them, and
@@ -62,7 +102,10 @@ visibility key is 542.58 (9:02), but its ancestor `Sc19_silentmoment` is
 is authored. It is also 3840×2160 (16:9) while typed `Image360EquirectMono`, whose
 shader assumes 2:1 — so it should look **distorted**, not missing.
 
-**🚧 BLOCKER — QuantumRace will not load.** `TheQuantumRace.imm` 404s from
+**🚧 (RESOLVED 2026-07-30 — stale install, see the top of this doc. Kept as the
+record of a wrong diagnosis: the packaging evidence below was gathered from a
+locally built APK, never from the installed one.)
+BLOCKER — QuantumRace will not load.** `TheQuantumRace.imm` 404s from
 StreamingAssets, and it is *not* a missing file: `assets/TheQuantumRace.imm` is in the
 APK at 221,307,531 bytes, stored uncompressed, **byte-identical in packaging to the
 archived `2118_confirmstate` build that loaded it fine**. `UnityWebRequest.Get` on the
@@ -564,6 +607,27 @@ so raw-`getenv` toggles across the player and renderer libs work from this file
 | `IMM_UNITY_NO_SIZE_CULL` | Disable screen-size layer culling |
 | `IMM_UNITY_NO_PICTURE_CULL` | Disable the picture renderer's frustum + screen-size culls. The paint-side `IMM_UNITY_NO_FRUSTUM_CULL` does **not** cover pictures, and lives in a renderer this build never instantiates. |
 | `IMM_UNITY_SKIP_UNLOAD_NOT_IN_TIMELINE` | Skip the whole unload-eligibility scan (pre-existing, `player.cpp:1096`). Also stops paint unloading, so memory grows — targeted checks, not soaks. |
+| `IMM_AUDIO_NO_SPATIAL` | Flat, unspatialized playback — the pre-2026-07-30 behaviour. The A/B for the spatializer; needs no rebuild. |
+| `IMM_AUDIO_AMBISONIC_FUMA` | Decode 4-channel beds as FuMa instead of AmbiX. Try this if a bed sounds inside-out or rotates the wrong way. |
+
+## Running a headset test — `tools/headset-run.ps1`
+
+One run: precheck → flags → arm capture → launch → observe → force-stop → verdict.
+It encodes the discipline that has cost evidence whenever a step was skipped: the log
+ring wraps in ~50 s under `piLog`, so capture is armed **before** launch; a doffed
+launch without keep-alive broadcasts is reaped as a cached process; the flag file is
+always read back after writing; the app is **always** force-stopped at the end; and
+PRECHECK lists the documents inside the **installed** APK, which is the check that
+would have saved the QuantumRace session.
+
+```powershell
+.\headset-run.ps1 -DocFile TheQuantumRace.imm -Seconds 150 -Label qr_audio
+.\headset-run.ps1 -DocFile TheQuantumRace.imm -Flags IMM_AUDIO_NO_SPATIAL=1 -Label qr_flat
+.\headset-run.ps1 -DocFile TheQuantumRace.imm -Flags IMM_UNITY_VK_ENABLE_BURST=1 -Attended -Label qr_listen
+```
+
+Captures land in `captures/` next to the repo. `-Attended` launches and then waits for
+you to finish in the headset before tearing down.
 
 ## Next work
 
