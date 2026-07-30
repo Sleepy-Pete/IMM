@@ -182,11 +182,36 @@ layout(binding = 0) uniform sampler2D pictureTexture;
 layout(location=0) in vec3 in_direction;
 layout(location=0) out vec4 out_color;
 
+// Diagnostic, off unless IMM_UNITY_VK_PIC_DEBUG is set. 1 = solid magenta at
+// full alpha, bypassing the texture sample entirely. This is the one test that
+// cannot be misread: if the sky turns magenta the geometry, pipeline, descriptor
+// set and blend state are all sound and the fault is in sampling; if it stays
+// black the fragments never survive at all and the fault is upstream of the
+// shader. Every CPU-side probe reports success either way, which is exactly why
+// this defect survived five rounds of instrumentation.
+layout(constant_id = 0) const uint pictureDebugMode = 0u;
+
 const float k_pi = 3.1415927;
 
 void main()
 {
+    if (pictureDebugMode == 1u)
+    {
+        out_color = vec4(1.0, 0.0, 1.0, 1.0);
+        return;
+    }
     vec3 nor = normalize(in_direction);
+    if (pictureDebugMode >= 2u)
+    {
+        // 2 = the texture's RGB with alpha forced opaque. If the picture appears,
+        // sampling works and only the alpha channel is wrong.
+        // 3 = the sampled ALPHA as greyscale, opaque. White = alpha 1 (so the
+        // fault is downstream), black = alpha 0 (the alpha is what kills it).
+        vec2 duv = vec2(0.5 + 0.5 * atan(nor.x, -nor.z) / k_pi, acos(clamp(nor.y, -1.0, 1.0)) / k_pi);
+        vec4 dtexel = texture(pictureTexture, duv);
+        out_color = (pictureDebugMode == 2u) ? vec4(dtexel.rgb, 1.0) : vec4(vec3(dtexel.a), 1.0);
+        return;
+    }
     vec2 uv = vec2(0.5 + 0.5 * atan(nor.x, -nor.z) / k_pi, acos(clamp(nor.y, -1.0, 1.0)) / k_pi);
     vec4 texel = texture(pictureTexture, uv);
 #if COLOR_SPACE == 0
@@ -285,8 +310,24 @@ layout(binding = 0) uniform sampler2D pictureTexture;
 layout(location=0) in vec2 in_uv;
 layout(location=0) out vec4 out_color;
 
+// See the 360 shader: solid magenta when IMM_UNITY_VK_PIC_DEBUG is set. The 2D
+// path is known to render (the Oculus logo), so this doubles as the control -
+// if 2D goes magenta and 360 stays black, the debug path itself is proven live.
+layout(constant_id = 0) const uint pictureDebugMode = 0u;
+
 void main()
 {
+    if (pictureDebugMode == 1u)
+    {
+        out_color = vec4(1.0, 0.0, 1.0, 1.0);
+        return;
+    }
+    if (pictureDebugMode >= 2u)
+    {
+        vec4 dtexel = texture(pictureTexture, in_uv);
+        out_color = (pictureDebugMode == 2u) ? vec4(dtexel.rgb, 1.0) : vec4(vec3(dtexel.a), 1.0);
+        return;
+    }
     vec4 texel = texture(pictureTexture, in_uv);
 #if COLOR_SPACE == 0
     vec3 color = texel.rgb * texel.rgb;

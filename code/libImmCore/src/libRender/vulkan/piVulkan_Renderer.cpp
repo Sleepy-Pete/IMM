@@ -1779,6 +1779,9 @@ struct piVulkanState
     bool pictureLayoutReported = false;
     bool pictureDescriptorReported = false;
     bool picturePipelineReported = false;
+    bool pictureNoVertexArrayReported = false;
+    bool pictureBadVertexArrayReported = false;
+    bool picturePipelineCreateReported = false;
     bool pictureDrawReported = false;
     bool hostPictureDrawReported = false;
     bool pictureDrawFailureReported = false;
@@ -5473,6 +5476,17 @@ static bool iEnsurePictureGraphicsPipeline(piVulkanState *state, piShader shader
     const bool usesVertexArray = !shader->isPicture2D;
     if (usesVertexArray && !vertexArray)
     {
+        // Only the 360 path can reach this: its VS reads in_position/in_normal
+        // from the dome mesh, while the 2D VS builds its quad from
+        // gl_VertexIndex and needs no vertex buffer at all. Returning false
+        // here means no pipeline is built and the draw is dropped - after the
+        // player has already counted it in picture360DrawCalls, which is why
+        // the counter reads 1 while the screen shows nothing.
+        if (!state->pictureNoVertexArrayReported)
+        {
+            state->pictureNoVertexArrayReported = true;
+            iError(reporter, "[IMM_VKPIC] 360 picture pipeline SKIPPED: no vertex array bound - the dome draw is dropped silently");
+        }
         return false;
     }
     const bool useHostDepthTarget = state->externalFrameUsesHostDepth &&
@@ -5526,10 +5540,29 @@ static bool iEnsurePictureGraphicsPipeline(piVulkanState *state, piShader shader
         shader->pipelineLayout == VK_NULL_PIPELINE_LAYOUT || target->renderPass == VK_NULL_RENDER_PASS ||
         !state->vkCreateGraphicsPipelines)
     {
+        if (!state->picturePipelineCreateReported)
+        {
+            state->picturePipelineCreateReported = true;
+            char msg[176];
+            snprintf(msg, sizeof(msg),
+                     "[IMM_VKPIC] picture pipeline SKIPPED: vs=%d fs=%d layout=%d renderPass=%d - draw dropped silently",
+                     shader->vertexModule != VK_NULL_SHADER_MODULE, shader->fragmentModule != VK_NULL_SHADER_MODULE,
+                     shader->pipelineLayout != VK_NULL_PIPELINE_LAYOUT, target->renderPass != VK_NULL_RENDER_PASS);
+            iError(reporter, msg);
+        }
         return false;
     }
     if (usesVertexArray && (vertexArray->attributeCount == 0 || vertexArray->stride[0] == 0))
     {
+        if (!state->pictureBadVertexArrayReported)
+        {
+            state->pictureBadVertexArrayReported = true;
+            char msg[160];
+            snprintf(msg, sizeof(msg),
+                     "[IMM_VKPIC] 360 picture pipeline SKIPPED: vertex array has attributeCount=%u stride=%u - the dome draw is dropped silently",
+                     (unsigned)vertexArray->attributeCount, (unsigned)vertexArray->stride[0]);
+            iError(reporter, msg);
+        }
         return false;
     }
 
@@ -5549,6 +5582,28 @@ static bool iEnsurePictureGraphicsPipeline(piVulkanState *state, piShader shader
     if (hostDepthBackdrop)
     {
         stages[0].pSpecializationInfo = &hostDepthBackdropSpecialization;
+    }
+
+    // IMM_UNITY_VK_PIC_DEBUG: force every picture fragment to solid magenta,
+    // bypassing the texture sample. Separates "the draw produces no fragments"
+    // from "the fragments sample to nothing" - the distinction no CPU-side
+    // counter can make, and the reason the invisible-picture defect survived
+    // five rounds of instrumentation that all honestly reported success.
+    // 1 = solid magenta, 2 = texture RGB forced opaque, 3 = sampled alpha as
+    // greyscale. 2 and 3 split "the sample returns nothing" from "the sample is
+    // fine but its alpha is zero" - with alpha blending, a zero alpha makes the
+    // picture invisible rather than black, which is what we are chasing.
+    static const uint32_t sPictureDebugValue = []() -> uint32_t {
+        const char *v = getenv("IMM_UNITY_VK_PIC_DEBUG");
+        if (!v || !v[0]) return 0u;
+        const int n = atoi(v);
+        return n > 0 ? (uint32_t)n : 0u;
+    }();
+    const VkSpecializationMapEntry pictureDebugEntry = { 0u, 0u, sizeof(uint32_t) };
+    const VkSpecializationInfo pictureDebugSpecialization = { 1u, &pictureDebugEntry, sizeof(uint32_t), &sPictureDebugValue };
+    if (sPictureDebugValue != 0u)
+    {
+        stages[1].pSpecializationInfo = &pictureDebugSpecialization;
     }
 
     VkVertexInputBindingDescription binding = {};
