@@ -45,6 +45,12 @@ namespace ImmPlayer
         bool        mFormatRejectLogged;
         bool        mFrustumCullLogged;
         bool        mSizeCullLogged;
+        bool        mUploadLogged;
+        bool        mPlaceLogged;
+        // iUpload runs from the draw path, which has no Layer* to ask for a
+        // name, and an unnamed failure is barely better than a silent one.
+        // Captured once at registration.
+        wchar_t     mName[64];
         #ifdef RENDER_BUDGET
         float        mDistance;
         #endif
@@ -610,6 +616,14 @@ namespace ImmPlayer
         pic->mFormatRejectLogged = false;
         pic->mFrustumCullLogged = false;
         pic->mSizeCullLogged = false;
+        pic->mUploadLogged = false;
+        pic->mPlaceLogged = false;
+        {
+            const wchar_t *nm = la->GetName().GetS();
+            int c = 0;
+            for (; nm && nm[c] && c < 63; c++) pic->mName[c] = nm[c];
+            pic->mName[c] = 0;
+        }
         pic->mImage = image;
         pic->mTexture = nullptr;
         pic->mType = lp->GetType();
@@ -693,11 +707,34 @@ namespace ImmPlayer
         {
             me->mTexture = renderer->CreateTexture(0, &info, false, piRenderer::TextureFilter::MIPMAP, piRenderer::TextureWrap::REPEAT, 1.0f, pixelsBuffer);
             if (!me->mTexture)
+            {
+                // Was a bare return. DisplayRender turns it into `continue`, so
+                // the picture is skipped on every visible frame for the whole
+                // session with nothing logged - the same silent class as the
+                // format rejection above, one branch over. MIPMAP means the
+                // renderer wants a full mip chain, so the real cost is ~4/3 of
+                // the figure below in a SINGLE image allocation.
+                if (log && !me->mUploadLogged)
+                {
+                    me->mUploadLogged = true;
+                    const double mb = (double)me->mRes.x * (double)me->mRes.y * 4.0 / (1024.0*1024.0);
+                    log->Printf(LT_ERROR, L"[IMM_PICUP] CreateTexture FAILED for %s (%dx%d, ~%.0f MB + mips) - this picture can never draw",
+                        me->mName, me->mRes.x, me->mRes.y, mb);
+                }
                 return false;
+            }
 
             me->mSampler = renderer->CreateSampler(piRenderer::TextureFilter::MIPMAP, piRenderer::TextureWrap::CLAMP, 1.0f);
             if (!me->mSampler)
+            {
+                if (log && !me->mUploadLogged)
+                {
+                    me->mUploadLogged = true;
+                    log->Printf(LT_ERROR, L"[IMM_PICUP] CreateSampler FAILED for %s (%dx%d) - this picture can never draw",
+                        me->mName, me->mRes.x, me->mRes.y);
+                }
                 return false;
+            }
 
             break;
         }
@@ -780,6 +817,16 @@ namespace ImmPlayer
 
         me->mUploaded = true;
 
+        // The positive case matters as much as the failures: "did this picture
+        // ever become drawable" should be a line in the capture, not something
+        // inferred from the absence of other lines. Absence of evidence has
+        // already been misread as evidence twice on this defect.
+        if (log && !me->mUploadLogged)
+        {
+            me->mUploadLogged = true;
+            log->Printf(LT_MESSAGE, L"[IMM_PICUP] uploaded %s (%dx%d type=%d)",
+                me->mName, me->mRes.x, me->mRes.y, (int)me->mType);
+        }
 
         return true;
     }
@@ -854,6 +901,26 @@ namespace ImmPlayer
 
 
         mVisibleLayerInfos.AppendUInt32(id, true);
+
+        // 360sky and Floor upload, survive both culls, and are submitted as draw
+        // calls - and are still invisible in the headset. Everything up to here
+        // says "fine", so the numbers that decide what the GPU does with the
+        // geometry are what is left: the scale chain, how far away it lands, how
+        // big it ends up, and the opacity it is drawn with. Both are UNIT
+        // geometry (iGenerateDome normalizes to radius 1; 2D is DrawUnitQuad_XY),
+        // so layerToViewer.mScale IS the final size - and these two are the only
+        // pictures large enough for a scale-dependent clip range to reach.
+        // One line per picture per session, so a working one and a missing one
+        // can be compared in the same capture.
+        if (log && !me->mPlaceLogged)
+        {
+            me->mPlaceLogged = true;
+            const double dist = sqrt(dis2);
+            log->Printf(LT_MESSAGE, L"[IMM_PICPLACE] %s type=%d %dx%d opacity=%.3f scale=%.6f dist=%.3f screenFrac=%.5f bboxDiag=%.3f flip=%d",
+                me->mName, (int)lp->GetType(), me->mRes.x, me->mRes.y,
+                laOpacity, layerToViewer.mScale, dist, f, sqrt(double(lrad2)),
+                (int)(layerToViewer.mFlip == flip3::N));
+        }
 
         me->mType = lp->GetType();
         me->mFrontFaces = (layerToViewer.mFlip == flip3::N);
