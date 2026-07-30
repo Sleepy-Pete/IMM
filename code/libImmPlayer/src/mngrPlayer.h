@@ -59,6 +59,7 @@ namespace ImmPlayer
     private:
         bool iGetChapterStartTime(size_t chapterIndex, ImmCore::piTick* rootTime) const;
         void iJumpAndReset(const ImmCore::piTick now, const ImmCore::piTick rootTime);
+        bool iWasPausedByUs(const Layer *layer) const;
         int FindSpawnAreaIdByLayer(const Layer* spawnAreaLayer) const ;
 
         // References
@@ -78,5 +79,11 @@ namespace ImmPlayer
         bool mIsAtEnd;
         bool mIsWaitingForInput;			// story is paused and waiting
         ImmCore::piTArray<Layer*> mSpawnAreas;
+        // Exactly the timelines Pause() stopped, so Resume() can rebase those and
+        // only those. Pause stops every playing timeline but Resume used to rebase
+        // only the world-visible ones, so a timeline that was off-screen at the
+        // moment of resume kept its pre-pause start time and swallowed the whole
+        // pause duration - the story ran on in the background while paused.
+        ImmCore::piTArray<Layer*> mPausedTimelines;
     };
 }

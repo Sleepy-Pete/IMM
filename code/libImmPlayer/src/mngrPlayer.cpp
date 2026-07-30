@@ -30,6 +30,8 @@ namespace ImmPlayer
         mLoopKeyTime = piTick::FromSeconds(60.0*60.0*1000.0);
         if (!mSpawnAreas.Init(6, true))
             return false;
+        if (!mPausedTimelines.Init(32, true))
+            return false;
 
         return true;
     }
@@ -38,6 +40,7 @@ namespace ImmPlayer
     void MngrPlayer::Deinit()
     {
         mSpawnAreas.End();
+        mPausedTimelines.End();
     }
 
 
@@ -167,9 +170,22 @@ namespace ImmPlayer
         root->SetPlaying(false);
     }
 
+    bool MngrPlayer::iWasPausedByUs(const Layer *layer) const
+    {
+        const uint64_t num = mPausedTimelines.GetLength();
+        for (uint64_t i = 0; i < num; i++)
+        {
+            if (*mPausedTimelines.GetAddress(i) == layer)
+                return true;
+        }
+        return false;
+    }
+
     void MngrPlayer::Pause(const piTick now)
     {
         if (mIsPaused) return;
+
+        mPausedTimelines.Reset();
 
 #ifdef _DEBUG
         mLog->Printf(LT_DEBUG, L"Pause");
@@ -208,6 +224,9 @@ namespace ImmPlayer
                 {
                     layer->SetPlaying(false);
                     layer->SetStopTime(now);
+                    // Remember it, so Resume rebases exactly what we stopped -
+                    // including timelines that are off-screen when play is pressed.
+                    mPausedTimelines.Append(layer, true);
                 }
                 break;
 
@@ -253,8 +272,13 @@ namespace ImmPlayer
                 // do not restart root if waiting for input
                 if (layer == root && mIsWaitingForInput)
                     break;
-                // restart timelines
-                if (layer->GetWorldVisible() && layer->GetIsTimeline() && ! layer->GetPlaying())
+                // Restart the timelines Pause stopped. The old guard here was
+                // GetWorldVisible(), which is what let an off-screen timeline keep
+                // its pre-pause start time and jump forward by the pause duration
+                // once the edit cut back to it. Membership in mPausedTimelines is
+                // the honest condition: it resumes what we stopped and nothing
+                // else, so timelines stopped for other reasons stay stopped.
+                if (iWasPausedByUs(layer) && layer->GetIsTimeline() && ! layer->GetPlaying())
                 {
                     layer->SetPlaying(true);
                     const piTick currentPosition = layer->GetStopTime() - layer->GetStartTime();
@@ -270,6 +294,7 @@ namespace ImmPlayer
         };
         mDocument->Recurse(update, false, false, false, false);
 
+        mPausedTimelines.Reset();
         mIsPaused = false;
     }
 
