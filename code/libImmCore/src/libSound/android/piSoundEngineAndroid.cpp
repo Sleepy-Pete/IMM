@@ -21,11 +21,23 @@
 
 #include "../../libBasics/piLog.h"
 #include "../../libBasics/piTypes.h"
+#include "../piSoundSpatializer.h"
+
+#include <cstdlib>
 
 namespace ImmCore
 {
     namespace
     {
+        // Matches the convention used across the player/renderer: the Unity C#
+        // side pushes the device flag file into the process environment at boot
+        // (SetRuntimeFlag -> setenv), so a plain getenv is visible on Quest.
+        static bool iEnvFlagEnabled(const char *name)
+        {
+            const char *value = std::getenv(name);
+            return value != nullptr && value[0] != '\0' && value[0] != '0';
+        }
+
         static bool DecodeOpusToPcm(const char *tempDir, const uint8_t *data, size_t size,
                                     int &outRate, int &outChannels, std::vector<int16_t> &outPcm,
                                     piLog *log)
@@ -234,8 +246,18 @@ namespace ImmCore
         }
     }
 
+    // Longest interaural delay we ever have to buffer, plus room for the
+    // fractional read. The peak delay is about 32 samples at 48 kHz (the
+    // Quest's native rate); 128 taps keeps headroom up to 96 kHz should the
+    // engine ever be configured that high. iReadDelayed clamps regardless, so
+    // an undersized buffer would quietly shorten the delay rather than read
+    // out of bounds - but it should not be undersized.
+    static const int kMaxDelayTaps = 128;
+
     struct AndroidSound
     {
+        AndroidSound() { mVoice.SetDefaults(); }
+
         std::vector<int16_t> mData;
         int mNumChannels = 0;
         int mRate = 0;
@@ -246,6 +268,31 @@ namespace ImmCore
         bool mPaused = false;
         float mVolume = 1.0f;
         piSoundEngine::SoundType mType = piSoundEngine::SoundType::Flat;
+
+        // Authored spatial intent, pushed down by LayerRendererSound.
+        piSoundSpatializer::Voice mVoice;
+
+        // Renderer state. Targets are recomputed once per callback block and
+        // interpolated across it - stepping them per block would click.
+        bool  mSpatialPrimed = false;
+        float mGain[2] = { 0.0f, 0.0f };
+        float mDelay[2] = { 0.0f, 0.0f };
+        float mCutoff[2] = { 1.0f, 1.0f };
+        float mAmbisonic[2][4] = { { 0.0f, 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f, 0.0f } };
+
+        // Mono history for the interaural delay, and the head shadow filters.
+        float mHistory[kMaxDelayTaps] = { 0.0f };
+        int   mHistoryWrite = 0;
+        float mLowpass[2] = { 0.0f, 0.0f };
+
+        void ResetRenderState(void)
+        {
+            mSpatialPrimed = false;
+            mHistoryWrite = 0;
+            for (int i = 0; i < kMaxDelayTaps; i++) mHistory[i] = 0.0f;
+            mLowpass[0] = 0.0f;
+            mLowpass[1] = 0.0f;
+        }
     };
 
     class piSoundEngineAndroid final : public piSoundEngine
@@ -256,6 +303,22 @@ namespace ImmCore
             , mOutputRate(outputRate)
             , mTempDir(std::move(tempDir))
         {
+            mListener.SetIdentity();
+
+            // One change, one killswitch. IMM_AUDIO_NO_SPATIAL drops straight
+            // back to the previous flat behaviour for A/B on device.
+            mSpatialEnabled = !iEnvFlagEnabled("IMM_AUDIO_NO_SPATIAL");
+            mAmbisonicConvention = iEnvFlagEnabled("IMM_AUDIO_AMBISONIC_FUMA")
+                                 ? piSoundSpatializer::Ambisonic::FuMa
+                                 : piSoundSpatializer::Ambisonic::AmbiX;
+
+            if (mLog)
+            {
+                mLog->Printf(LT_MESSAGE, L"[IMM_AUDIO] engine rate=%d spatial=%d ambisonic=%s",
+                             mOutputRate,
+                             mSpatialEnabled ? 1 : 0,
+                             (mAmbisonicConvention == piSoundSpatializer::Ambisonic::FuMa) ? L"FuMa" : L"AmbiX");
+            }
         }
 
         int AddSound(int numChannels, uint64_t length, const void *buffer, bool makePositional) override
@@ -420,6 +483,10 @@ namespace ImmCore
             sound.mCursor = std::max(0.0, std::min(offsetFrames, static_cast<double>(sound.mFrames)));
             sound.mPlaying = true;
             sound.mPaused = false;
+            // A restarted voice must not inherit the previous take's delay line
+            // or filter memory, and it should snap to its position rather than
+            // sliding in from wherever it last was.
+            sound.ResetRenderState();
             return true;
         }
 
@@ -459,30 +526,63 @@ namespace ImmCore
             return true;
         }
 
+        // Suspend the whole engine rather than pausing each voice. Stamping
+        // mPaused on every voice would lose whatever the timeline had authored
+        // - a layer the piece deliberately paused would come back playing when
+        // the app regained focus, because the player caches the pause state it
+        // last pushed and would see no change to re-assert.
         void PauseAllSounds(void) override
         {
             std::lock_guard<std::mutex> lock(mMutex);
-            for (auto &sound : mSounds)
-            {
-                if (sound.mPlaying)
-                    sound.mPaused = true;
-            }
+            mSuspended = true;
         }
 
         void ResumeAllSounds(void) override
         {
             std::lock_guard<std::mutex> lock(mMutex);
+            if (!mSuspended) return;
+            mSuspended = false;
+            // Filter and delay state is meaningless after a gap of unknown
+            // length; let each voice re-prime rather than click.
             for (auto &sound : mSounds)
-            {
-                if (sound.mPlaying)
-                    sound.mPaused = false;
-            }
+                sound.ResetRenderState();
         }
 
-        void SetListener(const trans3d &listenerToWorld) override {}
-        void SetPosition(int id, const double *pos) override {}
-        void SetOrientation(int id, const double *dir, const double *up) override {}
-        void SetPositionOrientation(int id, const double *pos, const double *dir, const double *up) override {}
+        void SetListener(const trans3d &listenerToWorld) override
+        {
+            std::lock_guard<std::mutex> lock(mMutex);
+            mListener.SetFromTransform(listenerToWorld);
+        }
+
+        void SetPosition(int id, const double *pos) override
+        {
+            if (pos == nullptr) return;
+            std::lock_guard<std::mutex> lock(mMutex);
+            AndroidSound *sound = iGet(id);
+            if (!sound) return;
+            sound->mVoice.mPosition = vec3d(pos[0], pos[1], pos[2]);
+        }
+
+        void SetOrientation(int id, const double *dir, const double *up) override
+        {
+            if (dir == nullptr || up == nullptr) return;
+            std::lock_guard<std::mutex> lock(mMutex);
+            AndroidSound *sound = iGet(id);
+            if (!sound) return;
+            sound->mVoice.mForward = vec3d(dir[0], dir[1], dir[2]);
+            sound->mVoice.mUp = vec3d(up[0], up[1], up[2]);
+        }
+
+        void SetPositionOrientation(int id, const double *pos, const double *dir, const double *up) override
+        {
+            if (pos == nullptr || dir == nullptr || up == nullptr) return;
+            std::lock_guard<std::mutex> lock(mMutex);
+            AndroidSound *sound = iGet(id);
+            if (!sound) return;
+            sound->mVoice.mPosition = vec3d(pos[0], pos[1], pos[2]);
+            sound->mVoice.mForward = vec3d(dir[0], dir[1], dir[2]);
+            sound->mVoice.mUp = vec3d(up[0], up[1], up[2]);
+        }
 
         PlaybackState GetPlaybackState(int id) override
         {
@@ -539,18 +639,78 @@ namespace ImmCore
             mSounds[id].mLooping = looping;
         }
 
-        void SetAttenMode(int id, AttenuationType attenMode) override {}
-        void SetAttenMinMax(int id, double attenMin, double attenMax) override {}
-        void SetModifierType(int id, ModifierType modifType) override {}
-        void SetModifierCone(int id, double angleInner, double angleBand, double attenOut) override {}
-        void SetModifierFrustum(int id, double angleInnerX, double angleInnerY, double angleBand, double attenOut) override {}
-        float ComputeModifiers(int id) override { return 1.0f; }
+        void SetAttenMode(int id, AttenuationType attenMode) override
+        {
+            std::lock_guard<std::mutex> lock(mMutex);
+            AndroidSound *sound = iGet(id);
+            if (!sound) return;
+            sound->mVoice.mAttenuation = static_cast<piSoundSpatializer::Attenuation>(attenMode);
+        }
+
+        void SetAttenMinMax(int id, double attenMin, double attenMax) override
+        {
+            std::lock_guard<std::mutex> lock(mMutex);
+            AndroidSound *sound = iGet(id);
+            if (!sound) return;
+            sound->mVoice.mAttenuationMin = attenMin;
+            sound->mVoice.mAttenuationMax = attenMax;
+        }
+
+        void SetModifierType(int id, ModifierType modifType) override
+        {
+            std::lock_guard<std::mutex> lock(mMutex);
+            AndroidSound *sound = iGet(id);
+            if (!sound) return;
+            sound->mVoice.mModifier = static_cast<piSoundSpatializer::Modifier>(modifType);
+        }
+
+        void SetModifierCone(int id, double angleInner, double angleBand, double attenOut) override
+        {
+            std::lock_guard<std::mutex> lock(mMutex);
+            AndroidSound *sound = iGet(id);
+            if (!sound) return;
+            sound->mVoice.mConeAngleInner = angleInner;
+            sound->mVoice.mConeAngleBand = angleBand;
+            sound->mVoice.mConeAttenOut = attenOut;
+        }
+
+        void SetModifierFrustum(int id, double angleInnerX, double angleInnerY, double angleBand, double attenOut) override
+        {
+            std::lock_guard<std::mutex> lock(mMutex);
+            AndroidSound *sound = iGet(id);
+            if (!sound) return;
+            sound->mVoice.mFrustumAngleInnerX = angleInnerX;
+            sound->mVoice.mFrustumAngleInnerY = angleInnerY;
+            sound->mVoice.mFrustumAngleBand = angleBand;
+            sound->mVoice.mFrustumAttenOut = attenOut;
+        }
+
+        // The player folds this into the voice volume itself, so Mix() must not
+        // apply it again - see LayerRendererSound::GlobalWork.
+        float ComputeModifiers(int id) override
+        {
+            if (!mSpatialEnabled) return 1.0f;
+            std::lock_guard<std::mutex> lock(mMutex);
+            const AndroidSound *sound = iGet(id);
+            if (!sound) return 1.0f;
+            if (sound->mType != SoundType::Positional) return 1.0f;
+            return piSoundSpatializer::ComputeModifier(sound->mVoice, mListener);
+        }
 
         void Mix(float *mixBuffer, int frames)
         {
             std::fill(mixBuffer, mixBuffer + frames * 2, 0.0f);
+            if (frames <= 0) return;
 
             std::lock_guard<std::mutex> lock(mMutex);
+
+            // Suspended: output silence and hold every cursor where it is, so
+            // the piece picks up where it left off rather than having played on
+            // to an empty room.
+            if (mSuspended) return;
+
+            const float blockScale = 1.0f / static_cast<float>(frames);
+
             for (auto &sound : mSounds)
             {
                 if (!sound.mPlaying || sound.mPaused || sound.mData.empty() || sound.mFrames == 0)
@@ -558,6 +718,85 @@ namespace ImmCore
 
                 const double step = (sound.mRate > 0) ? (static_cast<double>(sound.mRate) / static_cast<double>(mOutputRate)) : 1.0;
                 double cursor = sound.mCursor;
+
+                // Decide once per block how this voice is rendered, then ramp
+                // to the new parameters across the block.
+                const RenderMode mode = iRenderMode(sound);
+                float startGain[2] = { 0.0f, 0.0f };
+                float startDelay[2] = { 0.0f, 0.0f };
+                float startCutoff[2] = { 1.0f, 1.0f };
+                float startAmbisonic[2][4];
+                float deltaGain[2] = { 0.0f, 0.0f };
+                float deltaDelay[2] = { 0.0f, 0.0f };
+                float deltaCutoff[2] = { 0.0f, 0.0f };
+                float deltaAmbisonic[2][4];
+
+                if (mode == RenderMode::Positional)
+                {
+                    piSoundSpatializer::Binaural target;
+                    piSoundSpatializer::ComputeBinaural(sound.mVoice, mListener, mOutputRate, &target);
+
+                    if (!sound.mSpatialPrimed)
+                    {
+                        // First block for this voice: start where we are going,
+                        // otherwise every sound swoops in from centre.
+                        for (int e = 0; e < 2; e++)
+                        {
+                            sound.mGain[e] = target.mGain[e];
+                            sound.mDelay[e] = target.mDelay[e];
+                            sound.mCutoff[e] = target.mCutoff[e];
+                        }
+                        sound.mSpatialPrimed = true;
+                    }
+
+                    for (int e = 0; e < 2; e++)
+                    {
+                        startGain[e] = sound.mGain[e];
+                        startDelay[e] = sound.mDelay[e];
+                        startCutoff[e] = sound.mCutoff[e];
+                        deltaGain[e] = (target.mGain[e] - startGain[e]) * blockScale;
+                        deltaDelay[e] = (target.mDelay[e] - startDelay[e]) * blockScale;
+                        deltaCutoff[e] = (target.mCutoff[e] - startCutoff[e]) * blockScale;
+                        sound.mGain[e] = target.mGain[e];
+                        sound.mDelay[e] = target.mDelay[e];
+                        sound.mCutoff[e] = target.mCutoff[e];
+                    }
+                }
+                else if (mode == RenderMode::Ambisonic)
+                {
+                    float target[2][4];
+                    piSoundSpatializer::ComputeAmbisonicDecode(sound.mVoice, mListener, mAmbisonicConvention, target);
+
+                    if (!sound.mSpatialPrimed)
+                    {
+                        for (int e = 0; e < 2; e++)
+                            for (int c = 0; c < 4; c++)
+                                sound.mAmbisonic[e][c] = target[e][c];
+                        sound.mSpatialPrimed = true;
+                    }
+
+                    for (int e = 0; e < 2; e++)
+                    {
+                        for (int c = 0; c < 4; c++)
+                        {
+                            startAmbisonic[e][c] = sound.mAmbisonic[e][c];
+                            deltaAmbisonic[e][c] = (target[e][c] - startAmbisonic[e][c]) * blockScale;
+                            sound.mAmbisonic[e][c] = target[e][c];
+                        }
+                    }
+                }
+
+                // Where a flat/stereo bed lives in the source. A 10 or 11
+                // channel TBE bed carries its head-locked stereo pair in the
+                // last two channels; channels 0 and 1 are spatial content and
+                // playing those as stereo is simply wrong.
+                int flatLeft = 0;
+                int flatRight = (sound.mNumChannels > 1) ? 1 : 0;
+                if (mode == RenderMode::Flat && sound.mNumChannels >= 10)
+                {
+                    flatLeft = sound.mNumChannels - 2;
+                    flatRight = sound.mNumChannels - 1;
+                }
 
                 for (int i = 0; i < frames; ++i)
                 {
@@ -583,27 +822,70 @@ namespace ImmCore
                         const uint64_t offset = frame * sound.mNumChannels + static_cast<uint64_t>(ch);
                         return static_cast<float>(sound.mData[offset]) / 32768.0f;
                     };
+                    auto channel = [&](int ch) -> float
+                    {
+                        const float a = sampleAt(ch, idx);
+                        const float b = sampleAt(ch, idxNext);
+                        return a + (b - a) * frac;
+                    };
 
                     float left = 0.0f;
                     float right = 0.0f;
-                    if (sound.mNumChannels == 1)
+
+                    if (mode == RenderMode::Positional)
                     {
-                        const float s0 = sampleAt(0, idx);
-                        const float s1 = sampleAt(0, idxNext);
-                        const float s = s0 + (s1 - s0) * frac;
-                        left = s;
-                        right = s;
+                        // Collapse the source to mono - a positional emitter is
+                        // a point, whatever the file happens to carry.
+                        float mono = 0.0f;
+                        for (int c = 0; c < sound.mNumChannels; c++) mono += channel(c);
+                        mono /= static_cast<float>(sound.mNumChannels);
+
+                        sound.mHistory[sound.mHistoryWrite] = mono;
+
+                        const float ramp = static_cast<float>(i);
+                        for (int e = 0; e < 2; e++)
+                        {
+                            const float delay = startDelay[e] + deltaDelay[e] * ramp;
+                            const float gain = startGain[e] + deltaGain[e] * ramp;
+                            const float cutoff = startCutoff[e] + deltaCutoff[e] * ramp;
+
+                            const float delayed = iReadDelayed(sound, delay);
+                            sound.mLowpass[e] += cutoff * (delayed - sound.mLowpass[e]);
+
+                            if (e == 0) left = sound.mLowpass[e] * gain;
+                            else        right = sound.mLowpass[e] * gain;
+                        }
+
+                        sound.mHistoryWrite = (sound.mHistoryWrite + 1) % kMaxDelayTaps;
+                    }
+                    else if (mode == RenderMode::Ambisonic)
+                    {
+                        const float ramp = static_cast<float>(i);
+                        const float w = channel(0);
+                        const float c1 = channel(1);
+                        const float c2 = channel(2);
+                        const float c3 = channel(3);
+
+                        left = w * (startAmbisonic[0][0] + deltaAmbisonic[0][0] * ramp)
+                             + c1 * (startAmbisonic[0][1] + deltaAmbisonic[0][1] * ramp)
+                             + c2 * (startAmbisonic[0][2] + deltaAmbisonic[0][2] * ramp)
+                             + c3 * (startAmbisonic[0][3] + deltaAmbisonic[0][3] * ramp);
+                        right = w * (startAmbisonic[1][0] + deltaAmbisonic[1][0] * ramp)
+                              + c1 * (startAmbisonic[1][1] + deltaAmbisonic[1][1] * ramp)
+                              + c2 * (startAmbisonic[1][2] + deltaAmbisonic[1][2] * ramp)
+                              + c3 * (startAmbisonic[1][3] + deltaAmbisonic[1][3] * ramp);
                     }
                     else
                     {
-                        const int chL = 0;
-                        const int chR = (sound.mNumChannels > 1) ? 1 : 0;
-                        const float l0 = sampleAt(chL, idx);
-                        const float l1 = sampleAt(chL, idxNext);
-                        const float r0 = sampleAt(chR, idx);
-                        const float r1 = sampleAt(chR, idxNext);
-                        left = l0 + (l1 - l0) * frac;
-                        right = r0 + (r1 - r0) * frac;
+                        if (sound.mNumChannels == 1)
+                        {
+                            left = right = channel(0);
+                        }
+                        else
+                        {
+                            left = channel(flatLeft);
+                            right = channel(flatRight);
+                        }
                     }
 
                     mixBuffer[2 * i] += left * sound.mVolume;
@@ -632,12 +914,69 @@ namespace ImmCore
         }
 
     private:
+
+        enum class RenderMode
+        {
+            Flat = 0,
+            Positional = 1,
+            Ambisonic = 2
+        };
+
+        AndroidSound *iGet(int id)
+        {
+            if (id < 0 || id >= static_cast<int>(mSounds.size())) return nullptr;
+            return &mSounds[id];
+        }
+
+        const AndroidSound *iGet(int id) const
+        {
+            if (id < 0 || id >= static_cast<int>(mSounds.size())) return nullptr;
+            return &mSounds[id];
+        }
+
+        RenderMode iRenderMode(const AndroidSound &sound) const
+        {
+            if (!mSpatialEnabled) return RenderMode::Flat;
+            if (sound.mType == SoundType::Positional) return RenderMode::Positional;
+            if (sound.mType == SoundType::Ambisonic)
+            {
+                // 4 = first order AmbiX, 9 = second order AmbiX (we decode the
+                // first order subset). 10/11 channel beds are Facebook's TBE
+                // layout, which is NOT AmbiX - decoding those as AmbiX would be
+                // worse than leaving them alone, so they fall through to Flat,
+                // which picks up their head-locked stereo pair.
+                if (sound.mNumChannels == 4 || sound.mNumChannels == 9)
+                    return RenderMode::Ambisonic;
+            }
+            return RenderMode::Flat;
+        }
+
+        static float iReadDelayed(const AndroidSound &sound, float delaySamples)
+        {
+            if (delaySamples <= 0.0f) return sound.mHistory[sound.mHistoryWrite];
+
+            float d = delaySamples;
+            const float maxDelay = static_cast<float>(kMaxDelayTaps - 2);
+            if (d > maxDelay) d = maxDelay;
+
+            const int whole = static_cast<int>(d);
+            const float frac = d - static_cast<float>(whole);
+            const int i0 = (sound.mHistoryWrite - whole + kMaxDelayTaps) % kMaxDelayTaps;
+            const int i1 = (i0 - 1 + kMaxDelayTaps) % kMaxDelayTaps;
+            return sound.mHistory[i0] + (sound.mHistory[i1] - sound.mHistory[i0]) * frac;
+        }
+
         piLog *mLog = nullptr;
         int mOutputRate = 48000;
         std::string mTempDir;
         mutable std::mutex mMutex;
         std::vector<AndroidSound> mSounds;
         std::vector<int> mFreeIds;
+
+        piSoundSpatializer::Listener mListener;
+        piSoundSpatializer::Ambisonic mAmbisonicConvention = piSoundSpatializer::Ambisonic::AmbiX;
+        bool mSpatialEnabled = true;
+        bool mSuspended = false;
         bool mTestToneEnabled = false;
         double mTestTonePhase = 0.0;
         double mTestToneHz = 440.0;

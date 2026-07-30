@@ -85,6 +85,7 @@ set(IMMCORE_UNITY_SOURCES
     ${CODE_DIR}/libImmCore/src/libWave/formats/piWaveOGG.cpp
     ${CODE_DIR}/libImmCore/src/libSound/piSound.cpp
     ${CODE_DIR}/libImmCore/src/libSound/piSoundEngineNULL.cpp
+    ${CODE_DIR}/libImmCore/src/libSound/piSoundSpatializer.cpp
     ${CODE_DIR}/libImmCore/src/libSound/macos/piSoundEngineAVFoundation.mm
 )
 

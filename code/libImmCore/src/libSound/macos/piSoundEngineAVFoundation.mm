@@ -4,6 +4,7 @@
 #include "piSoundEngineAVFoundation.h"
 #include "../../libBasics/piLog.h"
 #include "../../libBasics/piString.h"
+#include "../piSoundSpatializer.h"
 
 #include <ogg/ogg.h>
 #include <opus.h>
@@ -20,16 +21,31 @@ namespace ImmCore
 
 struct AVFSound
 {
+    AVFSound() { voice.SetDefaults(); }
+
     AVAudioPlayer *player = nil;
     NSString *tempPath = nil;
     piSoundEngine::SoundType type = piSoundEngine::SoundType::Flat;
     bool looping = false;
     bool paused = false;
     bool stopped = true;
+    // The volume the player asked for, before distance attenuation. Keep it
+    // separate: player.volume carries base * attenuation, and GetVolume must
+    // still answer with what was set.
     float volume = 1.0f;
     int lastLoggedPlaybackState = -1;
     bool loggedPlaybackProgress = false;
+
+    // Authored spatial intent, pushed down by LayerRendererSound.
+    piSoundSpatializer::Voice voice;
 };
+
+// Matches the convention used across the player/renderer libs.
+static bool iEnvFlagEnabled(const char *name)
+{
+    const char *value = getenv(name);
+    return value != nullptr && value[0] != '\0' && value[0] != '0';
+}
 
 struct AVFBackend
 {
@@ -372,7 +388,12 @@ static void iDestroySound(AVFBackend *backend, AVFSound *sound)
 class piSoundEngineAVFoundation final : public piSoundEngine
 {
 public:
-    explicit piSoundEngineAVFoundation(AVFBackend *backend) : mBackend(backend) {}
+    explicit piSoundEngineAVFoundation(AVFBackend *backend) : mBackend(backend)
+    {
+        mListener.SetIdentity();
+        // One change, one killswitch - same flag the Quest backend uses.
+        mSpatialEnabled = !iEnvFlagEnabled("IMM_AUDIO_NO_SPATIAL");
+    }
 
     int AddSound(int numChannels, uint64_t length, const void *buffer, bool makePositional) override
     {
@@ -638,14 +659,19 @@ public:
         }
     }
 
-    void SetListener(const trans3d &) override {}
+    void SetListener(const trans3d &listenerToWorld) override
+    {
+        mListener.SetFromTransform(listenerToWorld);
+        UpdateSpatial();
+    }
+
     float GetVolume(int id) const override { AVFSound *sound = iGetSound(mBackend, id); return sound ? sound->volume : 0.0f; }
     bool SetVolume(int id, float volume) override
     {
         AVFSound *sound = iGetSound(mBackend, id);
         if (!sound) return false;
         sound->volume = volume;
-        if (sound->player) sound->player.volume = volume;
+        iApplySpatial(sound);
         return true;
     }
     bool GetLooping(int id) const override { AVFSound *sound = iGetSound(mBackend, id); return sound ? sound->looping : false; }
@@ -659,18 +685,132 @@ public:
     SoundType GetType(int id) const override { AVFSound *sound = iGetSound(mBackend, id); return sound ? sound->type : SoundType::Flat; }
     bool ConvertType(int id, SoundType type) override { AVFSound *sound = iGetSound(mBackend, id); if (!sound) return false; sound->type = type; return type != SoundType::Ambisonic; }
     bool CanConvertType(int, SoundType type) const override { return type != SoundType::Ambisonic; }
-    void SetAttenMode(int, AttenuationType) override {}
-    void SetAttenMinMax(int, double, double) override {}
-    void SetPosition(int, const double *) override {}
-    void SetOrientation(int, const double *, const double *) override {}
-    void SetPositionOrientation(int, const double *, const double *, const double *) override {}
-    void SetModifierType(int, ModifierType) override {}
-    void SetModifierCone(int, double, double, double) override {}
-    void SetModifierFrustum(int, double, double, double, double) override {}
-    float ComputeModifiers(int) override { return 1.0f; }
+    void SetAttenMode(int id, AttenuationType attenMode) override
+    {
+        AVFSound *sound = iGetSound(mBackend, id);
+        if (!sound) return;
+        sound->voice.mAttenuation = static_cast<piSoundSpatializer::Attenuation>(attenMode);
+        iApplySpatial(sound);
+    }
+
+    void SetAttenMinMax(int id, double attenMin, double attenMax) override
+    {
+        AVFSound *sound = iGetSound(mBackend, id);
+        if (!sound) return;
+        sound->voice.mAttenuationMin = attenMin;
+        sound->voice.mAttenuationMax = attenMax;
+        iApplySpatial(sound);
+    }
+
+    void SetPosition(int id, const double *pos) override
+    {
+        AVFSound *sound = iGetSound(mBackend, id);
+        if (!sound || !pos) return;
+        sound->voice.mPosition = vec3d(pos[0], pos[1], pos[2]);
+        iApplySpatial(sound);
+    }
+
+    void SetOrientation(int id, const double *dir, const double *up) override
+    {
+        AVFSound *sound = iGetSound(mBackend, id);
+        if (!sound || !dir || !up) return;
+        sound->voice.mForward = vec3d(dir[0], dir[1], dir[2]);
+        sound->voice.mUp = vec3d(up[0], up[1], up[2]);
+        iApplySpatial(sound);
+    }
+
+    void SetPositionOrientation(int id, const double *pos, const double *dir, const double *up) override
+    {
+        AVFSound *sound = iGetSound(mBackend, id);
+        if (!sound || !pos || !dir || !up) return;
+        sound->voice.mPosition = vec3d(pos[0], pos[1], pos[2]);
+        sound->voice.mForward = vec3d(dir[0], dir[1], dir[2]);
+        sound->voice.mUp = vec3d(up[0], up[1], up[2]);
+        iApplySpatial(sound);
+    }
+
+    void SetModifierType(int id, ModifierType modifType) override
+    {
+        AVFSound *sound = iGetSound(mBackend, id);
+        if (!sound) return;
+        sound->voice.mModifier = static_cast<piSoundSpatializer::Modifier>(modifType);
+    }
+
+    void SetModifierCone(int id, double angleInner, double angleBand, double attenOut) override
+    {
+        AVFSound *sound = iGetSound(mBackend, id);
+        if (!sound) return;
+        sound->voice.mConeAngleInner = angleInner;
+        sound->voice.mConeAngleBand = angleBand;
+        sound->voice.mConeAttenOut = attenOut;
+    }
+
+    void SetModifierFrustum(int id, double angleInnerX, double angleInnerY, double angleBand, double attenOut) override
+    {
+        AVFSound *sound = iGetSound(mBackend, id);
+        if (!sound) return;
+        sound->voice.mFrustumAngleInnerX = angleInnerX;
+        sound->voice.mFrustumAngleInnerY = angleInnerY;
+        sound->voice.mFrustumAngleBand = angleBand;
+        sound->voice.mFrustumAttenOut = attenOut;
+    }
+
+    // The player folds this into the voice volume itself, so iApplySpatial must
+    // not apply it again - see LayerRendererSound::GlobalWork.
+    float ComputeModifiers(int id) override
+    {
+        if (!mSpatialEnabled) return 1.0f;
+        const AVFSound *sound = iGetSound(mBackend, id);
+        if (!sound || sound->type != SoundType::Positional) return 1.0f;
+        return piSoundSpatializer::ComputeModifier(sound->voice, mListener);
+    }
+
+    // Re-evaluates every voice against the current listener. Called from the
+    // backend's Tick, because the head moves without anyone touching a voice.
+    void UpdateSpatial(void)
+    {
+        if (!mBackend || !mBackend->sounds) return;
+        for (NSUInteger i = 0; i < [mBackend->sounds count]; ++i)
+        {
+            iApplySpatial(iGetSound(mBackend, (int)i));
+        }
+    }
 
 private:
+
+    // AVAudioPlayer gives us a gain and a stereo pan and nothing else - no
+    // interaural delay, no head shadowing, no ambisonic decode. So we take the
+    // parts of the shared model it can express: the distance attenuation curve
+    // (which is exact, and matches Windows) and the lateral position.
+    //
+    // The reduction lives in piSoundSpatializer rather than here so it stays on
+    // the same curve as every other backend, and so it can be tested on a host
+    // that has no AVFoundation.
+    void iApplySpatial(AVFSound *sound) const
+    {
+        if (!sound || !sound->player) return;
+
+        if (!mSpatialEnabled || sound->type != SoundType::Positional)
+        {
+            sound->player.volume = sound->volume;
+            sound->player.pan = 0.0f;
+            return;
+        }
+
+        piSoundSpatializer::Binaural binaural;
+        piSoundSpatializer::ComputeBinaural(sound->voice, mListener, 48000, &binaural);
+
+        float gain = 1.0f;
+        float pan = 0.0f;
+        piSoundSpatializer::ReduceToStereoPan(binaural, &gain, &pan);
+
+        sound->player.volume = sound->volume * gain;
+        sound->player.pan = pan;
+    }
+
     AVFBackend *mBackend;
+    piSoundSpatializer::Listener mListener;
+    bool mSpatialEnabled = true;
 };
 
 piSoundEngineBackendAVFoundation::piSoundEngineBackendAVFoundation() = default;
@@ -747,7 +887,15 @@ const wchar_t *piSoundEngineBackendAVFoundation::GetDeviceName(int) const { retu
 int piSoundEngineBackendAVFoundation::GetDeviceFromGUID(void *) { return 0; }
 int piSoundEngineBackendAVFoundation::GetDeviceFromName(const wchar_t *) { return 0; }
 bool piSoundEngineBackendAVFoundation::ResizeMixBuffers(int const &, int const &) { return true; }
-void piSoundEngineBackendAVFoundation::Tick(void) {}
+void piSoundEngineBackendAVFoundation::Tick(void)
+{
+    // The head moves every frame without anyone touching a voice, so the
+    // spatial parameters have to be re-evaluated here rather than only when a
+    // setter is called.
+    AVFBackend *backend = (AVFBackend *)mData;
+    if (!backend || !backend->engine) return;
+    static_cast<piSoundEngineAVFoundation *>(backend->engine)->UpdateSpatial();
+}
 piSoundEngine *piSoundEngineBackendAVFoundation::GetEngine(void)
 {
     AVFBackend *backend = (AVFBackend *)mData;

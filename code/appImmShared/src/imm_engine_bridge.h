@@ -69,6 +69,12 @@ namespace ImmShared
         bool RenderPreparedCamera(int cameraID, const ViewportInfo &viewport, int eyeID = 0, bool tickSound = true);
         bool RenderCamera(int cameraID, const ViewportInfo &viewport, int eyeID = 0, bool tickSound = true);
 
+        // Audio transport for host lifecycle events (focus loss, doffing).
+        // The engine owns its own output device, so nothing the host does to
+        // its own audio system reaches these voices.
+        void PauseAllSounds();
+        void ResumeAllSounds();
+
         ImmPlayer::Player *GetPlayer();
         const ImmPlayer::Player *GetPlayer() const;
         ImmCore::piLog *GetLog();

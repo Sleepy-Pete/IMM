@@ -33,6 +33,7 @@ add_library(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/libWave/formats/piWaveOGG.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/libSound/piSound.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/libSound/piSoundEngineNULL.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/libSound/piSoundSpatializer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/libSound/android/piSoundEngineAndroid.cpp
     # piVR.cpp excluded - uses Oculus PC SDK, not available on Android (Quest uses OpenXR)
 )

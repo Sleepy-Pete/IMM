@@ -64,6 +64,7 @@
     <ClInclude Include="src\libSound\piSoundEngine.h" />
     <ClInclude Include="src\libSound\piSoundEngineBackend.h" />
     <ClInclude Include="src\libSound\piSoundEngineNULL.h" />
+    <ClInclude Include="src\libSound\piSoundSpatializer.h" />
     <ClInclude Include="src\libSound\windows\fakeWAV.h" />
     <ClInclude Include="src\libSound\windows\memStream.h" />
     <ClInclude Include="src\libSound\windows\piSoundEngineAudioSDKBackend.h" />
@@ -92,6 +93,7 @@
     <ClCompile Include="src\libRender\vulkan\piVulkan_Renderer.cpp" />
     <ClCompile Include="src\libSound\piSound.cpp" />
     <ClCompile Include="src\libSound\piSoundEngineNULL.cpp" />
+    <ClCompile Include="src\libSound\piSoundSpatializer.cpp" />
     <ClCompile Include="src\libSound\windows\piSoundEngineAudioSDKBackend.cpp" />
     <ClCompile Include="src\libSound\windows\piSoundEngineDS.cpp" />
     <ClCompile Include="src\libBasics\piArray.cpp" />

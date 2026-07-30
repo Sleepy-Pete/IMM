@@ -392,6 +392,20 @@ namespace ImmShared
         return RenderPreparedCamera(cameraID, viewport, eyeID, tickSound);
     }
 
+    void ImmEngineBridge::PauseAllSounds()
+    {
+        if (mSoundBackend == nullptr || !mSoundInitialized) return;
+        piSoundEngine *engine = mSoundBackend->GetEngine();
+        if (engine != nullptr) engine->PauseAllSounds();
+    }
+
+    void ImmEngineBridge::ResumeAllSounds()
+    {
+        if (mSoundBackend == nullptr || !mSoundInitialized) return;
+        piSoundEngine *engine = mSoundBackend->GetEngine();
+        if (engine != nullptr) engine->ResumeAllSounds();
+    }
+
     Player *ImmEngineBridge::GetPlayer()
     {
         return &mPlayer;
@@ -473,6 +487,11 @@ namespace ImmShared
         const piSoundEngineBackend::API soundApi = piSoundEngineBackend::API::Android;
 #elif defined(WINDOWS)
         const piSoundEngineBackend::API soundApi = piSoundEngineBackend::API::DirectSoundOVR;
+#elif defined(__APPLE__)
+        // Apple targets used to fall through to Null here, which meant the
+        // Unity plugin was silent on macOS and iOS even though the backend
+        // exists and the native macOS viewer already uses it.
+        const piSoundEngineBackend::API soundApi = piSoundEngineBackend::API::AVFoundation;
 #else
         const piSoundEngineBackend::API soundApi = piSoundEngineBackend::API::Null;
 #endif
