@@ -4,31 +4,79 @@ _Updated 2026-07-28. Branch `vr-main`, verified in-headset on Quest (Adreno 740)
 `TheArtofChange.imm` (103 MB streaming document), `TheQuantumRace.imm` (221 MB) and
 the sample forest scene._
 
-## ⏭ Start here next session (2026-07-28 end of day)
+## ⏭ Start here next session (2026-07-29)
 
-Everything below is pushed (`origin/vr-main`). Both apps are force-stopped on the
-headset; the device is ready to launch either one.
+**THE MISSING-LAYER DEFECT IS ROOT-CAUSED. It was never a stroke/paint problem and
+never a Vulkan problem.** The layers are PICTURE layers, the user named them, and
+the cause is in shared player code:
 
-**The one open defect: two stroke layers missing near the end of QuantumRace.**
-Ruled out already, with telemetry rather than argument — don't re-chase these:
-size culling (zero drops), layer and chunk frustum culling (zero drops),
-`RENDER_BUDGET` (compiled out), far-plane clipping (fixed at 20000), and per-eye
-submission (counts symmetric, `pic=2 p360=1` in both eyes). So the layers never
-enter the draw list at all.
+| Layer | Type | When |
+|---|---|---|
+| `little dome 3` | 360 Equirectangular Mono | 9:00 → end |
+| `360 sky` | 360 Equirectangular Mono | spans within 7:00–9:00 |
+| `floor png` | 2D picture | spans within 7:00–9:00 |
 
-**Two instruments are loaded and waiting — neither needs new code:**
+**⚠ A first "root cause" (picture unload with no reload) was WRONG and is reverted
+— `0a2c3f5` reverts `612be44`. Do not re-derive it.** `LayerRendererPicture::LoadInGPU`
+(`layerRendererPicture.cpp:630-637`) is an **empty stub**, so `iLoadGPU` uploads no
+picture textures at all; and `DisplayRender` uploads **lazily** (`:883-895`) while
+`UnloadInGPU` (`:614-628`) leaves `mImage` intact. The unload was never terminal.
 
-1. **`[IMM_NODRAW]` telemetry**, live in the installed build. Reach the moment in
-   our player and the log names the layer *and the reason*: not visible, not
-   potentially visible (timeline window), opacity 0, layer not loaded, or drawing
-   not loaded. No controller press needed.
-2. **The reference-player A/B is already set up.** `TheQuantumRace.imm` is pushed
-   to `/sdcard/Android/data/org.linuxfoundation.imm.player/files/IMM/` and loads
-   cleanly there (79 chapters). Watch the same moment in the GLES3 native player:
-   strokes present there ⇒ the loss is in our Unity/Vulkan integration; strokes
-   missing there too ⇒ shared player/importer code or the document. That prebuilt
-   APK predates our telemetry, so this pass is visual; building `appImmViewer`
-   from source with `[IMM_NODRAW]` compiled in would make it mechanical.
+**The mechanism that actually fits — verified by reading, not yet device-proven.**
+A chain that is silent at every step:
+
+1. `piImage::Convert` fails by returning `false` **without changing the format**
+   (`piImage.cpp:432-437` — `iConvertSelf` returns null when it cannot allocate).
+2. `layerPicture.cpp:32` **discarded that return value**.
+3. `iUpload` accepts only GREY and RGBA; anything else hits an **unlogged
+   `default: return false`**.
+4. `DisplayRender` turns that into `continue` — skipped on every visible frame, for
+   the whole session, with no diagnostic anywhere.
+
+`360sky` is an **8192×4096 three-channel JPEG** (not a PNG), needing a 128 MiB
+allocation to become RGBA. The two real failures are the two **largest** pictures
+live in that window; every small picture renders. So the shared property is size,
+not layer type.
+
+**Why this hid for four rounds: the picture path had ZERO instrumentation, and
+silence was being read as evidence.**
+
+- **`[IMM_NODRAW]` cannot fire for pictures.** All three emitters sit behind
+  `isPaintForDropLog` (`player.cpp:1174`). The standing plan — "reach the moment and
+  `[IMM_NODRAW]` names the layer" — was structurally incapable of working.
+- **The cull exonerations were measured in dead code.** `[IMM_FRUSCULL]`,
+  `[IMM_SIZECULL]` and `IMM_UNITY_NO_FRUSTUM_CULL` exist only in the *pretessellated*
+  paint renderer, and `imm_engine_bridge.cpp:602` selects `Static` for everything
+  except Android **GLES**. Our Vulkan build never instantiates it.
+- The picture renderer's own early-outs were four bare `return`s — no counter, no
+  log, no env hook.
+
+**Now instrumented (`0a2c3f5`, compiled, `.so` synced, NOT yet run on device):**
+`[IMM_PICFMT]` at both silent format-failure points (naming layer, dimensions and
+format), `[IMM_PICCULL]` naming any frustum- or size-culled picture, and a real
+`IMM_UNITY_NO_PICTURE_CULL` kill-switch in the renderer that actually runs.
+
+**`little dome 3` may not be a defect at all.** Parsed from the document: its own
+visibility key is 542.58 (9:02), but its ancestor `Sc19_silentmoment` is
+`vis[599.96]`, so it is not world-visible until **10:00**. Its absence from 9:00–10:00
+is authored. It is also 3840×2160 (16:9) while typed `Image360EquirectMono`, whose
+shader assumes 2:1 — so it should look **distorted**, not missing.
+
+**🚧 BLOCKER — QuantumRace will not load.** `TheQuantumRace.imm` 404s from
+StreamingAssets, and it is *not* a missing file: `assets/TheQuantumRace.imm` is in the
+APK at 221,307,531 bytes, stored uncompressed, **byte-identical in packaging to the
+archived `2118_confirmstate` build that loaded it fine**. `UnityWebRequest.Get` on the
+`jar:` URL fails in 91 ms. `sample1.imm` (5.8 MB) appeared to load, so a size limit is
+the suspect; the 103 MB `TheArtofChange.imm` bisect was not completed. **No QR test can
+run until this is resolved.** Next step: bisect with `TheArtofChange.imm` (103 MB) after
+a reboot. If it is a size limit in the `jar:`/`UnityWebRequest` path, loading a document
+from a plain file path instead of out of the APK sidesteps it.
+
+**What this invalidates — do not cite these as narrowing the search any more.** Size
+culling, layer/chunk frustum culling, `RENDER_BUDGET`, far-plane clipping and per-eye
+submission were all correctly measured, but all of them constrain the PAINT path.
+They never bore on pictures. `[IMM_NODRAW]` should now report "layer not loaded" for
+these three; if it does not, its picture-path coverage is the next thing to check.
 
 **Also open (lower priority):** whether the 1.5-frame viewpoint prediction adds
 overshoot on top of correct authored motion — test by feel with
@@ -38,7 +86,7 @@ highest-leverage layer to re-key.
 
 **Device state:** `2111_confirmstate` build installed and stopped, flag file =
 `IMM_UNITY_DOC_FILE=TheQuantumRace.imm` + `IMM_UNITY_VK_ENABLE_BURST=1`.
-WiFi adb `192.168.1.220:5555` is the reliable channel (USB drops mid-session);
+WiFi adb `<HEADSET_IP>:5555` is the reliable channel (USB drops mid-session);
 re-arm with `adb -s <usb-serial> tcpip 5555` from any USB window.
 
 ## Where things stand
@@ -364,9 +412,13 @@ to `t` upstream; only `None` steps.
 
 **Open, in priority order:**
 
-1. **Two main stroke layers missing near the film's end.** Culling ruled out;
-   per-eye submission ruled out. `[IMM_NODRAW]` will name the layers and the
-   reason on the next ride that reaches them.
+1. ~~**Two main stroke layers missing near the film's end.**~~ **RE-CHARACTERISED
+   AND ROOT-CAUSED 2026-07-29 — see the top of this doc.** They are three
+   *picture* layers, not two stroke layers, and the cause is picture GPU
+   textures being destroyed on going invisible with no path that reloads them
+   (`player.cpp:1302` unloads, `document.cpp:799` is the only loader and runs
+   once at document load). The culling and per-eye exonerations below were all
+   sound measurements of the *paint* path and never bore on this.
 2. **Motion still not perfect in fast/nested-layer travel.** Authored stepping
    is expected; the open question is whether the 1.5-frame viewpoint
    prediction now *adds* overshoot on top of correct authored motion. The
@@ -510,11 +562,15 @@ so raw-`getenv` toggles across the player and renderer libs work from this file
 | `IMM_UNITY_VIEWPOINT_YAW_ONLY` | Drop authored pitch/roll (comfort A/B) |
 | `IMM_UNITY_NO_FRUSTUM_CULL` | Disable layer + chunk frustum culling |
 | `IMM_UNITY_NO_SIZE_CULL` | Disable screen-size layer culling |
+| `IMM_UNITY_NO_PICTURE_CULL` | Disable the picture renderer's frustum + screen-size culls. The paint-side `IMM_UNITY_NO_FRUSTUM_CULL` does **not** cover pictures, and lives in a renderer this build never instantiates. |
+| `IMM_UNITY_SKIP_UNLOAD_NOT_IN_TIMELINE` | Skip the whole unload-eligibility scan (pre-existing, `player.cpp:1096`). Also stops paint unloading, so memory grows — targeted checks, not soaks. |
 
 ## Next work
 
-1. **Missing stroke layers in QuantumRace** — the one open defect. Both
-   instruments are already loaded; see "Start here next session" at the top.
+1. **Missing picture layers in QuantumRace — instrumented, not yet diagnosed.**
+   Blocked: QuantumRace will not load (see the blocker at the top). Once it
+   loads, run the instrumented build and read `[IMM_PICFMT]` / `[IMM_PICCULL]`,
+   which name the layer and the reason at every previously-silent early-out.
 2. **Viewpoint prediction sanity check** — does 1.5-frame prediction add
    overshoot on top of authored motion? Feel it with
    `IMM_UNITY_NO_VIEWPOINT_PREDICT`.
