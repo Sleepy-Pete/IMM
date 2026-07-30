@@ -10,6 +10,7 @@
 #include <algorithm>
 #endif
 
+#include <stdlib.h>
 #include "libImmCore/src/libBasics/piArray.h"
 #include "libImmCore/src/libBasics/piPool.h"
 #include "libImmCore/src/libBasics/piString.h"
@@ -41,10 +42,22 @@ namespace ImmPlayer
         ivec3       mRes;
         piImage * mImage;
         bool        mUploaded;
+        bool        mFormatRejectLogged;
+        bool        mFrustumCullLogged;
+        bool        mSizeCullLogged;
         #ifdef RENDER_BUDGET
         float        mDistance;
         #endif
     }iLayerDrawInfo;
+
+    // Mirrors player.cpp's helper. Callers must cache the result in a
+    // launch-time static: 519f1a4 removed per-call getenv from the render
+    // thread after it showed up in a profile.
+    static bool iEnvFlagEnabled(const char *name)
+    {
+        const char *value = getenv(name);
+        return value && value[0] && value[0] != '0';
+    }
 
     LayerRendererPicture::LayerRendererPicture() : LayerRenderer() {}
     LayerRendererPicture::~LayerRendererPicture() {}
@@ -594,6 +607,9 @@ namespace ImmPlayer
         pic->mAspectRatio = float(image->GetXRes()) / float(image->GetYRes());
         pic->mRes = ivec3(image->GetXRes(), image->GetYRes(), 1);
         pic->mUploaded = false;
+        pic->mFormatRejectLogged = false;
+        pic->mFrustumCullLogged = false;
+        pic->mSizeCullLogged = false;
         pic->mImage = image;
         pic->mTexture = nullptr;
         pic->mType = lp->GetType();
@@ -645,7 +661,19 @@ namespace ImmPlayer
         {
         case piImage::FORMAT_I_GREY: format = piRenderer::Format::C1_8_UNORM; break;
         case piImage::FORMAT_I_RGBA: format = piRenderer::Format::C4_8_UNORM; break;
-        default: return false;
+        default:
+            // Was a bare `return false`. DisplayRender turns that into a
+            // `continue`, so an image in any other format is skipped silently
+            // on every frame it is visible, for the whole session, with nothing
+            // logged anywhere. Say so - once per layer info slot, since this is
+            // reached per visible frame.
+            if (log && !me->mFormatRejectLogged)
+            {
+                me->mFormatRejectLogged = true;
+                log->Printf(LT_ERROR, L"[IMM_PICFMT] upload REJECTED: unsupported image format %d (%dx%d) - only GREY and RGBA are accepted, so this picture can never draw",
+                    (int)image->GetFormat(0), me->mRes.x, me->mRes.y);
+            }
+            return false;
         }
 
         piRenderer::TextureInfo info = { piRenderer::TextureType::T2D, format, me->mRes.x, me->mRes.y, me->mRes.z, 1 };
@@ -785,10 +813,25 @@ namespace ImmPlayer
 
         const bound3 bbox = lp->GetBBox();
 
+        // The picture path had NO instrumentation at all: these two culls were
+        // bare returns with no counter, no log and no kill-switch, so a dropped
+        // picture was indistinguishable from a picture that was never there.
+        // The equivalent paint-side telemetry ([IMM_FRUSCULL]/[IMM_SIZECULL])
+        // and IMM_UNITY_NO_FRUSTUM_CULL live only in the PRETESSELLATED paint
+        // renderer, which this build never instantiates - imm_engine_bridge.cpp
+        // selects Static for everything except Android GLES. So on Quest Vulkan
+        // those "zero drops, kill-switch armed" measurements were taken in dead
+        // code. This is the live path.
+        static const bool sNoPictureCull = iEnvFlagEnabled("IMM_UNITY_NO_PICTURE_CULL");
+
         // layer frustum culling
-        if (boxInFrustum(frus, bbox) == 0)
+        if (!sNoPictureCull && boxInFrustum(frus, bbox) == 0)
         {
-            //static int kk = 0; log->Printf(LT_MESSAGE, L"culled %s (%d)", la->GetName().GetS(), kk++);
+            if (log && !me->mFrustumCullLogged)
+            {
+                me->mFrustumCullLogged = true;
+                log->Printf(LT_MESSAGE, L"[IMM_PICCULL] FRUSTUM culled picture %s (%dx%d)", la->GetName().GetS(), me->mRes.x, me->mRes.y);
+            }
             return;
         }
 
@@ -799,8 +842,13 @@ namespace ImmPlayer
         const double sc2 = lengthSquared((layerToViewer*vec4d(1.0, 0.0, 0.0, 0.0)).xyz());
         const double dis2 = lengthSquared(vcen);
         const double f = sqrt(double(lrad2) * sc2 / dis2);
-        if (f < 0.005) // IQ-TODO: do a smooth fade here, super easy by using the layer opacity
+        if (!sNoPictureCull && f < 0.005) // IQ-TODO: do a smooth fade here, super easy by using the layer opacity
         {
+            if (log && !me->mSizeCullLogged)
+            {
+                me->mSizeCullLogged = true;
+                log->Printf(LT_MESSAGE, L"[IMM_PICCULL] SIZE culled picture %s (f=%.5f)", la->GetName().GetS(), f);
+            }
             return;
         }
 

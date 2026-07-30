@@ -29,8 +29,25 @@ namespace ImmImporter
         if( !mImage.ReadFromMemory(&data, ext) )
             return false;
 
-        mImage.Convert( 0, piImage::Format::FORMAT_I_RGBA, false );
-        
+        // The renderer's upload path accepts ONLY FORMAT_I_GREY and
+        // FORMAT_I_RGBA (layerRendererPicture.cpp iUpload) and rejects anything
+        // else through an unlogged `default: return false`. Convert() fails by
+        // returning false WITHOUT changing the format (piImage.cpp:432-437 -
+        // iConvertSelf returns null on allocation failure), so a discarded
+        // return value here means the layer is silently undrawable forever:
+        // every frame it is visible, iUpload rejects it and DisplayRender skips
+        // it, with no diagnostic anywhere.
+        //
+        // This is not hypothetical for large images. An 8192x4096 three-channel
+        // JPEG needs a 128 MiB allocation to become RGBA.
+        if (!mImage.Convert( 0, piImage::Format::FORMAT_I_RGBA, false ))
+        {
+            if (log)
+                log->Printf(LT_ERROR, L"[IMM_PICFMT] RGBA conversion FAILED for a picture asset (%dx%d, format %d) - it will never upload and never draw",
+                    mImage.GetXRes(), mImage.GetYRes(), (int)mImage.GetFormat(0));
+            return false;
+        }
+
         iComputeBBox();
         return true;
     }
