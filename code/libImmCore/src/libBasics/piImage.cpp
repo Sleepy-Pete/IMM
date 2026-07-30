@@ -429,6 +429,19 @@ bool piImage::Convert(int ch, Format format, bool swapRB)
     }
     else
     {
+        // Already in the requested format: converting is a no-op, not a failure.
+        // iConvertSelf only implements four cross-format pairs and returns null
+        // for everything else - including format==format - so without this an
+        // already-RGBA image reads as a hard conversion failure. Harmless while
+        // callers discarded the result; fatal once one of them started trusting
+        // it (shield.png1 in TheQuantumRace stopped loading entirely).
+        if (mChannel[ch].mFormat == format)
+        {
+            if (swapRB)
+                SwapRB(ch);
+            return true;
+        }
+
         void *tmp = iConvertSelf(ch, format, swapRB);
         if (!tmp) return false;
         if (mOwnerOfBuffers) free(mChannel[ch].mData);
