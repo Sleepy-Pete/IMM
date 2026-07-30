@@ -237,6 +237,66 @@ namespace ImmPlayer
         [DllImport(DllName)]
         public static extern void SetSound(int id, float volume);
 
+        // --- Host mixer -------------------------------------------------
+        // These multiply the authored volume; they never replace it, so the
+        // timeline keeps animating underneath. Enumerate sound layers with
+        // GetLayerInfoByIndex and filter on LayerType.Sound.
+
+        [DllImport(DllName)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool SetLayerSoundVolume(int docId, int layerId, float volume);
+
+        [DllImport(DllName)]
+        public static extern float GetLayerSoundVolume(int docId, int layerId);
+
+        [DllImport(DllName)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool SetLayerSoundMute(int docId, int layerId, int mute);
+
+        [DllImport(DllName)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool GetLayerSoundMute(int docId, int layerId);
+
+        [DllImport(DllName)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool SetLayerSoundSolo(int docId, int layerId, int solo);
+
+        [DllImport(DllName)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool GetLayerSoundSolo(int docId, int layerId);
+
+        [DllImport(DllName)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool SetLayerSoundBus(int docId, int layerId, int bus);
+
+        [DllImport(DllName)]
+        public static extern int GetLayerSoundBus(int docId, int layerId);
+
+        [DllImport(DllName)]
+        public static extern void SetSoundBusVolume(int bus, float volume);
+
+        [DllImport(DllName)]
+        public static extern float GetSoundBusVolume(int bus);
+
+        [DllImport(DllName)]
+        public static extern int GetSoundBusCount();
+
+        /// <summary>
+        /// Pauses every IMM voice. The native engine owns its own audio output
+        /// device, so Unity's AudioListener pause and focus handling do not
+        /// reach it - <see cref="ImmPlayerManager"/> calls this on application
+        /// pause and focus loss.
+        /// </summary>
+        [DllImport(DllName)]
+        public static extern void PauseAllSounds();
+
+        /// <summary>
+        /// Resumes voices paused by <see cref="PauseAllSounds"/>. Voices that
+        /// were already paused by the timeline stay paused.
+        /// </summary>
+        [DllImport(DllName)]
+        public static extern void ResumeAllSounds();
+
         #endregion
 
         #region Bounding Box

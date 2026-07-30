@@ -137,6 +137,13 @@ namespace ImmPlayer {
         float GetVolume(void) const;
         void SetVolume( float volume, ImmCore::piLog *log );
 
+        // How many of this document's sound layers are soloed. Scoped to the
+        // document on purpose: unloading it takes the count with it, so a
+        // soloed layer in a document that goes away can never leave the rest
+        // of the mix silenced.
+        int  GetSoundSoloCount(void) const { return mSoundSoloCount; }
+        void SetSoundSoloCount(int count) { mSoundSoloCount = (count < 0) ? 0 : count; }
+
         ImmCore::bound3d GetBBox(void) const;
 
         int  GetSpawnAreaCount();
@@ -178,6 +185,7 @@ namespace ImmPlayer {
         ImmImporter::Sequence     mSequence;
         MngrPlayer   mPlayerManager;
         float        mMasterVolume;
+        int          mSoundSoloCount;
         bool         mHidden;
         bool         mWasPaused;
         bool         mHasAudio = false;

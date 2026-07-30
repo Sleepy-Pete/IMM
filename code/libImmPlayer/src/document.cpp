@@ -51,6 +51,7 @@ namespace ImmPlayer
         mHidden = false;
         mDocumentToWorld = trans3d::identity();
         mMasterVolume = 1.0f;
+        mSoundSoloCount = 0;
         mCmdID = -1;
         mFileType = ImportType::IMM_disk;
         mIMM = nullptr;

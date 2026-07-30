@@ -4,6 +4,40 @@ All notable changes to `com.immersive-foundation.imm-unity`.
 
 Consumption and release instructions: `PACKAGING.md` at the repo root.
 
+## [Unreleased]
+
+Additive API; no breaking changes to existing entry points.
+
+### Added
+- **Host audio mixer.** `ImmDocument.GetSoundLayers()` returns every sound layer with its
+  current mixer state, and `SetSoundLayerVolume/Mute/Solo/Bus` plus the static
+  `ImmDocument.SetSoundBusVolume(bus, volume)` drive it. The mixer **multiplies** the
+  authored volume rather than replacing it, so the document's timeline keeps animating
+  underneath a fader. Mute wins over solo; while anything is soloed everything else is
+  silent; solo is scoped to the document; bus faders are global to the player.
+  Note that sound layers are deliberately exempt from the visibility gate, so
+  `SetLayerVisible(false)` does **not** silence a layer — that is what mute is for.
+- `ImmNativePlugin.PauseAllSounds()` / `ResumeAllSounds()`, called automatically by
+  `ImmPlayerManager` on `OnApplicationPause` and `OnApplicationFocus`. The native engine
+  owns its own audio output device, so Unity's own `AudioListener` pause never reached
+  these voices — a doffed headset or a backgrounded app kept playing the piece to nobody.
+
+### Fixed
+- **Audio was completely silent in Unity builds for macOS and iOS.** The engine bridge
+  selected the null sound backend on any platform that was not Windows or Android; Apple
+  targets now select the AVFoundation backend, which already existed and is what the
+  native macOS viewer uses.
+- **Quest audio had no spatialization at all.** Every positional/listener/attenuation entry
+  point in the Android backend was an empty function body, and multichannel content was
+  played by dumping channels 0 and 1 to left and right. Positional layers are now placed
+  with distance attenuation, directional cone/frustum, panning, interaural delay and head
+  shadowing; first-order ambisonic beds are decoded and follow the head. Distance
+  attenuation and the directional modifiers match the Windows Audio360 reference by
+  construction. `IMM_AUDIO_NO_SPATIAL=1` restores the previous behaviour.
+- macOS/iOS gained the same model as far as `AVAudioPlayer` can express it: exact distance
+  attenuation and cone/frustum, plus lateral position. No interaural delay, head shadowing
+  or ambisonic on that backend yet.
+
 ## [0.2.0] — 2026-07-28
 
 Additive API; no breaking changes to existing entry points.

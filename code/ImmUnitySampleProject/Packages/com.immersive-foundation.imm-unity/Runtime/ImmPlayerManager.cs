@@ -208,6 +208,26 @@ namespace ImmPlayer
             CleanupCommandBuffers();
         }
 
+        // The IMM engine opens its own audio output device (OpenSL ES on Quest,
+        // Audio360 on Windows, AVFoundation on Apple), so Unity's own audio
+        // pause does not reach it. Without these two hooks a doffed headset or
+        // a backgrounded app keeps playing the piece to nobody.
+        private void OnApplicationPause(bool paused)
+        {
+            if (!_isInitialized) return;
+
+            if (paused) ImmNativePlugin.PauseAllSounds();
+            else ImmNativePlugin.ResumeAllSounds();
+        }
+
+        private void OnApplicationFocus(bool hasFocus)
+        {
+            if (!_isInitialized) return;
+
+            if (hasFocus) ImmNativePlugin.ResumeAllSounds();
+            else ImmNativePlugin.PauseAllSounds();
+        }
+
         private void LateUpdate()
         {
             // Heartbeat: proves the main thread is alive when native logs go silent

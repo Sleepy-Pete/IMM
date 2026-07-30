@@ -1934,6 +1934,80 @@ extern "C" void UNITY_INTERFACE_EXPORT SetSound(int id, float volume)
     iPlayer().SetDocumentVolume(id, volume);
 }
 
+// ---------------------------------------------------------------------------
+// Host mixer. These multiply the authored volume rather than replacing it, so
+// the timeline keeps animating underneath whatever the application sets.
+// Enumerate sound layers with GetLayerInfoByIndex and filter on type.
+// ---------------------------------------------------------------------------
+
+extern "C" bool UNITY_INTERFACE_EXPORT SetLayerSoundVolume(int docId, int layerId, float volume)
+{
+    return iPlayer().SetLayerSoundVolume(docId, layerId, volume);
+}
+
+extern "C" float UNITY_INTERFACE_EXPORT GetLayerSoundVolume(int docId, int layerId)
+{
+    return iPlayer().GetLayerSoundVolume(docId, layerId);
+}
+
+extern "C" bool UNITY_INTERFACE_EXPORT SetLayerSoundMute(int docId, int layerId, int mute)
+{
+    return iPlayer().SetLayerSoundMute(docId, layerId, mute != 0);
+}
+
+extern "C" bool UNITY_INTERFACE_EXPORT GetLayerSoundMute(int docId, int layerId)
+{
+    return iPlayer().GetLayerSoundMute(docId, layerId);
+}
+
+extern "C" bool UNITY_INTERFACE_EXPORT SetLayerSoundSolo(int docId, int layerId, int solo)
+{
+    return iPlayer().SetLayerSoundSolo(docId, layerId, solo != 0);
+}
+
+extern "C" bool UNITY_INTERFACE_EXPORT GetLayerSoundSolo(int docId, int layerId)
+{
+    return iPlayer().GetLayerSoundSolo(docId, layerId);
+}
+
+extern "C" bool UNITY_INTERFACE_EXPORT SetLayerSoundBus(int docId, int layerId, int bus)
+{
+    return iPlayer().SetLayerSoundBus(docId, layerId, bus);
+}
+
+extern "C" int UNITY_INTERFACE_EXPORT GetLayerSoundBus(int docId, int layerId)
+{
+    return iPlayer().GetLayerSoundBus(docId, layerId);
+}
+
+extern "C" void UNITY_INTERFACE_EXPORT SetSoundBusVolume(int bus, float volume)
+{
+    iPlayer().SetSoundBusVolume(bus, volume);
+}
+
+extern "C" float UNITY_INTERFACE_EXPORT GetSoundBusVolume(int bus)
+{
+    return iPlayer().GetSoundBusVolume(bus);
+}
+
+extern "C" int UNITY_INTERFACE_EXPORT GetSoundBusCount()
+{
+    return ImmPlayer::kNumSoundBuses;
+}
+
+// The IMM engine owns its own audio output device, so Unity's AudioListener
+// pause and focus handling do not reach it. The C# side must call these on
+// application pause/focus, or the piece keeps playing to an empty headset.
+extern "C" void UNITY_INTERFACE_EXPORT PauseAllSounds()
+{
+    gImmUnityPlugin.mBridge.PauseAllSounds();
+}
+
+extern "C" void UNITY_INTERFACE_EXPORT ResumeAllSounds()
+{
+    gImmUnityPlugin.mBridge.ResumeAllSounds();
+}
+
 extern "C" void UNITY_INTERFACE_EXPORT GetBoundingBox(int id, bound3& bound)
 {
     bound = d2f(iPlayer().GetDocumentBBox(id));

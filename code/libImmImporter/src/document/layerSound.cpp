@@ -11,6 +11,10 @@ namespace ImmImporter
 	{
 		mEncodedFormat = 0;
 		mEncodedChannels = 0;
+		mMixVolume = 1.0f;
+		mMixMuted = false;
+		mMixSoloed = false;
+		mMixBus = 0;
 	}
 
 	LayerSound::~LayerSound()
@@ -34,6 +38,12 @@ namespace ImmImporter
 		mLoop = loop;
         mPaused = false;
         mForceRestart = false;
+        // Host mixer defaults: audible, unity gain, bus 0. Init() is also the
+        // reload path, so a re-loaded document starts from a clean desk.
+        mMixVolume = 1.0f;
+        mMixMuted = false;
+        mMixSoloed = false;
+        mMixBus = 0;
 #if !defined(IMM_WEB_DECODER)
         mSound.Init();
 #endif

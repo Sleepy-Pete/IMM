@@ -82,7 +82,20 @@ namespace ImmImporter
         void SetVolume(float value);
         void SetType(Type type); // only so we are able to fix old drawings and backwards compatibiliyu. Otherwise, architecturally it doesn't have sense for this function ot exist
         void SetForceRestart(bool force);
-            
+
+        // Host mixer state. Like mPlay/mPaused/mOffset below these are runtime
+        // playback controls and are never serialized - they belong to whoever
+        // is playing the document, not to the document. The composition of
+        // these into a gain lives in libImmPlayer/src/soundMix.h.
+        inline float GetMixVolume(void) const { return mMixVolume; }
+        inline void  SetMixVolume(float v) { mMixVolume = (v < 0.0f) ? 0.0f : v; }
+        inline bool  GetMixMuted(void) const { return mMixMuted; }
+        inline void  SetMixMuted(bool m) { mMixMuted = m; }
+        inline bool  GetMixSoloed(void) const { return mMixSoloed; }
+        inline void  SetMixSoloed(bool s) { mMixSoloed = s; }
+        inline int   GetMixBus(void) const { return mMixBus; }
+        inline void  SetMixBus(int b) { mMixBus = b; }
+
         float GetGain(void) const { return mGain; }
         float GetVolume(void)const;
         Type GetType(void) const;
@@ -125,6 +138,10 @@ namespace ImmImporter
         uint64_t mOffset;
         bool     mPaused;
         bool     mPlay;
+        float    mMixVolume;
+        bool     mMixMuted;
+        bool     mMixSoloed;
+        int      mMixBus;
         bool     mCompressed; // if compressed, mSound is actually not a piWav, but just a binary blob with an OPUS file in it
         float    mVolume;
 

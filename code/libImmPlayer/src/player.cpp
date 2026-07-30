@@ -90,7 +90,12 @@ namespace ImmPlayer
 #endif
     }
 
-    Player::Player() {}
+    Player::Player()
+    {
+        // Every mix bus starts at unity: a host that never touches the mixer
+        // must hear exactly what the document authored.
+        for (int i = 0; i < kNumSoundBuses; i++) mSoundBusVolume[i] = 1.0f;
+    }
 
     Player::~Player() {}
 
@@ -546,6 +551,140 @@ namespace ImmPlayer
         return true;
     }
 
+    // ------------------------------------------------------------------
+    // Host mixer
+    //
+    // These do not touch the authored volume - LayerRendererSound multiplies
+    // the mixer's contribution in through masterVolume, so the timeline can
+    // keep animating underneath a fader.
+    // ------------------------------------------------------------------
+
+    LayerSound *Player::iFindSoundLayer(int docId, int layerId)
+    {
+        Document *doc = (Document *)mDocuments.GetAddress(docId);
+        if (!doc)
+            return nullptr;
+
+        Layer *layer = iFindLayerById(doc->GetSequence(), layerId);
+        if (!layer || layer->GetType() != Layer::Type::Sound)
+            return nullptr;
+
+        return (LayerSound *)layer->GetImplementation();
+    }
+
+    // Counted rather than incremented so the tally can never drift out of step
+    // with the flags, whatever else happened to the document in between.
+    void Player::iRecountSolo(int docId)
+    {
+        Document *doc = (Document *)mDocuments.GetAddress(docId);
+        if (!doc)
+            return;
+
+        Sequence *sq = doc->GetSequence();
+        if (!sq)
+            return;
+
+        int count = 0;
+        sq->Recurse([&](Layer* layer, int level, int child, bool instance) -> bool
+        {
+            if (layer && layer->GetType() == Layer::Type::Sound)
+            {
+                const LayerSound *ls = (const LayerSound *)layer->GetImplementation();
+                if (ls != nullptr && ls->GetMixSoloed()) count++;
+            }
+            return true;
+        }, false, false, false, false);
+
+        doc->SetSoundSoloCount(count);
+    }
+
+    bool Player::SetLayerSoundVolume(int docId, int layerId, float volume)
+    {
+        std::lock_guard<std::mutex> guard(mMutex);
+        LayerSound *ls = iFindSoundLayer(docId, layerId);
+        if (!ls)
+            return false;
+        ls->SetMixVolume(volume);
+        return true;
+    }
+
+    float Player::GetLayerSoundVolume(int docId, int layerId)
+    {
+        std::lock_guard<std::mutex> guard(mMutex);
+        const LayerSound *ls = iFindSoundLayer(docId, layerId);
+        return (ls != nullptr) ? ls->GetMixVolume() : 0.0f;
+    }
+
+    bool Player::SetLayerSoundMute(int docId, int layerId, bool mute)
+    {
+        std::lock_guard<std::mutex> guard(mMutex);
+        LayerSound *ls = iFindSoundLayer(docId, layerId);
+        if (!ls)
+            return false;
+        ls->SetMixMuted(mute);
+        return true;
+    }
+
+    bool Player::GetLayerSoundMute(int docId, int layerId)
+    {
+        std::lock_guard<std::mutex> guard(mMutex);
+        const LayerSound *ls = iFindSoundLayer(docId, layerId);
+        return (ls != nullptr) ? ls->GetMixMuted() : false;
+    }
+
+    bool Player::SetLayerSoundSolo(int docId, int layerId, bool solo)
+    {
+        std::lock_guard<std::mutex> guard(mMutex);
+        LayerSound *ls = iFindSoundLayer(docId, layerId);
+        if (!ls)
+            return false;
+        ls->SetMixSoloed(solo);
+        iRecountSolo(docId);
+        return true;
+    }
+
+    bool Player::GetLayerSoundSolo(int docId, int layerId)
+    {
+        std::lock_guard<std::mutex> guard(mMutex);
+        const LayerSound *ls = iFindSoundLayer(docId, layerId);
+        return (ls != nullptr) ? ls->GetMixSoloed() : false;
+    }
+
+    bool Player::SetLayerSoundBus(int docId, int layerId, int bus)
+    {
+        if (bus < 0 || bus >= kNumSoundBuses)
+            return false;
+
+        std::lock_guard<std::mutex> guard(mMutex);
+        LayerSound *ls = iFindSoundLayer(docId, layerId);
+        if (!ls)
+            return false;
+        ls->SetMixBus(bus);
+        return true;
+    }
+
+    int Player::GetLayerSoundBus(int docId, int layerId)
+    {
+        std::lock_guard<std::mutex> guard(mMutex);
+        const LayerSound *ls = iFindSoundLayer(docId, layerId);
+        return (ls != nullptr) ? ls->GetMixBus() : -1;
+    }
+
+    void Player::SetSoundBusVolume(int bus, float volume)
+    {
+        if (bus < 0 || bus >= kNumSoundBuses)
+            return;
+        if (volume < 0.0f) volume = 0.0f;
+        mSoundBusVolume[bus] = volume;
+    }
+
+    float Player::GetSoundBusVolume(int bus) const
+    {
+        if (bus < 0 || bus >= kNumSoundBuses)
+            return 1.0f;
+        return mSoundBusVolume[bus];
+    }
+
     bool Player::ClearLayerVisibilityOverride(int docId, int layerId)
     {
         std::lock_guard<std::mutex> guard(mMutex);
@@ -949,7 +1088,8 @@ namespace ImmPlayer
                     bool docReady = doc->UpdateStateCPU(&mLayerRenderSound, mLayerPaintRender, &mLayerRenderPicture, &mLayerRenderModel, mColorSpace, mPaintRenderingTechnique, mSoundEngine, mLog, mTime, cmd);
                     if (docReady)
                     {
-                        iGlobalWorkLayer(doc->GetSequence()->GetRoot(), doc->GetVolume());
+                        iGlobalWorkLayer(doc->GetSequence()->GetRoot(), doc->GetVolume(),
+                                         doc->GetSoundSoloCount() > 0);
                     }
                     anyDocReady |= docReady;
 
@@ -1119,7 +1259,7 @@ namespace ImmPlayer
         //log->Printf(LT_MESSAGE, L"Global Done!");
     }
 
-    void Player::iGlobalWorkLayer(Layer* la, float masterVolume)
+    void Player::iGlobalWorkLayer(Layer* la, float masterVolume, bool anySoloActive)
     {
         const Layer::Type lt = la->GetType();
 
@@ -1129,7 +1269,7 @@ namespace ImmPlayer
             for (int i = 0; i < num; i++)
             {
                 Layer* lc = la->GetChild(i);
-                iGlobalWorkLayer(lc, masterVolume);
+                iGlobalWorkLayer(lc, masterVolume, anySoloActive);
             }
             return;
         }
@@ -1145,7 +1285,25 @@ namespace ImmPlayer
         else if (lt == Layer::Type::Sound)   lr = &mLayerRenderSound;
         else if (lt == Layer::Type::Model)   lr = &mLayerRenderModel;
 
-        if (lr != nullptr) lr->GlobalWork(mRenderer, mSoundEngine, mLog, la, masterVolume);
+        // The host mixer rides in on masterVolume, which only the sound
+        // renderer reads. Folding it in here keeps the mixer entirely inside
+        // the player instead of spreading it through every layer renderer's
+        // shared GlobalWork signature.
+        float volume = masterVolume;
+        if (lt == Layer::Type::Sound)
+        {
+            const LayerSound *ls = (const LayerSound *)la->GetImplementation();
+            if (ls != nullptr)
+            {
+                volume *= ComputeSoundMixGain(ls->GetMixVolume(),
+                                              ls->GetMixMuted(),
+                                              ls->GetMixSoloed(),
+                                              anySoloActive,
+                                              GetSoundBusVolume(ls->GetMixBus()));
+            }
+        }
+
+        if (lr != nullptr) lr->GlobalWork(mRenderer, mSoundEngine, mLog, la, volume);
     }
 
     static mat4x4d gl2dx(const mat4x4d & mat)

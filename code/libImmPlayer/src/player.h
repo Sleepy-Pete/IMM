@@ -16,7 +16,9 @@
 #include "layerRenderers/layerRendererPaint/layerRendererPaint.h"
 
 #include "document.h"
+#include "soundMix.h"
 #include "libImmImporter/src/document/layer.h"
+#include "libImmImporter/src/document/layerSound.h"
 
 namespace ImmPlayer {
 
@@ -114,6 +116,22 @@ namespace ImmPlayer {
         bool SetLayerOpacity(int docId, int layerId, float opacity);
         bool SetLayerTransform(int docId, int layerId, const ImmCore::trans3d & transform);
         bool ClearLayerTransformOverride(int docId, int layerId);
+
+        // Host mixer. These multiply the authored volume rather than replacing
+        // it, so the timeline keeps doing whatever the author wrote while the
+        // application balances the piece on top. Note that sound layers are
+        // deliberately exempt from the visibility gate, so hiding a layer does
+        // not silence it - that is what mute is for.
+        bool  SetLayerSoundVolume(int docId, int layerId, float volume);
+        float GetLayerSoundVolume(int docId, int layerId);
+        bool  SetLayerSoundMute(int docId, int layerId, bool mute);
+        bool  GetLayerSoundMute(int docId, int layerId);
+        bool  SetLayerSoundSolo(int docId, int layerId, bool solo);
+        bool  GetLayerSoundSolo(int docId, int layerId);
+        bool  SetLayerSoundBus(int docId, int layerId, int bus);
+        int   GetLayerSoundBus(int docId, int layerId);
+        void  SetSoundBusVolume(int bus, float volume);
+        float GetSoundBusVolume(int bus) const;
 
         struct LayerDiagnostics
         {
@@ -256,7 +274,9 @@ namespace ImmPlayer {
 		void GetChapterInfo(size_t& numChapters, ImmCore::piTArray<ImmCore::piTick>& chapterLengths, bool& hasPlays, int id);
 
     private:
-        void iGlobalWorkLayer(Layer* la, float masterVolum);
+        void iGlobalWorkLayer(Layer* la, float masterVolum, bool anySoloActive);
+        ImmImporter::LayerSound *iFindSoundLayer(int docId, int layerId);
+        void iRecountSolo(int docId);
         void iDisplayPreRenderLayer(Layer* la, const ImmCore::trans3d & parentLocation, float parentOpacity, const ImmCore::trans3d & worldToViewer);
         void iUnloadNotInTimeline(Layer* root, ImmCore::piTick now);
         ImmCore::mat4x4 iConvertProjectionMatrix(const ImmCore::mat4x4 & mat);
@@ -349,6 +369,7 @@ namespace ImmPlayer {
         ClipSpaceDepth mClipDepthMode;
         ClipSpaceDepth mProjectionMatricesMode;
         ImmCore::piPool mDocuments;
+        float        mSoundBusVolume[kNumSoundBuses];
         ImmCore::piTArray<bool> mSynced;
 
         struct Command

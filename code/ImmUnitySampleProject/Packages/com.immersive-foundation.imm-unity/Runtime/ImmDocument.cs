@@ -346,6 +346,148 @@ namespace ImmPlayer
 
         #endregion
 
+        #region Audio mixer
+
+        /// <summary>
+        /// One sound layer as the host mixer sees it. <see cref="Gain"/> is the
+        /// value the author baked into the document; <see cref="Volume"/> is
+        /// the host's fader on top of it.
+        /// </summary>
+        [Serializable]
+        public struct SoundLayer
+        {
+            public int Id;
+            public string Name;
+            public float Volume;
+            public bool Muted;
+            public bool Soloed;
+            public int Bus;
+        }
+
+        /// <summary>
+        /// Number of mix buses available. Layers are assigned to a bus with
+        /// <see cref="SetSoundLayerBus"/>; each bus has its own fader.
+        /// </summary>
+        public static int SoundBusCount => ImmNativePlugin.GetSoundBusCount();
+
+        /// <summary>
+        /// Every sound layer in the document, with its current mixer state.
+        /// Sound layers are exempt from the visibility gate, so hiding one does
+        /// NOT silence it - use <see cref="SetSoundLayerMute"/> for that.
+        /// </summary>
+        public SoundLayer[] GetSoundLayers()
+        {
+            LayerInfoNative[] all = GetLayers();
+            if (all.Length == 0) return new SoundLayer[0];
+
+            int soundCount = 0;
+            for (int i = 0; i < all.Length; i++)
+            {
+                if ((LayerType)all[i].type == LayerType.Sound) soundCount++;
+            }
+            if (soundCount == 0) return new SoundLayer[0];
+
+            SoundLayer[] layers = new SoundLayer[soundCount];
+            int next = 0;
+            for (int i = 0; i < all.Length; i++)
+            {
+                if ((LayerType)all[i].type != LayerType.Sound) continue;
+
+                int layerId = all[i].id;
+                layers[next++] = new SoundLayer
+                {
+                    Id = layerId,
+                    Name = all[i].name,
+                    Volume = ImmNativePlugin.GetLayerSoundVolume(DocumentId, layerId),
+                    Muted = ImmNativePlugin.GetLayerSoundMute(DocumentId, layerId),
+                    Soloed = ImmNativePlugin.GetLayerSoundSolo(DocumentId, layerId),
+                    Bus = ImmNativePlugin.GetLayerSoundBus(DocumentId, layerId)
+                };
+            }
+
+            return layers;
+        }
+
+        /// <summary>
+        /// Host fader for one sound layer. Multiplies the authored volume, so
+        /// the timeline keeps animating underneath. 1.0 is unity gain; values
+        /// above 1.0 are allowed and will amplify.
+        /// </summary>
+        public bool SetSoundLayerVolume(int layerId, float volume)
+        {
+            if (!IsLoaded) return false;
+            return ImmNativePlugin.SetLayerSoundVolume(DocumentId, layerId, Mathf.Max(0f, volume));
+        }
+
+        public float GetSoundLayerVolume(int layerId)
+        {
+            if (!IsLoaded) return 0f;
+            return ImmNativePlugin.GetLayerSoundVolume(DocumentId, layerId);
+        }
+
+        /// <summary>
+        /// Mute wins over solo: a muted layer stays silent even when soloed.
+        /// </summary>
+        public bool SetSoundLayerMute(int layerId, bool mute)
+        {
+            if (!IsLoaded) return false;
+            return ImmNativePlugin.SetLayerSoundMute(DocumentId, layerId, mute ? 1 : 0);
+        }
+
+        public bool GetSoundLayerMute(int layerId)
+        {
+            if (!IsLoaded) return false;
+            return ImmNativePlugin.GetLayerSoundMute(DocumentId, layerId);
+        }
+
+        /// <summary>
+        /// While any layer in this document is soloed, every layer that is not
+        /// soloed is silent. Solo is scoped to the document.
+        /// </summary>
+        public bool SetSoundLayerSolo(int layerId, bool solo)
+        {
+            if (!IsLoaded) return false;
+            return ImmNativePlugin.SetLayerSoundSolo(DocumentId, layerId, solo ? 1 : 0);
+        }
+
+        public bool GetSoundLayerSolo(int layerId)
+        {
+            if (!IsLoaded) return false;
+            return ImmNativePlugin.GetLayerSoundSolo(DocumentId, layerId);
+        }
+
+        /// <summary>
+        /// Assign a layer to a mix bus (0 .. <see cref="SoundBusCount"/>-1).
+        /// Groups layers that should move together - dialogue, score, ambience.
+        /// </summary>
+        public bool SetSoundLayerBus(int layerId, int bus)
+        {
+            if (!IsLoaded) return false;
+            return ImmNativePlugin.SetLayerSoundBus(DocumentId, layerId, bus);
+        }
+
+        public int GetSoundLayerBus(int layerId)
+        {
+            if (!IsLoaded) return -1;
+            return ImmNativePlugin.GetLayerSoundBus(DocumentId, layerId);
+        }
+
+        /// <summary>
+        /// Bus faders are global to the player, not per document, so a bus set
+        /// up once applies to every document loaded into it.
+        /// </summary>
+        public static void SetSoundBusVolume(int bus, float volume)
+        {
+            ImmNativePlugin.SetSoundBusVolume(bus, Mathf.Max(0f, volume));
+        }
+
+        public static float GetSoundBusVolume(int bus)
+        {
+            return ImmNativePlugin.GetSoundBusVolume(bus);
+        }
+
+        #endregion
+
         #region Transform
 
         /// <summary>
