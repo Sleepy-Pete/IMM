@@ -3557,7 +3557,7 @@ static bool iEnsurePicturePipelineLayout(piVulkanState *state, piRenderer::piRep
         return true;
     }
 
-    VkDescriptorSetLayoutBinding bindings[5] = {};
+    VkDescriptorSetLayoutBinding bindings[6] = {};
     bindings[0].binding = 0;
     bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     bindings[0].descriptorCount = 1;
@@ -3580,10 +3580,23 @@ static bool iEnsurePicturePipelineLayout(piVulkanState *state, piRenderer::piRep
     bindings[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     bindings[4].descriptorCount = 1;
     bindings[4].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    // Binding 7: blue noise. NOT optional, despite never having been declared
+    // here. Every picture fragment shader reads it - shader_pi2D_fs and
+    // shader_pip360Equirect_fs both call alpha2coverage(), which texelFetches
+    // mTexBlueNoise at binding 7 and uses the result to dither alpha before
+    // writing gl_SampleMask. Reading an undeclared descriptor is undefined, and
+    // whatever came back was driving the COVERAGE: a bad value collapses the
+    // mask to zero, so the picture writes no samples at all and disappears
+    // completely rather than looking wrong. The paint layout has always
+    // declared it (see the paint layout, binding 7) - this was the asymmetry.
+    bindings[5].binding = 7;
+    bindings[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[5].descriptorCount = 1;
+    bindings[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
     VkDescriptorSetLayoutCreateInfo setLayoutInfo = {};
     setLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    setLayoutInfo.bindingCount = 5;
+    setLayoutInfo.bindingCount = 6;
     setLayoutInfo.pBindings = bindings;
     VkResult result = state->vkCreateDescriptorSetLayout(state->device, &setLayoutInfo, nullptr, &state->pictureDescriptorSetLayout);
     if (result != VK_SUCCESS || state->pictureDescriptorSetLayout == VK_NULL_DESCRIPTOR_SET_LAYOUT)
@@ -3608,10 +3621,15 @@ static bool iEnsurePicturePipelineLayout(piVulkanState *state, piRenderer::piRep
     }
 
     VkDescriptorPoolSize poolSizes[2] = {};
+    // Two combined image samplers (the picture itself at 0, blue noise at 7)
+    // and four uniform buffers (3, 4, 5, 9). The uniform count was 3 while the
+    // layout already declared four - undersized pools are allowed to fail
+    // allocation with VK_ERROR_OUT_OF_POOL_MEMORY, so it was luck that it did
+    // not.
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSizes[0].descriptorCount = 1;
+    poolSizes[0].descriptorCount = 2;
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSizes[1].descriptorCount = 3;
+    poolSizes[1].descriptorCount = 4;
 
     VkDescriptorPoolCreateInfo poolInfo = {};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -3699,10 +3717,12 @@ static bool iUpdatePictureDescriptorSet(piVulkanState *state, VkDescriptorSet se
         return true;
     }
     piTexture picture = state->textures[0];
+    piTexture blueNoise = state->textures[7];
     piBuffer layerBuffer = state->constantBuffers[3];
     piBuffer displayBuffer = state->constantBuffers[4];
     piBuffer passBuffer = state->constantBuffers[5];
     if (!picture || picture->imageView == VK_NULL_IMAGE_VIEW || picture->sampler == VK_NULL_SAMPLER ||
+        !blueNoise || blueNoise->imageView == VK_NULL_IMAGE_VIEW || blueNoise->sampler == VK_NULL_SAMPLER ||
         !layerBuffer || layerBuffer->buffer == VK_NULL_BUFFER ||
         !displayBuffer || displayBuffer->buffer == VK_NULL_BUFFER ||
         !passBuffer || passBuffer->buffer == VK_NULL_BUFFER)
@@ -3716,18 +3736,32 @@ static bool iUpdatePictureDescriptorSet(piVulkanState *state, VkDescriptorSet se
     imageInfo.imageLayout = picture->imageLayout;
     picture->lastBatchUseStamp = state->batchRingStampCounter;
 
+    // The picture shaders dither alpha against this before writing the sample
+    // mask; leaving it unbound left the coverage depending on undefined memory.
+    VkDescriptorImageInfo blueNoiseInfo = {};
+    blueNoiseInfo.sampler = blueNoise->sampler;
+    blueNoiseInfo.imageView = blueNoise->imageView;
+    blueNoiseInfo.imageLayout = blueNoise->imageLayout;
+    blueNoise->lastBatchUseStamp = state->batchRingStampCounter;
+
     VkDescriptorBufferInfo bufferInfos[4] = {};
     bufferInfos[0] = iDescriptorBufferInfo(layerBuffer);
     bufferInfos[1] = iDescriptorBufferInfo(displayBuffer);
     bufferInfos[2] = iDescriptorBufferInfo(passBuffer);
 
-    VkWriteDescriptorSet writes[5] = {};
+    VkWriteDescriptorSet writes[6] = {};
     writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writes[0].dstSet = set;
     writes[0].dstBinding = 0;
     writes[0].descriptorCount = 1;
     writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     writes[0].pImageInfo = &imageInfo;
+    writes[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writes[5].dstSet = set;
+    writes[5].dstBinding = 7;
+    writes[5].descriptorCount = 1;
+    writes[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writes[5].pImageInfo = &blueNoiseInfo;
     writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writes[1].dstSet = set;
     writes[1].dstBinding = 3;
@@ -3762,6 +3796,12 @@ static bool iUpdatePictureDescriptorSet(piVulkanState *state, VkDescriptorSet se
         writes[4].pBufferInfo = &bufferInfos[3];
         writeCount = 5;
     }
+    else
+    {
+        // Keep the blue-noise write contiguous when binding 9 is absent.
+        writes[4] = writes[5];
+    }
+    writeCount += 1;   // binding 7 is always written
     state->vkUpdateDescriptorSets(state->device, writeCount, writes, 0, nullptr);
 
     if (!state->pictureDescriptorReported)
@@ -7441,10 +7481,29 @@ static bool iUploadTextureImageData(piVulkanState *state, piTexture texture, piR
     if (!state || !texture || !texture->data || texture->dataSize == 0 || texture->image == 0 ||
         state->commandBuffer == VK_NULL_COMMAND_BUFFER || state->frameFence == VK_NULL_FENCE)
     {
+        // "Nothing to upload" and "there is an image but its pixels never
+        // arrived" both landed here and both returned success. Separate them:
+        // an image with a size but no data is a real failure, and it produces a
+        // texture that samples as fully transparent rather than as anything
+        // visibly wrong.
+        if (texture && texture->image != 0 && texture->dataSize > 0 && !texture->data)
+        {
+            char msg[160];
+            snprintf(msg, sizeof(msg),
+                     "[IMM_VKTEX] image %dx%d exists but has NO host data - upload skipped, it will sample as transparent",
+                     texture->info.mXres, texture->info.mYres);
+            iError(reporter, msg);
+            return false;
+        }
         return true;
     }
     if (!iEnsureStagingBuffer(state, (VkDeviceSize)texture->dataSize, reporter))
     {
+        char msg[160];
+        snprintf(msg, sizeof(msg),
+                 "[IMM_VKTEX] staging buffer FAILED for %dx%d (%.1f MB) - pixels never reach the GPU",
+                 texture->info.mXres, texture->info.mYres, (double)texture->dataSize / (1024.0*1024.0));
+        iError(reporter, msg);
         return false;
     }
     void *mapped = nullptr;
@@ -9774,6 +9833,23 @@ piTexture piRendererVulkan::CreateTexture2(const wchar_t *key, const TextureInfo
         {
             if (buffer) std::memcpy(texture->data, buffer, texture->dataSize);
             else std::memset(texture->data, 0, texture->dataSize);
+        }
+        else if (buffer)
+        {
+            // A failed allocation here used to be completely silent: the guard
+            // skipped the copy, image creation still succeeded, CreateTexture
+            // returned a valid texture, and iUploadTextureImageData then bailed
+            // on !texture->data by returning TRUE. Net effect - a texture with
+            // no pixels that every layer of the stack reports as fine. Sampling
+            // it yields alpha 0, and the picture shaders drive gl_SampleMask
+            // from alpha, so the result is not a black image but nothing at all.
+            // An 8192x4096 RGBA picture asks for 134 MB here, on top of an
+            // equally large conversion buffer and staging buffer.
+            char msg[192];
+            snprintf(msg, sizeof(msg),
+                     "[IMM_VKTEX] malloc FAILED for texture data %dx%d (%.1f MB) - texture will have NO pixels and sample as fully transparent",
+                     info->mXres, info->mYres, (double)texture->dataSize / (1024.0*1024.0));
+            iError(mReporter, msg);
         }
     }
     if (mState && !iCreateTextureImage(mState, texture, bindUsage, mReporter))
