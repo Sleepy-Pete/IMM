@@ -123,6 +123,23 @@ namespace ImmPlayer
 
         iSound* snd = (iSound*)mSounds.GetAddress(id);
 
+        // Whether a layer spatializes is decided HERE, by the type byte in the
+        // document - not by the file name and not by the channel count. Only
+        // Type::Positional reaches the spatializer; Flat is a straight stereo
+        // passthrough that ignores head rotation entirely, which sounds exactly
+        // like "it only comes through one channel and does not move". Name the
+        // type per layer so that distinction is never a guess again.
+        {
+            const wchar_t *typeName =
+                (type == LayerSound::Type::Positional) ? L"Positional" :
+                (type == LayerSound::Type::Ambisonic)  ? L"Ambisonic"  : L"Flat";
+            const piWav *w = lp->GetSound();
+            log->Printf(LT_MESSAGE, L"[IMM_AUDIO] layer %s type=%s chan=%d rate=%d compressed=%d",
+                        la->GetName().GetS(), typeName,
+                        (w ? w->mNumChannels : -1), (w ? w->mRate : -1),
+                        lp->GetCompressed() ? 1 : 0);
+        }
+
         if (lp->GetCompressed())
         {
             const piWav *wav = lp->GetSound();
