@@ -115,6 +115,7 @@ Use these validation classes consistently across products.
 | Visual output | Structured render metrics against render baseline | Partial: macOS Metal hosted, Windows DirectX capture hosted | Required for Vulkan/Godot/device paths |
 | Engine scene composition | Front scene geometry occludes paint, rear scene geometry is hidden by paint/background, exposed rear geometry remains visible | Unity DirectX composition smoke where a self-hosted Unity runner is available | Required for Unity/Godot renderer paths that composite IMM content into an engine scene |
 | Audio | Decode count, backend selected, play accepted, teardown clean | Required where existing smoke supports it | Required |
+| Audio model conformance | `code/projects/windows/run-audio-conformance.ps1` — attenuation curves, cone/frustum, panning, ambisonic decode, mixer precedence | Required; needs no device, GPU or engine, so it belongs on the hosted PR gate | Not applicable |
 | Repeated lifecycle | load/unload/reload, app relaunch, resource teardown | Required where existing smoke supports it | Required |
 
 ## Proposed Workflow Structure

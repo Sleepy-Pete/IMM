@@ -29,6 +29,7 @@ engine streams that file and renders it in true 6-DoF, on the desktop (DX11/Open
 | 5 | [05-playback-engine.md](05-playback-engine.md) | libImmPlayer + appImmViewer: the frame loop, per-layer renderers, VR stereo paths, audio |
 | 6 | [06-engine-integrations.md](06-engine-integrations.md) | Unity plugin, StrokeReader, Godot GDExtension, the shared `ImmEngineBridge` |
 | 7 | [07-build-system.md](07-build-system.md) | Windows/Android/macOS/iOS build graphs, thirdparty vendoring, the shader compiler |
+| 8 | [08-audio.md](08-audio.md) | The spatial audio model, the platform-independent spatializer, per-platform status, conformance testing |
 
 ## The whole system on one page
 
