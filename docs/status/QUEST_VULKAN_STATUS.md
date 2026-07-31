@@ -36,7 +36,7 @@ premature close):**
   floor beneath) is the authored look; `IMM_UNITY_VK_PIC2D_NO_DEPTH` stays as a
   diagnostic, default off.
 - The dome remains artistically stretched (16:9 source in a 2:1 equirect
-  mapping) — that part IS an authoring conversation with the author.
+  mapping) — that part IS an authoring conversation, not a code defect.
 - The GLES reference player crashed twice on the wedged OS during comparison
   attempts (unresolved, low priority — our build now matches Pete's memory of
   the reference look).
@@ -178,7 +178,8 @@ highest-leverage layer to re-key.
 
 **Device state:** `2111_confirmstate` build installed and stopped, flag file =
 `IMM_UNITY_DOC_FILE=TheQuantumRace.imm` + `IMM_UNITY_VK_ENABLE_BURST=1`.
-WiFi adb `<HEADSET_IP>:5555` is the reliable channel (USB drops mid-session);
+WiFi adb is the reliable channel (USB drops mid-session); set the headset address
+once per session in `IMM_HEADSET_SERIAL` (the `tools/` scripts default to it), and
 re-arm with `adb -s <usb-serial> tcpip 5555` from any USB window.
 
 ## Where things stand

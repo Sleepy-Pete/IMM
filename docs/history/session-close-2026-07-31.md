@@ -27,8 +27,8 @@ looks broken, which is much of why it survived four sessions.
   authored ~fully transparent (alpha ≈ 0 on 96 % of pixels). Forced-opaque debug
   modes made them appear; normal alpha returns them to authored near-invisibility.
 - **Dome looks stretched** — `littledome3.png` is 16:9 (3840×2160) typed
-  `Image360EquirectMono`, whose mapping assumes 2:1. Authoring conversation with
-  the author, not code.
+  `Image360EquirectMono`, whose mapping assumes 2:1. An authoring question,
+  not code.
 - **Floor sits beneath the painted ground** — authored layering; the depth-on
   composite (paint in front, floor beneath/beyond) is the intended look
   (Pete's "#2" verdict on the A/B frames).
