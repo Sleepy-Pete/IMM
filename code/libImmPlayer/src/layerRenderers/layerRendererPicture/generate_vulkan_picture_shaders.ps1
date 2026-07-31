@@ -209,12 +209,26 @@ void main()
         // fault is downstream), black = alpha 0 (the alpha is what kills it).
         vec2 duv = vec2(0.5 + 0.5 * atan(nor.x, -nor.z) / k_pi, acos(clamp(nor.y, -1.0, 1.0)) / k_pi);
         vec4 dtexel = texture(pictureTexture, duv);
+        // 4 = layer.mOpacity as greyscale. Modes 2 and 3 proved the texture is
+        // sound, so the only remaining factor in the alpha is the uniform. Black
+        // here means mOpacity arrives as zero despite the CPU logging 1.000, and
+        // that is a uniform plumbing bug, not a content one.
+        if (pictureDebugMode == 4u) { out_color = vec4(vec3(layer.mOpacity), 1.0); return; }
         out_color = (pictureDebugMode == 2u) ? vec4(dtexel.rgb, 1.0) : vec4(vec3(dtexel.a), 1.0);
         return;
     }
     vec2 uv = vec2(0.5 + 0.5 * atan(nor.x, -nor.z) / k_pi, acos(clamp(nor.y, -1.0, 1.0)) / k_pi);
     vec4 texel = texture(pictureTexture, uv);
-#if COLOR_SPACE == 0
+// Drawing::ColorSpace is { Linear = 0, Gamma = 1 } (drawing.h), and
+// LayerRendererPicture::Init selects the fragment variant with
+// fsIndex = static_cast<int>(colorSpace). These shaders had the test the wrong
+// way round - they applied the gamma->linear conversion when colorSpace was
+// LINEAR, which is our configuration. Every picture was therefore raised to the
+// 2.2 power once too often: 360sky averages 29/255, and pow(0.113, 2.2) is
+// 2/255, so it drew fully opaque and perfectly black against a black
+// background. The brighter the source the less it showed - which is why the
+// white 360 and the logo survived while every dark environment vanished.
+#if COLOR_SPACE == 1
     vec3 color = pow(texel.rgb, vec3(2.2));
 #else
     vec3 color = texel.rgb;
@@ -325,11 +339,14 @@ void main()
     if (pictureDebugMode >= 2u)
     {
         vec4 dtexel = texture(pictureTexture, in_uv);
+        if (pictureDebugMode == 4u) { out_color = vec4(vec3(layer.mOpacity), 1.0); return; }
         out_color = (pictureDebugMode == 2u) ? vec4(dtexel.rgb, 1.0) : vec4(vec3(dtexel.a), 1.0);
         return;
     }
     vec4 texel = texture(pictureTexture, in_uv);
-#if COLOR_SPACE == 0
+// Same inversion as the 360 shader: the squaring approximates gamma->linear and
+// belongs on the Gamma branch, not the Linear one.
+#if COLOR_SPACE == 1
     vec3 color = texel.rgb * texel.rgb;
 #else
     vec3 color = texel.rgb;
