@@ -214,6 +214,12 @@ void main()
         // here means mOpacity arrives as zero despite the CPU logging 1.000, and
         // that is a uniform plumbing bug, not a content one.
         if (pictureDebugMode == 4u) { out_color = vec4(vec3(layer.mOpacity), 1.0); return; }
+        // 5 = facing: green where the viewer sees a FRONT face, red where a BACK
+        // face, full alpha. One look at a sphere viewed from outside answers the
+        // "flipped / single-sided" question: solid green = exterior surface
+        // reaches the eye (geometry fine, chase colour); solid red = only the
+        // interior back faces survive (winding or depth is eating the front).
+        if (pictureDebugMode == 5u) { out_color = gl_FrontFacing ? vec4(0.0, 1.0, 0.0, 1.0) : vec4(1.0, 0.0, 0.0, 1.0); return; }
         out_color = (pictureDebugMode == 2u) ? vec4(dtexel.rgb, 1.0) : vec4(vec3(dtexel.a), 1.0);
         return;
     }
@@ -340,6 +346,7 @@ void main()
     {
         vec4 dtexel = texture(pictureTexture, in_uv);
         if (pictureDebugMode == 4u) { out_color = vec4(vec3(layer.mOpacity), 1.0); return; }
+        if (pictureDebugMode == 5u) { out_color = gl_FrontFacing ? vec4(0.0, 1.0, 0.0, 1.0) : vec4(1.0, 0.0, 0.0, 1.0); return; }
         out_color = (pictureDebugMode == 2u) ? vec4(dtexel.rgb, 1.0) : vec4(vec3(dtexel.a), 1.0);
         return;
     }

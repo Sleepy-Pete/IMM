@@ -5671,7 +5671,14 @@ static bool iEnsurePictureGraphicsPipeline(piVulkanState *state, piShader shader
     VkPipelineDepthStencilStateCreateInfo depthStencil = {};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencil.depthTestEnable = depthTest ? 1 : 0;
-    depthStencil.depthWriteEnable = 0;
+    // Pictures must WRITE depth like they do on GLES, not just test it. With the
+    // write hardcoded off, a picture could never occlude ITSELF: a 360 sphere
+    // viewed from outside resolved by triangle order, so the back hemisphere
+    // (later in the dome mesh) overwrote the front and the prop read as a faint
+    // hollow ball showing its interior - confirmed in-headset by the facing
+    // debug (mode 5: dome red = back faces winning, green flickers where mesh
+    // order differs). Write follows test, same as the paint pipeline.
+    depthStencil.depthWriteEnable = depthTest ? 1 : 0;
     depthStencil.depthCompareOp = depthCompareOp;
 
     VkGraphicsPipelineCreateInfo pipelineInfo = {};
