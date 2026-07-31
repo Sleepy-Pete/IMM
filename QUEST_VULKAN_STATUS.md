@@ -4,7 +4,47 @@ _Updated 2026-07-30. Branch `vr-main`, verified in-headset on Quest (Adreno 740)
 `TheArtofChange.imm` (103 MB streaming document), `TheQuantumRace.imm` (221 MB) and
 the sample forest scene._
 
-## ⏭ Start here next session (2026-07-30)
+## ⏭ Start here next session (2026-07-31)
+
+**THE MISSING-PICTURES SAGA IS CLOSED — root cause was a colour-space inversion in
+the hand-written Vulkan picture shaders (`4ea51cb`).** `Drawing::ColorSpace` is
+`{Linear=0, Gamma=1}`; the shaders tested `#if COLOR_SPACE == 0` for the
+gamma→linear pow. We run Linear ⇒ every picture was raised to the 2.2 power once
+too often, and the darker the source the more completely it vanished (360sky
+29/255 → 2/255). **User-verified in-headset: the race-scene sky renders.** The
+route there burned four wrong theories (texture allocation, clip range, host-data
+malloc, blue-noise descriptor — the last is a real latent bug and stayed fixed);
+what actually cracked it was a specialization-constant debug ladder in the
+fragment shader (`IMM_UNITY_VK_PIC_DEBUG` = 1 magenta / 2 RGB-opaque / 3 alpha /
+4 opacity) driven by Pete in-headset — each mode eliminated one factor in
+minutes, where five rounds of CPU-side counters had all honestly reported
+success. **Keep the ladder; it is the tool this class of defect answers to.**
+
+**Session verdicts (Pete in-headset, 2026-07-31 ~1am):**
+- **Floor** — never a separate defect; the colour crush hid it. Placement proven
+  by `[IMM_PICPLACE2D]` (normal ≈ +Y, properly foreshortened). Depth behaviour
+  (painted ground in front, floor picture as the distant band) **is the authored
+  look** — Pete judged the depth-off variant wrong. `IMM_UNITY_VK_PIC2D_NO_DEPTH`
+  stays as a diagnostic, default off.
+- **littledome3 (end dome)** — renders faithully; it is a 360-equirect layer used
+  as an exterior prop. Direction-mapped skybox semantics from outside read as a
+  faint hollow ball; source is dark 16:9 in a 2:1 mapping. **Authoring
+  conversation with the author**, not a renderer defect. (Cross-checkable against the
+  GLES reference player, which has QR loaded.)
+- **"Popup image"** — skybreak1/2 (luminance 245, alpha≈0 by authoring) appearing
+  under the debug modes' forced-opaque alpha. Not a bug.
+- **Audio spatializer** — "worked great" (positional sources tracked, head-stable).
+  `[IMM_AUDIO]` layer-type log confirms routing (3× Positional + 1 Flat bed).
+- **Pause fix (`290969e`)** — built and committed; passively confirm next don
+  (pause mid-film, wait, resume — no jump).
+
+**Open (small):** colour-accuracy comparison vs the native viewer (the fix
+changes every picture's tone; Pete: "we can do this comparison later");
+`desert1.JPG` never emits a LoadAsset line (only picture that doesn't — check
+why); Player::Resume(id) sets mTarget=cmdId not id (latent one-liner, dormant
+with a single document).
+
+**15 commits local on vr-main, NOTHING pushed (Pete: push later).**
 
 **THE QUANTUMRACE "BLOCKER" WAS NOT A DEFECT — IT WAS A STALE INSTALL.** The APK on
 the device was **186 MB** and its asset list held only `TheArtofChange.imm` and
