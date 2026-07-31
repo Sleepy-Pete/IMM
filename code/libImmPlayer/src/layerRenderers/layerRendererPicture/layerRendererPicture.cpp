@@ -920,6 +920,25 @@ namespace ImmPlayer
                 me->mName, (int)lp->GetType(), me->mRes.x, me->mRes.y,
                 laOpacity, layerToViewer.mScale, dist, f, sqrt(double(lrad2)),
                 (int)(layerToViewer.mFlip == flip3::N));
+
+            // A 2D picture is a unit quad in the layer's XY plane, so it is only
+            // visible if mLayerToViewer tilts it towards the eye. Seen exactly
+            // edge-on it covers zero pixels - no fragments, nothing to log, which
+            // is what Floor does even under the magenta debug mode where colour
+            // cannot matter. Print the quad's plane normal in viewer space and the
+            // viewer's direction to its centre: |dot| near 0 means edge-on, near 1
+            // means face-on.
+            if (lp->GetType() == LayerPicture::Image2D)
+            {
+                const vec3d n = (layerToViewer * vec4d(0.0, 0.0, 1.0, 0.0)).xyz();
+                const double nlen = length(n);
+                const vec3d nn = nlen > 0.0 ? n / nlen : n;
+                const double vlen = length(vcen);
+                const vec3d vdir = vlen > 0.0 ? vcen / vlen : vcen;
+                const double facing = nn.x*vdir.x + nn.y*vdir.y + nn.z*vdir.z;
+                log->Printf(LT_MESSAGE, L"[IMM_PICPLACE2D] %s normal=(%.3f,%.3f,%.3f) centre=(%.2f,%.2f,%.2f) facing=%.4f aspect=%.4f",
+                    me->mName, nn.x, nn.y, nn.z, vcen.x, vcen.y, vcen.z, facing, me->mAspectRatio);
+            }
         }
 
         me->mType = lp->GetType();

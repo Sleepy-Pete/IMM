@@ -5498,7 +5498,17 @@ static bool iEnsurePictureGraphicsPipeline(piVulkanState *state, piShader shader
                                                   : (target->color[0] ? target->color[0]->sampleCount : VK_SAMPLE_COUNT_1_BIT);
     const bool mayUseDepth = target->hasDepth &&
                              (!state->hostRenderPassFrameActive || state->externalFrameUsesHostDepth);
-    const bool depthTest = mayUseDepth && state->depthTestEnabled && state->currentDepthState && state->currentDepthState->depthEnable;
+    // IMM_UNITY_VK_PIC2D_NO_DEPTH: drop the depth test for 2D pictures only.
+    // Diagnostic for the coplanar-floor class: a 2D picture lying in the plane
+    // of painted ground loses the reverse-Z compare everywhere and vanishes
+    // with every counter reporting success - draw recorded, fragments raised,
+    // each one rejected. With this set the quad paints over its screen region
+    // regardless of depth, so one render-target dump answers "was it depth?".
+    // 2D only: a 360 sphere with depth off would smear over the whole world.
+    static const bool sPic2DNoDepth = iRendererFlagEnabled("IMM_UNITY_VK_PIC2D_NO_DEPTH");
+    const bool depthTest = (sPic2DNoDepth && shader->isPicture2D)
+                               ? false
+                               : (mayUseDepth && state->depthTestEnabled && state->currentDepthState && state->currentDepthState->depthEnable);
     const VkCompareOp depthCompareOp = (useHostDepthTarget && state->externalFrameHostDepthReverseZ) || iExternalReverseZActiveForTarget(state, target) ? VK_COMPARE_OP_GREATER_OR_EQUAL : VK_COMPARE_OP_LESS_OR_EQUAL;
     if (shader->pipeline != VK_NULL_PIPELINE &&
         shader->pipelineRenderPass == target->renderPass &&
