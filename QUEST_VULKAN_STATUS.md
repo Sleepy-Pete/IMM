@@ -20,17 +20,26 @@ fragment shader (`IMM_UNITY_VK_PIC_DEBUG` = 1 magenta / 2 RGB-opaque / 3 alpha /
 minutes, where five rounds of CPU-side counters had all honestly reported
 success. **Keep the ladder; it is the tool this class of defect answers to.**
 
-**Session verdicts (Pete in-headset, 2026-07-31 ~1am):**
-- **Floor** — never a separate defect; the colour crush hid it. Placement proven
-  by `[IMM_PICPLACE2D]` (normal ≈ +Y, properly foreshortened). Depth behaviour
-  (painted ground in front, floor picture as the distant band) **is the authored
-  look** — Pete judged the depth-off variant wrong. `IMM_UNITY_VK_PIC2D_NO_DEPTH`
-  stays as a diagnostic, default off.
-- **littledome3 (end dome)** — renders faithully; it is a 360-equirect layer used
-  as an exterior prop. Direction-mapped skybox semantics from outside read as a
-  faint hollow ball; source is dark 16:9 in a 2:1 mapping. **Authoring
-  conversation with the author**, not a renderer defect. (Cross-checkable against the
-  GLES reference player, which has QR loaded.)
+**Session verdicts (Pete in-headset, 2026-07-31, FINAL — supersedes the ~1am
+premature close):**
+- **SECOND REAL DEFECT FOUND AND FIXED (`42989e7`): pictures never WROTE depth**
+  — `depthWriteEnable` was hardcoded 0 in the Vulkan picture pipeline (GLES
+  writes it). A picture could not occlude ITSELF: littledome3 (360 sphere used
+  as an exterior prop) resolved by triangle order, back hemisphere overwrote
+  front → faint hollow ball showing its interior "way in the distance". The
+  facing debug (mode 5: green=front face, red=back face) diagnosed it in one
+  look — dome came back RED. Fix: write follows test, like paint.
+  **Pete, in-headset: "that's it! it's all working — the dome and the floor."**
+- **Floor** — two stacked causes, both fixed: the colour crush (`4ea51cb`) and
+  the depth-write hole above. Placement was always correct
+  (`[IMM_PICPLACE2D]`: normal ≈ +Y). Depth-ON compositing (paint in front,
+  floor beneath) is the authored look; `IMM_UNITY_VK_PIC2D_NO_DEPTH` stays as a
+  diagnostic, default off.
+- The dome remains artistically stretched (16:9 source in a 2:1 equirect
+  mapping) — that part IS an authoring conversation with the author.
+- The GLES reference player crashed twice on the wedged OS during comparison
+  attempts (unresolved, low priority — our build now matches Pete's memory of
+  the reference look).
 - **"Popup image"** — skybreak1/2 (luminance 245, alpha≈0 by authoring) appearing
   under the debug modes' forced-opaque alpha. Not a bug.
 - **Audio spatializer** — "worked great" (positional sources tracked, head-stable).
