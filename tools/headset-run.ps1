@@ -22,13 +22,16 @@ param(
     [string[]] $Flags = @(),
     [int]      $Seconds = 90,
     [string]   $Label = "run",
-    [string]   $Serial = "<HEADSET_IP>:5555",
+    [string]   $Serial = $env:IMM_HEADSET_SERIAL,
     [string]   $Package = "com.ImmersiveFoundation.IMMUnityTest",
     [switch]   $Attended,
     [switch]   $NoLaunch
 )
 
 $ErrorActionPreference = "Stop"
+if (-not $Serial) {
+    throw "No headset address. Pass -Serial <ip>:5555, or set IMM_HEADSET_SERIAL once for the session."
+}
 $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 if (-not (Test-Path $adb)) { throw "adb not found at $adb" }
 

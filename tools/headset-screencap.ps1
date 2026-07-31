@@ -13,11 +13,14 @@ param(
     [int]      $WaitSeconds = 45,
     [int[]]    $ExtraShotsAt = @(),
     [string]   $Label = "shot",
-    [string]   $Serial = "<HEADSET_IP>:5555",
+    [string]   $Serial = $env:IMM_HEADSET_SERIAL,
     [string]   $Package = "com.ImmersiveFoundation.IMMUnityTest"
 )
 
 $ErrorActionPreference = "Stop"
+if (-not $Serial) {
+    throw "No headset address. Pass -Serial <ip>:5555, or set IMM_HEADSET_SERIAL once for the session."
+}
 $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 function Adb { & $adb -s $Serial @args }
 
